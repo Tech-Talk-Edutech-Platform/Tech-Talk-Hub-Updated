@@ -1,32 +1,32 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
-import { AlertTriangle, ArrowLeft, Bug, RefreshCw } from "lucide-react";
+import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { AlertTriangle, ArrowLeft, Bug, RefreshCw } from 'lucide-react'
 
-type ErrorBoundaryProps = { children: ReactNode };
-type ErrorBoundaryState = { error: Error | null; componentStack: string };
+type ErrorBoundaryProps = { children: ReactNode }
+type ErrorBoundaryState = { error: Error | null; componentStack: string }
 
 /** Catches render and lifecycle errors below the application router. */
 export default class ErrorBoundary extends Component<
   ErrorBoundaryProps,
   ErrorBoundaryState
 > {
-  state: ErrorBoundaryState = { error: null, componentStack: "" };
+  state: ErrorBoundaryState = { error: null, componentStack: '' }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error, componentStack: "" };
+    return { error, componentStack: '' }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     if (import.meta.env.DEV) {
-      console.error("Uncaught application error:", error, info.componentStack);
+      console.error('Uncaught application error:', error, info.componentStack)
     }
-    this.setState({ componentStack: info.componentStack ?? "" });
+    this.setState({ componentStack: info.componentStack ?? '' })
   }
 
   render() {
-    const { error, componentStack } = this.state;
-    if (!error) return this.props.children;
+    const { error, componentStack } = this.state
+    if (!error) return this.props.children
 
-    const isDevelopment = import.meta.env.DEV;
+    const isDevelopment = import.meta.env.DEV
 
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-12 text-slate-100">
@@ -36,15 +36,15 @@ export default class ErrorBoundary extends Component<
           </div>
 
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-rose-300">
-            {isDevelopment ? "Development error" : "Unexpected error"}
+            {isDevelopment ? 'Development error' : 'Unexpected error'}
           </p>
           <h1 className="mt-3 text-2xl font-black sm:text-3xl">
-            {isDevelopment ? "A component crashed" : "We hit a snag"}
+            {isDevelopment ? 'A component crashed' : 'We hit a snag'}
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
             {isDevelopment
-              ? "The screen could not render. Use the details below to find the failing component."
-              : "This page ran into a problem. Try loading it again, or return to the home page."}
+              ? 'The screen could not render. Use the details below to find the failing component.'
+              : 'This page ran into a problem. Try loading it again, or return to the home page.'}
           </p>
 
           {isDevelopment && (
@@ -97,6 +97,6 @@ export default class ErrorBoundary extends Component<
           </div>
         </section>
       </main>
-    );
+    )
   }
 }

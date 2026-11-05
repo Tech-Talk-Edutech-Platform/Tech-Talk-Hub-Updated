@@ -47,7 +47,7 @@ export function StageHeader({
     <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
       <div className="pointer-events-auto flex min-w-0 items-center gap-2">
         <BrandMark size={40} radius={4} />
-        <span className="truncate pr-1 text-[26px] leading-none font-bold tracking-[-0.015em] text-stage-ink max-sm:hidden">
+        <span className="text-stage-ink truncate pr-1 text-[26px] font-bold leading-none tracking-[-0.015em] max-sm:hidden">
           {CLASSROOM_BRAND.name}
         </span>
         <ParticipantPill
@@ -64,8 +64,8 @@ export function StageHeader({
           aria-pressed={pip}
           className={`press flex h-10 items-center gap-2 rounded-[6px] px-2.5 text-[15px] ${
             pip
-              ? 'bg-white text-stage'
-              : 'bg-stage-control text-white hover:bg-stage-control-hover'
+              ? 'text-stage bg-white'
+              : 'bg-stage-control hover:bg-stage-control-hover text-white'
           }`}
         >
           <PictureInPicture2 size={24} strokeWidth={1.75} aria-hidden="true" />

@@ -112,9 +112,9 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
       ref={panelRef}
       aria-label="Need help?"
       tabIndex={-1}
-      className="pop fixed top-[19px] bottom-5 left-5 z-50 flex h-auto w-[400px] origin-top-left flex-col overflow-hidden rounded-[10px] bg-white text-ink shadow-[0_24px_64px_-16px_rgb(0_0_0/0.45)] outline-none max-sm:inset-x-3 max-sm:top-3 max-sm:bottom-3 max-sm:w-auto"
+      className="pop text-ink fixed bottom-5 left-5 top-[19px] z-50 flex h-auto w-[400px] origin-top-left flex-col overflow-hidden rounded-[10px] bg-white shadow-[0_24px_64px_-16px_rgb(0_0_0/0.45)] outline-none max-sm:inset-x-3 max-sm:bottom-3 max-sm:top-3 max-sm:w-auto"
     >
-      <header className="flex h-[78px] shrink-0 items-center gap-2.5 bg-brand px-3 text-white">
+      <header className="bg-brand flex h-[78px] shrink-0 items-center gap-2.5 px-3 text-white">
         <button
           type="button"
           onClick={reset}
@@ -127,7 +127,7 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
           <BrandMark size={28} radius={14} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-[16.5px] leading-6 font-bold">Need help?</h2>
+          <h2 className="text-[16.5px] font-bold leading-6">Need help?</h2>
           <p className="text-[13px] leading-4 text-white/90">
             Response time within minutes
           </p>
@@ -159,7 +159,7 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
         <>
           <ol
             ref={listRef}
-            className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-16 pb-4"
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 pt-16"
             aria-live="polite"
           >
             {thread.map((message) => (
@@ -168,11 +168,11 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
             {typing && (
               <li className="flex gap-3" aria-label="Support is typing">
                 <BotAvatar />
-                <p className="flex items-center gap-1 rounded-[8px] bg-surface-2 px-3 py-3">
+                <p className="bg-surface-2 flex items-center gap-1 rounded-[8px] px-3 py-3">
                   {TYPING_DOTS.map((dot) => (
                     <span
                       key={dot}
-                      className="size-1.5 rounded-full bg-muted"
+                      className="bg-muted size-1.5 rounded-full"
                       style={{
                         animation: `typing 1.2s ${dot * 0.15}s infinite`,
                       }}
@@ -186,7 +186,7 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
           {topic ? (
             <form
               onSubmit={ask}
-              className="flex shrink-0 items-center gap-2 border-t border-line px-3 py-3"
+              className="border-line flex shrink-0 items-center gap-2 border-t px-3 py-3"
             >
               <label htmlFor="help-input" className="sr-only">
                 Message support
@@ -197,26 +197,26 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={topic.ai ? 'Ask a question' : 'Describe the issue'}
-                className="h-10 flex-1 rounded-[6px] border border-line-strong px-3 text-[14px] outline-none placeholder:text-faint focus:border-brand"
+                className="border-line-strong placeholder:text-faint focus:border-brand h-10 flex-1 rounded-[6px] border px-3 text-[14px] outline-none"
               />
               <button
                 type="submit"
                 disabled={!draft.trim()}
                 aria-label="Send"
-                className="press grid size-10 place-items-center rounded-[6px] bg-brand text-white hover:bg-brand-strong disabled:bg-brand-faded"
+                className="press bg-brand hover:bg-brand-strong disabled:bg-brand-faded grid size-10 place-items-center rounded-[6px] text-white"
               >
                 <SendHorizontal size={17} aria-hidden="true" />
               </button>
             </form>
           ) : (
-            <div className="shrink-0 border-t border-line px-4 pt-3 pb-4">
+            <div className="border-line shrink-0 border-t px-4 pb-4 pt-3">
               <ul className="flex flex-wrap gap-x-[7px] gap-y-2">
                 {HELP_TOPICS.map((option) => (
                   <li key={option.id}>
                     <button
                       type="button"
                       onClick={() => pickTopic(option)}
-                      className="press flex h-8 items-center gap-1.5 rounded-[6px] border border-brand/70 px-2 text-[13px] text-ink hover:bg-brand-soft"
+                      className="press border-brand/70 text-ink hover:bg-brand-soft flex h-8 items-center gap-1.5 rounded-[6px] border px-2 text-[13px]"
                     >
                       {option.ai && (
                         <Sparkles
@@ -235,7 +235,7 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
         </>
       )}
 
-      <footer className="shrink-0 bg-surface-2/70 py-2 text-center text-[11px] text-muted">
+      <footer className="bg-surface-2/70 text-muted shrink-0 py-2 text-center text-[11px]">
         {CLASSROOM_BRAND.supportName}
       </footer>
     </dialog>

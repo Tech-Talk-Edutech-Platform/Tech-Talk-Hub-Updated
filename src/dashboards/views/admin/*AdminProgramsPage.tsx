@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { supabase } from "../../../supabase"
+import { useEffect, useState } from 'react'
+import { supabase } from '../../../supabase'
 import {
   BookOpen,
   ChevronDown,
@@ -12,42 +12,43 @@ import {
   Save,
   Trash2,
   X,
-} from "lucide-react";
+} from 'lucide-react'
 
 export default function AdminProgramsPage() {
-  const supabase = createClient();
+  const supabase = createClient()
 
-  const [programs, setPrograms] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [programs, setPrograms] = useState([])
+  const [courses, setCourses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-  const [expandedProgram, setExpandedProgram] = useState(null);
-  const [showForm, setShowForm] = useState(false);
+  const [expandedProgram, setExpandedProgram] = useState(null)
+  const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState({
-    name: "",
-    slug: "",
-    age_range: "",
-    description: "",
+    name: '',
+    slug: '',
+    age_range: '',
+    description: '',
     display_order: 0,
     is_active: true,
-  });
+  })
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData()
+  }, [])
 
   const fetchData = async () => {
-    setLoading(true);
+    setLoading(true)
 
     const [
       { data: programsData, error: programsError },
       { data: coursesData, error: coursesError },
     ] = await Promise.all([
       supabase
-        .from("programs")
-        .select(`
+        .from('programs')
+        .select(
+          `
           *,
           program_courses (
             id,
@@ -62,198 +63,195 @@ export default function AdminProgramsPage() {
               is_active
             )
           )
-        `)
-        .order("display_order"),
+        `,
+        )
+        .order('display_order'),
 
-      supabase
-        .from("courses")
-        .select("*")
-        .order("title"),
-    ]);
+      supabase.from('courses').select('*').order('title'),
+    ])
 
     if (programsError) {
-      console.error("Programs error:", programsError);
+      console.error('Programs error:', programsError)
     }
 
     if (coursesError) {
-      console.error("Courses error:", coursesError);
+      console.error('Courses error:', coursesError)
     }
 
     const cleanedPrograms = (programsData || []).map((program) => ({
       ...program,
       program_courses: [...(program.program_courses || [])].sort(
-        (a, b) => (a.display_order || 0) - (b.display_order || 0)
+        (a, b) => (a.display_order || 0) - (b.display_order || 0),
       ),
-    }));
+    }))
 
-    setPrograms(cleanedPrograms);
-    setCourses(coursesData || []);
-    setLoading(false);
-  };
+    setPrograms(cleanedPrograms)
+    setCourses(coursesData || [])
+    setLoading(false)
+  }
 
   const generateSlug = (value) =>
     value
       .toLowerCase()
       .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
 
   const handleNameChange = (value) => {
     setForm((prev) => ({
       ...prev,
       name: value,
       slug: generateSlug(value),
-    }));
-  };
+    }))
+  }
 
   const createProgram = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) return
 
-    setSaving(true);
+    setSaving(true)
 
-    const { error } = await supabase.from("programs").insert({
+    const { error } = await supabase.from('programs').insert({
       name: form.name.trim(),
       slug: form.slug || generateSlug(form.name),
       age_range: form.age_range.trim(),
       description: form.description.trim(),
       display_order: Number(form.display_order) || 0,
       is_active: form.is_active,
-    });
+    })
 
-    setSaving(false);
+    setSaving(false)
 
     if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
+      console.error(error)
+      alert(error.message)
+      return
     }
 
     setForm({
-      name: "",
-      slug: "",
-      age_range: "",
-      description: "",
+      name: '',
+      slug: '',
+      age_range: '',
+      description: '',
       display_order: 0,
       is_active: true,
-    });
+    })
 
-    setShowForm(false);
-    fetchData();
-  };
+    setShowForm(false)
+    fetchData()
+  }
 
   const deleteProgram = async (programId) => {
     const confirmed = window.confirm(
-      "Delete this program? The courses themselves will NOT be deleted."
-    );
+      'Delete this program? The courses themselves will NOT be deleted.',
+    )
 
-    if (!confirmed) return;
+    if (!confirmed) return
 
     const { error } = await supabase
-      .from("programs")
+      .from('programs')
       .delete()
-      .eq("id", programId);
+      .eq('id', programId)
 
     if (error) {
-      alert(error.message);
-      return;
+      alert(error.message)
+      return
     }
 
-    fetchData();
-  };
+    fetchData()
+  }
 
   const assignCourse = async (programId, courseId) => {
-    if (!courseId) return;
+    if (!courseId) return
 
-    const program = programs.find((item) => item.id === programId);
+    const program = programs.find((item) => item.id === programId)
 
     const alreadyAssigned = program?.program_courses?.some(
-      (item) => item.course_id === courseId
-    );
+      (item) => item.course_id === courseId,
+    )
 
     if (alreadyAssigned) {
-      alert("This course is already assigned to this program.");
-      return;
+      alert('This course is already assigned to this program.')
+      return
     }
 
-    const nextOrder = (program?.program_courses?.length || 0) + 1;
+    const nextOrder = (program?.program_courses?.length || 0) + 1
 
-    const { error } = await supabase.from("program_courses").insert({
+    const { error } = await supabase.from('program_courses').insert({
       program_id: programId,
       course_id: courseId,
       display_order: nextOrder,
-    });
+    })
 
     if (error) {
-      alert(error.message);
-      return;
+      alert(error.message)
+      return
     }
 
-    fetchData();
-  };
+    fetchData()
+  }
 
   const removeCourse = async (programCourseId) => {
     const { error } = await supabase
-      .from("program_courses")
+      .from('program_courses')
       .delete()
-      .eq("id", programCourseId);
+      .eq('id', programCourseId)
 
     if (error) {
-      alert(error.message);
-      return;
+      alert(error.message)
+      return
     }
 
-    fetchData();
-  };
+    fetchData()
+  }
 
   const moveCourse = async (program, index, direction) => {
-    const items = [...program.program_courses];
-    const targetIndex = index + direction;
+    const items = [...program.program_courses]
+    const targetIndex = index + direction
 
-    if (targetIndex < 0 || targetIndex >= items.length) return;
+    if (targetIndex < 0 || targetIndex >= items.length) return
 
-    const current = items[index];
-    const target = items[targetIndex];
+    const current = items[index]
+    const target = items[targetIndex]
 
-    const currentOrder = current.display_order ?? index + 1;
-    const targetOrder = target.display_order ?? targetIndex + 1;
+    const currentOrder = current.display_order ?? index + 1
+    const targetOrder = target.display_order ?? targetIndex + 1
 
     const { error: firstError } = await supabase
-      .from("program_courses")
+      .from('program_courses')
       .update({ display_order: targetOrder })
-      .eq("id", current.id);
+      .eq('id', current.id)
 
     if (firstError) {
-      alert(firstError.message);
-      return;
+      alert(firstError.message)
+      return
     }
 
     const { error: secondError } = await supabase
-      .from("program_courses")
+      .from('program_courses')
       .update({ display_order: currentOrder })
-      .eq("id", target.id);
+      .eq('id', target.id)
 
     if (secondError) {
-      alert(secondError.message);
-      return;
+      alert(secondError.message)
+      return
     }
 
-    fetchData();
-  };
+    fetchData()
+  }
 
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-7 w-7 animate-spin text-purple-600" />
       </div>
-    );
+    )
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-
         {/* Header */}
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
@@ -277,7 +275,7 @@ export default function AdminProgramsPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-600/20 transition hover:bg-purple-700"
           >
             {showForm ? <X size={17} /> : <Plus size={17} />}
-            {showForm ? "Close" : "New Program"}
+            {showForm ? 'Close' : 'New Program'}
           </button>
         </div>
 
@@ -403,7 +401,6 @@ export default function AdminProgramsPage() {
               ) : (
                 <Save size={17} />
               )}
-
               Save Program
             </button>
           </form>
@@ -412,17 +409,15 @@ export default function AdminProgramsPage() {
         {/* Programs */}
         <div className="space-y-5">
           {programs.map((program) => {
-            const expanded = expandedProgram === program.id;
+            const expanded = expandedProgram === program.id
 
             const assignedIds = new Set(
-              (program.program_courses || []).map(
-                (item) => item.course_id
-              )
-            );
+              (program.program_courses || []).map((item) => item.course_id),
+            )
 
             const availableCourses = courses.filter(
-              (course) => !assignedIds.has(course.id)
-            );
+              (course) => !assignedIds.has(course.id),
+            )
 
             return (
               <div
@@ -444,11 +439,11 @@ export default function AdminProgramsPage() {
                       <span
                         className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${
                           program.is_active
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-slate-100 text-slate-500"
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-slate-100 text-slate-500'
                         }`}
                       >
-                        {program.is_active ? "Active" : "Inactive"}
+                        {program.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
 
@@ -489,7 +484,6 @@ export default function AdminProgramsPage() {
                 {/* Courses */}
                 {expanded && (
                   <div className="border-t border-slate-100 bg-slate-50/70 p-6">
-
                     <div className="mb-6">
                       <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                         Add Existing Course
@@ -498,20 +492,15 @@ export default function AdminProgramsPage() {
                       <select
                         defaultValue=""
                         onChange={(e) => {
-                          assignCourse(program.id, e.target.value);
-                          e.target.value = "";
+                          assignCourse(program.id, e.target.value)
+                          e.target.value = ''
                         }}
                         className="w-full max-w-md rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-purple-400"
                       >
-                        <option value="">
-                          Select a course...
-                        </option>
+                        <option value="">Select a course...</option>
 
                         {availableCourses.map((course) => (
-                          <option
-                            key={course.id}
-                            value={course.id}
-                          >
+                          <option key={course.id} value={course.id}>
                             {course.title}
                           </option>
                         ))}
@@ -533,9 +522,9 @@ export default function AdminProgramsPage() {
                     ) : (
                       <div className="space-y-3">
                         {program.program_courses.map((item, index) => {
-                          const course = item.courses;
+                          const course = item.courses
 
-                          if (!course) return null;
+                          if (!course) return null
 
                           return (
                             <div
@@ -561,9 +550,7 @@ export default function AdminProgramsPage() {
                               <div className="flex items-center gap-1">
                                 <button
                                   disabled={index === 0}
-                                  onClick={() =>
-                                    moveCourse(program, index, -1)
-                                  }
+                                  onClick={() => moveCourse(program, index, -1)}
                                   className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-20"
                                 >
                                   <ChevronUp size={17} />
@@ -571,12 +558,9 @@ export default function AdminProgramsPage() {
 
                                 <button
                                   disabled={
-                                    index ===
-                                    program.program_courses.length - 1
+                                    index === program.program_courses.length - 1
                                   }
-                                  onClick={() =>
-                                    moveCourse(program, index, 1)
-                                  }
+                                  onClick={() => moveCourse(program, index, 1)}
                                   className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-20"
                                 >
                                   <ChevronDown size={17} />
@@ -590,14 +574,14 @@ export default function AdminProgramsPage() {
                                 </button>
                               </div>
                             </div>
-                          );
+                          )
                         })}
                       </div>
                     )}
                   </div>
                 )}
               </div>
-            );
+            )
           })}
         </div>
 
@@ -605,9 +589,7 @@ export default function AdminProgramsPage() {
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white py-16 text-center">
             <Layers3 className="mx-auto mb-4 text-slate-300" size={35} />
 
-            <h2 className="font-bold text-slate-800">
-              No programs yet
-            </h2>
+            <h2 className="font-bold text-slate-800">No programs yet</h2>
 
             <p className="mt-1 text-sm text-slate-500">
               Create your first learning program.
@@ -616,5 +598,5 @@ export default function AdminProgramsPage() {
         )}
       </div>
     </div>
-  );
+  )
 }

@@ -7,7 +7,7 @@ export function TechTalkAdvantage() {
     <section className="border-t border-slate-100 bg-white px-4 py-14 sm:py-16">
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 text-center">
-          <span className="text-xs font-bold tracking-[0.15em] text-secondary uppercase">
+          <span className="text-xs font-bold uppercase tracking-[0.15em] text-secondary">
             Why Tech Talk Hub
           </span>
 

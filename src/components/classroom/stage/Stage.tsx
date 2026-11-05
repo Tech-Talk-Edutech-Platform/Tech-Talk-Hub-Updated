@@ -64,7 +64,7 @@ export function Stage({
     <section
       data-surface="stage"
       aria-label="Video room"
-      className="relative isolate min-w-0 flex-1 overflow-hidden bg-stage bg-[url(/stage-bg.svg)] bg-cover bg-bottom"
+      className="bg-stage relative isolate min-w-0 flex-1 overflow-hidden bg-[url(/stage-bg.svg)] bg-cover bg-bottom"
     >
       <StageHeader
         participantCount={participants.length}
@@ -89,7 +89,7 @@ export function Stage({
           onSwitchBack={onSwitchBack}
         />
       ) : (
-        <div className="absolute inset-x-3 top-[60px] bottom-[92px]">
+        <div className="absolute inset-x-3 bottom-[92px] top-[60px]">
           <ParticipantGrid
             participants={participants}
             self={{

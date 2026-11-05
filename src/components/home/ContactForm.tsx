@@ -15,25 +15,46 @@ import { TextField } from '../ui/TextField'
 
 const contactSchema = z.object({
   parentName: z.string().trim().min(1, 'Enter your name.'),
-  childAge: z.string().min(1, 'Enter your child’s age.').refine((age) => {
-    const value = Number(age)
-    return Number.isInteger(value) && value >= 4 && value <= 18
-  }, 'Age must be between 4 and 18.'),
+  childAge: z
+    .string()
+    .min(1, 'Enter your child’s age.')
+    .refine((age) => {
+      const value = Number(age)
+      return Number.isInteger(value) && value >= 4 && value <= 18
+    }, 'Age must be between 4 and 18.'),
   phone: z.string().trim().min(1, 'Enter your phone number.'),
-  email: z.union([z.literal(''), z.string().email('Enter a valid email address.')]),
+  email: z.union([
+    z.literal(''),
+    z.string().email('Enter a valid email address.'),
+  ]),
   interest: z.string(),
   message: z.string().trim().min(1, 'Enter a message.'),
 })
 
 /** Contact form that hands the parent's message off to WhatsApp. */
 export function ContactForm() {
-  const { register, handleSubmit, formState: { errors } } = useForm<ContactFormValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { parentName: '', childAge: '', phone: '', email: '', interest: '', message: '' },
+    defaultValues: {
+      parentName: '',
+      childAge: '',
+      phone: '',
+      email: '',
+      interest: '',
+      message: '',
+    },
   })
 
   function handleValidSubmit(values: ContactFormValues) {
-    window.open(buildContactWhatsAppUrl(values), '_blank', 'noopener,noreferrer')
+    window.open(
+      buildContactWhatsAppUrl(values),
+      '_blank',
+      'noopener,noreferrer',
+    )
   }
 
   return (
@@ -48,7 +69,11 @@ export function ContactForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(handleValidSubmit)} noValidate className="grid gap-5 sm:grid-cols-2">
+      <form
+        onSubmit={handleSubmit(handleValidSubmit)}
+        noValidate
+        className="grid gap-5 sm:grid-cols-2"
+      >
         <TextField
           id="parentName"
           name="parentName"
@@ -59,7 +84,11 @@ export function ContactForm() {
           aria-invalid={Boolean(errors.parentName)}
           placeholder="Your name"
         />
-        {errors.parentName && <p role="alert" className="text-sm text-red-600">{errors.parentName.message}</p>}
+        {errors.parentName && (
+          <p role="alert" className="text-sm text-red-600">
+            {errors.parentName.message}
+          </p>
+        )}
 
         <TextField
           id="childAge"
@@ -73,7 +102,11 @@ export function ContactForm() {
           aria-invalid={Boolean(errors.childAge)}
           placeholder="e.g. 8"
         />
-        {errors.childAge && <p role="alert" className="text-sm text-red-600">{errors.childAge.message}</p>}
+        {errors.childAge && (
+          <p role="alert" className="text-sm text-red-600">
+            {errors.childAge.message}
+          </p>
+        )}
 
         <TextField
           id="phone"
@@ -85,7 +118,11 @@ export function ContactForm() {
           aria-invalid={Boolean(errors.phone)}
           placeholder="07XX XXX XXX"
         />
-        {errors.phone && <p role="alert" className="text-sm text-red-600">{errors.phone.message}</p>}
+        {errors.phone && (
+          <p role="alert" className="text-sm text-red-600">
+            {errors.phone.message}
+          </p>
+        )}
 
         <TextField
           id="email"
@@ -130,7 +167,11 @@ export function ContactForm() {
             className={`resize-none py-3 text-slate-800 placeholder:text-slate-400 ${FORM_CONTROL_CLASS}`}
           />
         </FormField>
-        {errors.message && <p role="alert" className="text-sm text-red-600 sm:col-span-2">{errors.message.message}</p>}
+        {errors.message && (
+          <p role="alert" className="text-sm text-red-600 sm:col-span-2">
+            {errors.message.message}
+          </p>
+        )}
 
         <button
           type="submit"

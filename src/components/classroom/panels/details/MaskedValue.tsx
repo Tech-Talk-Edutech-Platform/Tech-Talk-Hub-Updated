@@ -21,7 +21,7 @@ export function MaskedValue({ value, label }: MaskedValueProps) {
         type="button"
         onClick={() => setShown((s) => !s)}
         aria-label={shown ? `Hide ${label}` : `Show ${label}`}
-        className="press ml-1 inline-grid size-5 place-items-center rounded align-middle text-ink-soft hover:text-ink"
+        className="press text-ink-soft hover:text-ink ml-1 inline-grid size-5 place-items-center rounded align-middle"
       >
         {shown ? (
           <EyeOff size={13} aria-hidden="true" />

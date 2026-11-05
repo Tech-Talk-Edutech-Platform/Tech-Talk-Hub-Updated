@@ -3,7 +3,7 @@
 /* Remove the header borders for a cleaner look */
 /* .fc-theme-standard td, .fc-theme-standard th {
   border: 1px solid #f1f5f9 !important;  */
-  /* Very light slate */
+/* Very light slate */
 /* } */
 
 /* .fc-theme-standard .fc-scrollgrid {
@@ -13,17 +13,17 @@
 /* --- Event "Chip" Styling --- */
 /* .fc-v-event {
   border-radius: 8px !important;  */
-  /* Rounded corners like Image 2 */
-  /* padding: 2px 4px !important;
+/* Rounded corners like Image 2 */
+/* padding: 2px 4px !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
   border-width: 0 0 0 4px !important;  */
-  /* Adds a thick left-border accent */
+/* Adds a thick left-border accent */
 /* } */
 
 /* Style for "Free" slots (Light yellow background) */
 /* .fc-event[style*="background-color: rgb(254, 252, 232)"] {
   border-left: 4px solid #eab308 !important;  */
-  /* Yellow accent */
+/* Yellow accent */
 /* } */
 
 /* --- Time & Grid Labels --- */
@@ -78,8 +78,9 @@
   color: white !important;
   border-color: #334155 !important;
 } */
- /* --- Global Calendar Modernization --- */
-.fc-theme-standard td, .fc-theme-standard th {
+/* --- Global Calendar Modernization --- */
+.fc-theme-standard td,
+.fc-theme-standard th {
   border: 1px solid #f1f5f9 !important;
 }
 
@@ -164,7 +165,6 @@
   letter-spacing: 0.05em;
 }
 
-
 /* Optional: Shrink the day headers too */
 .fc .fc-col-header-cell-cushion {
   font-size: 0.6rem !important;
@@ -210,7 +210,7 @@
   font-size: 0.8rem;
   color: #64748b;
 } */
- /* ========================== */
+/* ========================== */
 /* fullcalendar-custom.css */
 
 /* Red Time Line Styles */

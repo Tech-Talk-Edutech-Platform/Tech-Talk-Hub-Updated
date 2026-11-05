@@ -45,7 +45,7 @@ export function NavBar() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 z-50 w-full transition-all duration-300 ${
+      className={`fixed left-0 top-0 z-50 w-full transition-all duration-300 ${
         scrolled
           ? 'border-b border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-xl'
           : 'bg-white/80 backdrop-blur-md'

@@ -46,7 +46,7 @@ export function Modal({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      className="modal m-auto w-[calc(100%-32px)] max-w-none overflow-visible rounded-[8px] bg-white p-0 text-ink shadow-[0_24px_64px_-16px_rgb(0_0_0/0.4)]"
+      className="modal text-ink m-auto w-[calc(100%-32px)] max-w-none overflow-visible rounded-[8px] bg-white p-0 shadow-[0_24px_64px_-16px_rgb(0_0_0/0.4)]"
       style={{ maxWidth: width }}
     >
       <div className={`relative ${padding} max-sm:px-6 max-sm:py-8`}>
@@ -54,7 +54,7 @@ export function Modal({
           type="button"
           onClick={onClose}
           aria-label={closeLabel}
-          className="press absolute top-[18px] right-[18px] grid size-9 place-items-center rounded-md text-ink-soft hover:bg-surface-2 hover:text-ink"
+          className="press text-ink-soft hover:bg-surface-2 hover:text-ink absolute right-[18px] top-[18px] grid size-9 place-items-center rounded-md"
         >
           <X size={24} strokeWidth={1.75} />
         </button>

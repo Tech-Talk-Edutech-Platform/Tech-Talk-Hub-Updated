@@ -1,4 +1,5 @@
 1.
+
 For a 1:1 beginner Scratch student, I’d make this 3 sessions, not 1.
 
 Session 1: Topics 1–4 + Activity 1
@@ -9,6 +10,7 @@ World Map Explorer: homework/assignment after Session 3
 At 45–60 minutes per session, that pacing feels premium and gives the child time to actually understand and build, rather than rush through everything.
 
 2.
+
 I’d make this 3 sessions for a 1:1 beginner.
 
 Session 1: Time + Direction + Motion Blocks + Activity 1
@@ -21,12 +23,15 @@ Dance Sequence: homework/assignment
 For your **elite 1:1 program**, I’d allocate this about **2 sessions**: Session 1 for sensing/collision + building the core game, and Session 2 for completing/polishing Byte Dash + challenges. **Egg Escape stays as the assignment.**
 
 4.
+
 2 sessions in your 1:1 format: the first for clones + variables + basic falling objects, and the second for finishing Happy Balls, Game Over logic, testing, and challenges. Catch the Falling Stars remains the assignment.
 
 5.
+
 2 × 45-minute sessions: Session 1 = DJ Cat, Session 2 = Video Sensing + computer-vision concept, then Kindness Champion = homework/assignment.
 
 6.
+
 I’d make it 2 lessons.
 
 Lesson 1: Pen basics + Rectangle + Square/Triangle challenge
@@ -34,7 +39,8 @@ Lesson 2: Orbit/circles + Musical Pen + creative patterns
 
 Ring Around the Roses stays as the assignment/homework.
 
-----------------------------
+---
+
 For your 1:1 program, I’d make this 2 sessions:
 
 Session 1: Variables + Operators + random positioning + movement.
@@ -49,45 +55,37 @@ For your 1:1 structure, I’d make this 2 sessions:
 Session 1: Text to Speech + Translate + set language + simple speaking/translation practice.
 Session 2: My Blocks + talking animation + complete multilingual assistant.
 
-Aria the Multilingual Storyteller stays as the assignment.
-3.
+Aria the Multilingual Storyteller stays as the assignment. 3.
 For your 1:1 program, this should be around 2 sessions:
 
 Session 1: Functions/procedures + nested loops + Player and obstacle movement.
 Session 2: Collision logic + Score + debugging + My Blocks + polish.
 
-Then Multi-Level Car Game Part 1 stays as the assignment and becomes the base project for the next car-game lesson.
-4.
+Then Multi-Level Car Game Part 1 stays as the assignment and becomes the base project for the next car-game lesson. 4.
 previous lesson = Car Game foundations, this lesson = My Blocks + complete Car Game, and assignment = turn that same game into a 3-level project. Brick Breaker remains an extension for fast students, so you don't overload the main 45-minute class.
-
-
 
 Use the 45–60 minutes for:
 
+My Blocks recap
 
+Finish Car Game
 
- My Blocks recap 
+Score + Game Over
 
- Finish Car Game 
-
- Score + Game Over 
-
- Debugging + polish 
-
-
+Debugging + polish
 
 Brick Breaker = bonus only if time remains.
 
 Multi-Level Car Game = assignment/homework.
 
 5.
+
 For your 1:1 Tech Talk Hub program, I’d make this 2 sessions because there are two clone systems plus tracking and collision logic:
 
 Session 1: Player controls + firing + Projectile clones.
 Session 2: Enemy clones + point towards + Score + broadcasts + Game Over + polish.
 
-Water Defender stays as the assignment.
-6.
+Water Defender stays as the assignment. 6.
 1 session of about 45–60 minutes because the clone, variable, and direction concepts have already been taught. Balloon Bonanza is the main new build, while the previous Hungry Casey/Byte Defender project only needs a brief recap.
 
 # Introduction to Scratch
@@ -117,11 +115,11 @@ Go to [scratch.mit.edu](https://scratch.mit.edu).
 
 You can create:
 
-* 🎮 Games
-* 🎬 Animations
-* 📖 Stories
-* 🎂 Digital cards
-* 🎵 Music projects
+- 🎮 Games
+- 🎬 Animations
+- 📖 Stories
+- 🎂 Digital cards
+- 🎵 Music projects
 
 Millions of young creators around the world use Scratch to create and share projects.
 
@@ -147,12 +145,12 @@ The Scratch screen has different areas for finding blocks, building code, and wa
 
 ### 💻 Byte Shows You How
 
-* **Menu Bar** — File, Edit, and Tutorials.
-* **Tabs** — Code, Costumes, and Sounds.
-* **Blocks Palette** — where you find coding blocks.
-* **Code Area** — where you connect your blocks.
-* **Stage** — where your project comes to life.
-* **Sprite Pane** — where you manage your sprites.
+- **Menu Bar** — File, Edit, and Tutorials.
+- **Tabs** — Code, Costumes, and Sounds.
+- **Blocks Palette** — where you find coding blocks.
+- **Code Area** — where you connect your blocks.
+- **Stage** — where your project comes to life.
+- **Sprite Pane** — where you manage your sprites.
 
 ![Labelled Scratch Interface](SCRATCH_INTERFACE_IMAGE_URL)
 
@@ -357,11 +355,11 @@ think [Hmm...] for (2) seconds
 
 Your project should have:
 
-* 🌲 A Forest backdrop
-* 🐱 The Scratch Cat
-* 🟨 A green flag event
-* 💬 A speech bubble
-* 💭 A thought bubble
+- 🌲 A Forest backdrop
+- 🐱 The Scratch Cat
+- 🟨 A green flag event
+- 💬 A speech bubble
+- 💭 A thought bubble
 
 ### ⭐ Byte's Challenge
 
@@ -411,12 +409,12 @@ play sound [your sound] until done
 
 Your project should include:
 
-* 🎉 A party backdrop
-* 🎂 A Cake sprite
-* 🎁 A Gift sprite
-* 🧑 A character
-* 🌈 Colour animation
-* 🎵 Sound or music
+- 🎉 A party backdrop
+- 🎂 A Cake sprite
+- 🎁 A Gift sprite
+- 🧑 A character
+- 🌈 Colour animation
+- 🎵 Sound or music
 
 ### ⭐ Byte's Challenge
 
@@ -482,11 +480,11 @@ clear graphic effects
 
 Your animation should:
 
-* 🟢 Start with the green flag
-* 💬 Show each letter of your name
-* 🚀 Move around the Stage
-* 🌈 Change colour
-* 🎉 Finish with a final message
+- 🟢 Start with the green flag
+- 💬 Show each letter of your name
+- 🚀 Move around the Stage
+- 🌈 Change colour
+- 🎉 Finish with a final message
 
 ### ⭐ Byte's Challenge
 
@@ -512,12 +510,12 @@ Build your own mini Scratch scene.
 
 Your project must include:
 
-* At least **2 sprites**
-* **1 backdrop**
-* A `when green flag clicked` event
-* A `say` or `think` block
-* A `glide` block
-* A `color effect`
+- At least **2 sprites**
+- **1 backdrop**
+- A `when green flag clicked` event
+- A `say` or `think` block
+- A `glide` block
+- A `color effect`
 
 ### ⭐ Super Bonus
 
@@ -553,11 +551,11 @@ Can you build Byte's interactive **World Map Explorer**?
 
 ## 🚀 Getting Started
 
-* Open your Scratch project and choose a **world map backdrop**.
-* Add one **Marker** sprite.
-* Duplicate it until you have **7 markers**.
-* Remember the blocks you used in class: `when this sprite clicked`, `say`, and `go to x: y:`.
-* 💡 **New skill:** Right-click a sprite and choose **Duplicate** to quickly create a copy.
+- Open your Scratch project and choose a **world map backdrop**.
+- Add one **Marker** sprite.
+- Duplicate it until you have **7 markers**.
+- Remember the blocks you used in class: `when this sprite clicked`, `say`, and `go to x: y:`.
+- 💡 **New skill:** Right-click a sprite and choose **Duplicate** to quickly create a copy.
 
 ---
 
@@ -575,13 +573,13 @@ Duplicate your Marker until you have **7 in total**.
 
 Rename them:
 
-* Africa
-* Asia
-* Europe
-* North America
-* South America
-* Australia/Oceania
-* Antarctica
+- Africa
+- Asia
+- Europe
+- North America
+- South America
+- Australia/Oceania
+- Antarctica
 
 ### 3. Position Your Markers
 
@@ -617,10 +615,10 @@ Click the **green flag**, then test all seven markers.
 
 Make sure:
 
-* 📍 Every continent has a marker.
-* 🖱️ Every marker responds when clicked.
-* 💬 Every marker displays the correct continent name.
-* 🗺️ Every marker is positioned correctly.
+- 📍 Every continent has a marker.
+- 🖱️ Every marker responds when clicked.
+- 💬 Every marker displays the correct continent name.
+- 🗺️ Every marker is positioned correctly.
 
 ---
 

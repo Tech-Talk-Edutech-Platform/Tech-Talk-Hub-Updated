@@ -3,11 +3,11 @@
 //   return <UploadNote />;
 // }
 // // src/pages/Scratch.js
-import React from "react";
+import React from 'react'
 
 export default function Scratch() {
   return (
-    <div style={{ width: "100%", height: "100%" }}>
+    <div style={{ width: '100%', height: '100%' }}>
       {/* <iframe
         src="/packager/index.html"
         title="Scratch Packager"
@@ -22,7 +22,7 @@ export default function Scratch() {
         SAVE PROJECT
       </button> */}
     </div>
-  );
+  )
 }
 // *******************************
 // import React from "react";

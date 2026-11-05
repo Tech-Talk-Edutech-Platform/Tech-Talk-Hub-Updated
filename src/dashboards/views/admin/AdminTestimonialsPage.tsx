@@ -1,201 +1,182 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react'
 
-import {
-  Loader2,
-  Mail,
-  MessageCircle,
-  Plus,
-  Trash2,
-} from "lucide-react";
-import { supabase } from "../../../supabase"
+import { Loader2, Mail, MessageCircle, Plus, Trash2 } from 'lucide-react'
+import { supabase } from '../../../supabase'
 
 const initialForm = {
-  parent_name: "",
-  feedback: "",
-  source: "whatsapp",
+  parent_name: '',
+  feedback: '',
+  source: 'whatsapp',
   display_order: 0,
   is_featured: false,
   is_published: true,
-};
+}
 
 export default function AdminTestimonialsPage() {
-  const [testimonials, setTestimonials] = useState([]);
-  const [form, setForm] = useState(initialForm);
-  const [screenshot, setScreenshot] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [testimonials, setTestimonials] = useState([])
+  const [form, setForm] = useState(initialForm)
+  const [screenshot, setScreenshot] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    loadTestimonials();
-  }, []);
+    loadTestimonials()
+  }, [])
 
   async function loadTestimonials() {
-    setLoading(true);
-    setError("");
+    setLoading(true)
+    setError('')
 
     const { data, error: fetchError } = await supabase
-      .from("testimonials")
-      .select("*")
-      .order("display_order", {
+      .from('testimonials')
+      .select('*')
+      .order('display_order', {
         ascending: true,
       })
-      .order("created_at", {
+      .order('created_at', {
         ascending: false,
-      });
+      })
 
     if (fetchError) {
-      setError(fetchError.message);
+      setError(fetchError.message)
     } else {
-      setTestimonials(data || []);
+      setTestimonials(data || [])
     }
 
-    setLoading(false);
+    setLoading(false)
   }
 
   async function handleSubmit(event) {
-    event.preventDefault();
+    event.preventDefault()
 
     if (!screenshot) {
-      setError("Please select a screenshot.");
-      return;
+      setError('Please select a screenshot.')
+      return
     }
 
-    setSaving(true);
-    setError("");
+    setSaving(true)
+    setError('')
 
     try {
-      const extension =
-        screenshot.name.split(".").pop()?.toLowerCase() ||
-        "jpg";
+      const extension = screenshot.name.split('.').pop()?.toLowerCase() || 'jpg'
 
-      const filePath = `${crypto.randomUUID()}.${extension}`;
+      const filePath = `${crypto.randomUUID()}.${extension}`
 
       const { error: uploadError } = await supabase.storage
-        .from("testimonials")
+        .from('testimonials')
         .upload(filePath, screenshot, {
-          cacheControl: "3600",
+          cacheControl: '3600',
           upsert: false,
-        });
+        })
 
       if (uploadError) {
-        throw uploadError;
+        throw uploadError
       }
 
       const { data: publicUrlData } = supabase.storage
-        .from("testimonials")
-        .getPublicUrl(filePath);
+        .from('testimonials')
+        .getPublicUrl(filePath)
 
       const { error: insertError } = await supabase
-        .from("testimonials")
+        .from('testimonials')
         .insert({
           ...form,
           parent_name: form.parent_name.trim() || null,
           feedback: form.feedback.trim() || null,
           display_order: Number(form.display_order) || 0,
           screenshot_url: publicUrlData.publicUrl,
-        });
+        })
 
       if (insertError) {
-        await supabase.storage
-          .from("testimonials")
-          .remove([filePath]);
+        await supabase.storage.from('testimonials').remove([filePath])
 
-        throw insertError;
+        throw insertError
       }
 
-      setForm(initialForm);
-      setScreenshot(null);
+      setForm(initialForm)
+      setScreenshot(null)
 
-      const fileInput =
-        document.getElementById("testimonial-screenshot");
+      const fileInput = document.getElementById('testimonial-screenshot')
 
       if (fileInput) {
-        fileInput.value = "";
+        fileInput.value = ''
       }
 
-      await loadTestimonials();
+      await loadTestimonials()
     } catch (submitError) {
-      setError(
-        submitError.message || "Failed to save testimonial."
-      );
+      setError(submitError.message || 'Failed to save testimonial.')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
   async function togglePublished(testimonial) {
-    setError("");
+    setError('')
 
     const { error: updateError } = await supabase
-      .from("testimonials")
+      .from('testimonials')
       .update({
         is_published: !testimonial.is_published,
       })
-      .eq("id", testimonial.id);
+      .eq('id', testimonial.id)
 
     if (updateError) {
-      setError(updateError.message);
-      return;
+      setError(updateError.message)
+      return
     }
 
-    await loadTestimonials();
+    await loadTestimonials()
   }
 
   async function deleteTestimonial(testimonial) {
-    const confirmed = window.confirm(
-      "Delete this testimonial permanently?"
-    );
+    const confirmed = window.confirm('Delete this testimonial permanently?')
 
     if (!confirmed) {
-      return;
+      return
     }
 
-    setError("");
+    setError('')
 
     const { error: deleteError } = await supabase
-      .from("testimonials")
+      .from('testimonials')
       .delete()
-      .eq("id", testimonial.id);
+      .eq('id', testimonial.id)
 
     if (deleteError) {
-      setError(deleteError.message);
-      return;
+      setError(deleteError.message)
+      return
     }
 
-    const marker = "/testimonials/";
+    const marker = '/testimonials/'
 
     if (testimonial.screenshot_url?.includes(marker)) {
-      const filePath =
-        testimonial.screenshot_url.split(marker)[1];
+      const filePath = testimonial.screenshot_url.split(marker)[1]
 
       if (filePath) {
         await supabase.storage
-          .from("testimonials")
-          .remove([decodeURIComponent(filePath)]);
+          .from('testimonials')
+          .remove([decodeURIComponent(filePath)])
       }
     }
 
-    await loadTestimonials();
+    await loadTestimonials()
   }
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8">
-          <p className="text-sm font-bold text-secondary">
-            Website Content
-          </p>
+          <p className="text-sm font-bold text-secondary">Website Content</p>
 
           <h1 className="mt-1 text-3xl font-black text-slate-900">
             Testimonials
           </h1>
 
           <p className="mt-2 text-slate-600">
-            Upload approved WhatsApp or email feedback for the
-            website.
+            Upload approved WhatsApp or email feedback for the website.
           </p>
         </div>
 
@@ -228,16 +209,13 @@ export default function AdminTestimonialsPage() {
                   accept="image/jpeg,image/png,image/webp"
                   required
                   onChange={(event) =>
-                    setScreenshot(
-                      event.target.files?.[0] || null
-                    )
+                    setScreenshot(event.target.files?.[0] || null)
                   }
                   className="mt-2 block w-full rounded-xl border border-slate-200 p-3 text-sm"
                 />
 
                 <p className="mt-2 text-xs text-slate-500">
-                  Blur phone numbers and private information
-                  before uploading.
+                  Blur phone numbers and private information before uploading.
                 </p>
               </div>
 
@@ -256,13 +234,9 @@ export default function AdminTestimonialsPage() {
                   }
                   className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"
                 >
-                  <option value="whatsapp">
-                    WhatsApp
-                  </option>
+                  <option value="whatsapp">WhatsApp</option>
 
-                  <option value="email">
-                    Email
-                  </option>
+                  <option value="email">Email</option>
                 </select>
               </div>
 
@@ -334,7 +308,6 @@ export default function AdminTestimonialsPage() {
                     })
                   }
                 />
-
                 Feature this testimonial
               </label>
 
@@ -349,7 +322,6 @@ export default function AdminTestimonialsPage() {
                     })
                   }
                 />
-
                 Publish immediately
               </label>
 
@@ -364,7 +336,7 @@ export default function AdminTestimonialsPage() {
                     Uploading
                   </>
                 ) : (
-                  "Add Testimonial"
+                  'Add Testimonial'
                 )}
               </button>
             </div>
@@ -404,48 +376,38 @@ export default function AdminTestimonialsPage() {
                     <div className="p-5">
                       <div className="flex items-center justify-between">
                         <span className="inline-flex items-center gap-2 text-sm font-bold text-primary">
-                          {testimonial.source ===
-                          "whatsapp" ? (
+                          {testimonial.source === 'whatsapp' ? (
                             <MessageCircle className="h-4 w-4 text-emerald-600" />
                           ) : (
                             <Mail className="h-4 w-4 text-blue-600" />
                           )}
 
-                          {testimonial.parent_name ||
-                            "Verified Parent"}
+                          {testimonial.parent_name || 'Verified Parent'}
                         </span>
 
                         <span
                           className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                             testimonial.is_published
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-slate-100 text-slate-500"
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-slate-100 text-slate-500'
                           }`}
                         >
-                          {testimonial.is_published
-                            ? "Published"
-                            : "Hidden"}
+                          {testimonial.is_published ? 'Published' : 'Hidden'}
                         </span>
                       </div>
 
                       <div className="mt-5 flex gap-3">
                         <button
                           type="button"
-                          onClick={() =>
-                            togglePublished(testimonial)
-                          }
+                          onClick={() => togglePublished(testimonial)}
                           className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                         >
-                          {testimonial.is_published
-                            ? "Hide"
-                            : "Publish"}
+                          {testimonial.is_published ? 'Hide' : 'Publish'}
                         </button>
 
                         <button
                           type="button"
-                          onClick={() =>
-                            deleteTestimonial(testimonial)
-                          }
+                          onClick={() => deleteTestimonial(testimonial)}
                           aria-label="Delete testimonial"
                           className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600 hover:bg-red-100"
                         >
@@ -461,5 +423,5 @@ export default function AdminTestimonialsPage() {
         </div>
       </div>
     </main>
-  );
+  )
 }

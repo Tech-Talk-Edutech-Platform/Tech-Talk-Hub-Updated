@@ -114,12 +114,12 @@ export function ControlBar({
               type="button"
               onClick={() => onReact(emoji)}
               aria-label={`React ${emoji}`}
-              className="press grid size-11 place-items-center rounded-[8px] text-[26px] hover:bg-surface-2"
+              className="press hover:bg-surface-2 grid size-11 place-items-center rounded-[8px] text-[26px]"
             >
               {emoji}
             </button>
           ))}
-          <span aria-hidden="true" className="mx-1 h-8 w-px bg-line" />
+          <span aria-hidden="true" className="bg-line mx-1 h-8 w-px" />
           <button
             type="button"
             onClick={() => {

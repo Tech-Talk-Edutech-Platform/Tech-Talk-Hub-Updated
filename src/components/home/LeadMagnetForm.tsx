@@ -10,14 +10,21 @@ type LeadMagnetFormProps = {
 }
 
 type Status = 'idle' | 'loading' | 'success'
-const leadMagnetSchema = z.object({ email: z.string().email('Enter a valid email address.') })
+const leadMagnetSchema = z.object({
+  email: z.string().email('Enter a valid email address.'),
+})
 type LeadMagnetValues = z.infer<typeof leadMagnetSchema>
 
 /** Collects a parent's email to send them the curriculum roadmap PDF. */
 export function LeadMagnetForm({ onClose }: LeadMagnetFormProps) {
   const [status, setStatus] = useState<Status>('idle')
-  const { register, handleSubmit, formState: { errors } } = useForm<LeadMagnetValues>({
-    resolver: zodResolver(leadMagnetSchema), defaultValues: { email: '' },
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LeadMagnetValues>({
+    resolver: zodResolver(leadMagnetSchema),
+    defaultValues: { email: '' },
   })
 
   async function submit({ email }: LeadMagnetValues) {
@@ -36,7 +43,11 @@ export function LeadMagnetForm({ onClose }: LeadMagnetFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-3">
+    <form
+      onSubmit={handleSubmit(submit)}
+      noValidate
+      className="flex flex-col gap-3"
+    >
       {status === 'success' ? (
         <p className="text-center font-bold text-green-600">
           Thanks! Check your email for the PDF.
@@ -51,7 +62,11 @@ export function LeadMagnetForm({ onClose }: LeadMagnetFormProps) {
             {...register('email')}
             aria-invalid={Boolean(errors.email)}
           />
-          {errors.email && <p role="alert" className="text-sm text-red-600">{errors.email.message}</p>}
+          {errors.email && (
+            <p role="alert" className="text-sm text-red-600">
+              {errors.email.message}
+            </p>
+          )}
 
           <button
             type="submit"

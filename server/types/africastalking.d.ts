@@ -1,22 +1,22 @@
-declare module "africastalking" {
+declare module 'africastalking' {
   interface SmsMessage {
-    to: string;
-    message: string;
-    from?: string;
+    to: string
+    message: string
+    from?: string
   }
 
   interface SmsClient {
-    send(message: SmsMessage): Promise<unknown>;
+    send(message: SmsMessage): Promise<unknown>
   }
 
   interface AfricaTalkingClient {
-    SMS: SmsClient;
+    SMS: SmsClient
   }
 
   function createAfricaTalking(config: {
-    username?: string;
-    apiKey?: string;
-  }): AfricaTalkingClient;
+    username?: string
+    apiKey?: string
+  }): AfricaTalkingClient
 
-  export = createAfricaTalking;
+  export = createAfricaTalking
 }

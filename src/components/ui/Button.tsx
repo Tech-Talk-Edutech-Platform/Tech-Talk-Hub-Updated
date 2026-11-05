@@ -11,11 +11,16 @@ type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> & {
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500',
-  secondary: 'bg-slate-100 text-slate-800 hover:bg-slate-200 focus-visible:ring-slate-400',
-  danger: 'bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500',
-  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400',
-  outline: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-indigo-500',
+  primary:
+    'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500',
+  secondary:
+    'bg-slate-100 text-slate-800 hover:bg-slate-200 focus-visible:ring-slate-400',
+  danger:
+    'bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500',
+  ghost:
+    'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400',
+  outline:
+    'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-indigo-500',
 }
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
@@ -45,7 +50,10 @@ export function Button({
       className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}`}
     >
       {loading && (
-        <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
+        <span
+          aria-hidden="true"
+          className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
+        />
       )}
       {children}
     </button>

@@ -37,7 +37,7 @@ export function SendAlertMenu({
       label="Send alert"
       className="w-[224px] overflow-hidden rounded-[6px] bg-white shadow-[0_12px_32px_-8px_rgb(0_0_0/0.28),0_0_0_1px_rgb(0_0_0/0.05)]"
     >
-      <ul className="divide-y divide-line">
+      <ul className="divide-line divide-y">
         {ALERTS.map((alert) => {
           const sent = sentAt[alert.id]
           const cooling = sent !== undefined && now - sent < COOLDOWN_MS
@@ -48,7 +48,7 @@ export function SendAlertMenu({
                 role="menuitem"
                 disabled={cooling}
                 onClick={() => onSend(alert)}
-                className="press flex h-[41px] w-full items-center justify-between px-4 text-left text-[15px] font-medium text-brand hover:bg-brand-soft disabled:text-muted disabled:hover:bg-transparent"
+                className="press text-brand hover:bg-brand-soft disabled:text-muted flex h-[41px] w-full items-center justify-between px-4 text-left text-[15px] font-medium disabled:hover:bg-transparent"
               >
                 {alert.label}
                 {cooling && (

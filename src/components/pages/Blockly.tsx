@@ -301,186 +301,234 @@
 //   );
 // }
 // src/pages/BlocklyEditor.js
-import React, { useEffect, useRef, useState } from "react";
-import * as Blockly from "blockly";
-import "blockly/blocks";
-import { javascriptGenerator } from "blockly/javascript";
-import "blockly/msg/en";
-import "blockly/python"; // Python generator
+import React, { useEffect, useRef, useState } from 'react'
+import * as Blockly from 'blockly'
+import 'blockly/blocks'
+import { javascriptGenerator } from 'blockly/javascript'
+import 'blockly/msg/en'
+import 'blockly/python' // Python generator
 
-
-Blockly.Blocks["move_sprite"] = {
+Blockly.Blocks['move_sprite'] = {
   init: function () {
     this.appendDummyInput()
-      .appendField("move")
-      .appendField(new Blockly.FieldNumber(10), "STEPS")
-      .appendField("steps");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(160);
+      .appendField('move')
+      .appendField(new Blockly.FieldNumber(10), 'STEPS')
+      .appendField('steps')
+    this.setPreviousStatement(true)
+    this.setNextStatement(true)
+    this.setColour(160)
   },
-};
-Blockly.Blocks["green_flag"] = {
+}
+Blockly.Blocks['green_flag'] = {
   init: function () {
-    this.appendDummyInput().appendField("when green flag clicked");
-    this.setNextStatement(true);
-    this.setColour(60);
+    this.appendDummyInput().appendField('when green flag clicked')
+    this.setNextStatement(true)
+    this.setColour(60)
   },
-};
+}
 
-javascriptGenerator.forBlock["green_flag"] = () => {
-  return ``; // acts as entry point
-};
-Blockly.Blocks["when_key"] = {
+javascriptGenerator.forBlock['green_flag'] = () => {
+  return `` // acts as entry point
+}
+Blockly.Blocks['when_key'] = {
   init: function () {
-    this.appendDummyInput().appendField("when key pressed");
-    this.setNextStatement(true);
-    this.setColour(60);
+    this.appendDummyInput().appendField('when key pressed')
+    this.setNextStatement(true)
+    this.setColour(60)
   },
-};
+}
 
-javascriptGenerator.forBlock["when_key"] = () => {
-  return `// whenKey\n`;
-};
+javascriptGenerator.forBlock['when_key'] = () => {
+  return `// whenKey\n`
+}
 
-javascriptGenerator.forBlock["move_sprite"] = function (block) {
-  const steps = block.getFieldValue("STEPS");
-  return `move(${steps});\n`;
-};
+javascriptGenerator.forBlock['move_sprite'] = function (block) {
+  const steps = block.getFieldValue('STEPS')
+  return `move(${steps});\n`
+}
 
 // export default function BlocklyEditor({ initialXml, darkMode, runPython }) {
 interface BlocklyEditorProps {
-  initialXml?: string;
-  darkMode?: boolean;
-  runPython?: (code: string) => void;
-  setGeneratedCode?: (code: string) => void;
+  initialXml?: string
+  darkMode?: boolean
+  runPython?: (code: string) => void
+  setGeneratedCode?: (code: string) => void
 }
 
-export default function BlocklyEditor({ initialXml, darkMode = false, runPython, setGeneratedCode }: BlocklyEditorProps) {
-  const blocklyDiv = useRef(null);
-  const iframeRef = useRef(null);
-  const [workspace, setWorkspace] = useState(null);
-  const [output, setOutput] = useState("");
+export default function BlocklyEditor({
+  initialXml,
+  darkMode = false,
+  runPython,
+  setGeneratedCode,
+}: BlocklyEditorProps) {
+  const blocklyDiv = useRef(null)
+  const iframeRef = useRef(null)
+  const [workspace, setWorkspace] = useState(null)
+  const [output, setOutput] = useState('')
   // const [generatedCode, setGeneratedCode] = useState("");
 
   // --- Inject Blockly workspace ---
   useEffect(() => {
-    if (!blocklyDiv.current) return;
+    if (!blocklyDiv.current) return
 
     const toolbox = {
-      kind: "categoryToolbox",
+      kind: 'categoryToolbox',
       contents: [
         {
-          kind: "category", name: "Logic", colour: "#5C81A6", contents: [
-            { kind: "block", type: "controls_if" },
-            { kind: "block", type: "logic_compare" },
-            { kind: "block", type: "logic_operation" },
-            { kind: "block", type: "logic_negate" },
-            { kind: "block", type: "logic_boolean" },
-          ]
-        },
-        {
-          kind: "category",
-          name: "Events ⚡",
-          colour: "#FFD500",
+          kind: 'category',
+          name: 'Logic',
+          colour: '#5C81A6',
           contents: [
-            { kind: "block", type: "green_flag" },
-            { kind: "block", type: "when_key" }
-          ]
+            { kind: 'block', type: 'controls_if' },
+            { kind: 'block', type: 'logic_compare' },
+            { kind: 'block', type: 'logic_operation' },
+            { kind: 'block', type: 'logic_negate' },
+            { kind: 'block', type: 'logic_boolean' },
+          ],
         },
         {
-          kind: "category",
-          name: "Sprites 🎮",
-          colour: "#FF6680",
+          kind: 'category',
+          name: 'Events ⚡',
+          colour: '#FFD500',
           contents: [
-            { kind: "block", type: "move_sprite" }
-          ]
+            { kind: 'block', type: 'green_flag' },
+            { kind: 'block', type: 'when_key' },
+          ],
         },
         {
-          kind: "category", name: "Loops", colour: "#5CA65C", contents: [
-            { kind: "block", type: "controls_repeat_ext" },
-            { kind: "block", type: "controls_whileUntil" },
-            { kind: "block", type: "controls_for" },
-            { kind: "block", type: "controls_forEach" },
-          ]
+          kind: 'category',
+          name: 'Sprites 🎮',
+          colour: '#FF6680',
+          contents: [{ kind: 'block', type: 'move_sprite' }],
         },
         {
-          kind: "category", name: "Math", colour: "#5C68A6", contents: [
-            { kind: "block", type: "math_number" },
-            { kind: "block", type: "math_arithmetic" },
-            { kind: "block", type: "math_single" },
-          ]
+          kind: 'category',
+          name: 'Loops',
+          colour: '#5CA65C',
+          contents: [
+            { kind: 'block', type: 'controls_repeat_ext' },
+            { kind: 'block', type: 'controls_whileUntil' },
+            { kind: 'block', type: 'controls_for' },
+            { kind: 'block', type: 'controls_forEach' },
+          ],
         },
         {
-          kind: "category", name: "Text", colour: "#5CA68D", contents: [
-            { kind: "block", type: "text" },
-            { kind: "block", type: "text_join" },
-            { kind: "block", type: "text_print" },
-          ]
+          kind: 'category',
+          name: 'Math',
+          colour: '#5C68A6',
+          contents: [
+            { kind: 'block', type: 'math_number' },
+            { kind: 'block', type: 'math_arithmetic' },
+            { kind: 'block', type: 'math_single' },
+          ],
         },
-        { kind: "category", name: "Variables", custom: "VARIABLE", colour: "#A65C81" },
-        { kind: "category", name: "Functions", custom: "PROCEDURE", colour: "#9A5CA6" },
+        {
+          kind: 'category',
+          name: 'Text',
+          colour: '#5CA68D',
+          contents: [
+            { kind: 'block', type: 'text' },
+            { kind: 'block', type: 'text_join' },
+            { kind: 'block', type: 'text_print' },
+          ],
+        },
+        {
+          kind: 'category',
+          name: 'Variables',
+          custom: 'VARIABLE',
+          colour: '#A65C81',
+        },
+        {
+          kind: 'category',
+          name: 'Functions',
+          custom: 'PROCEDURE',
+          colour: '#9A5CA6',
+        },
       ],
-    };
+    }
 
     // --- Define custom dark theme ---
-    const darkTheme = Blockly.Theme.defineTheme("darkTheme", {
+    const darkTheme = Blockly.Theme.defineTheme('darkTheme', {
       base: Blockly.Themes.Classic,
       componentStyles: {
-        workspaceBackgroundColour: darkMode ? "#1E1E1E" : "#fff",
-        toolboxBackgroundColour: darkMode ? "#2a2a2a" : "#f5f5f5",
-        toolboxForegroundColour: darkMode ? "#eee" : "#111",
-        flyoutBackgroundColour: darkMode ? "#2a2a2a" : "#f0f0f0",
-        flyoutForegroundColour: darkMode ? "#eee" : "#111",
-        scrollbarColour: darkMode ? "#555" : "#ccc",
+        workspaceBackgroundColour: darkMode ? '#1E1E1E' : '#fff',
+        toolboxBackgroundColour: darkMode ? '#2a2a2a' : '#f5f5f5',
+        toolboxForegroundColour: darkMode ? '#eee' : '#111',
+        flyoutBackgroundColour: darkMode ? '#2a2a2a' : '#f0f0f0',
+        flyoutForegroundColour: darkMode ? '#eee' : '#111',
+        scrollbarColour: darkMode ? '#555' : '#ccc',
       },
       blockStyles: {
-        "logic_blocks": { colourPrimary: "#5C81A6", colourSecondary: "#4A6D8C", colourTertiary: "#3A5270" },
-        "loop_blocks": { colourPrimary: "#5CA65C", colourSecondary: "#4A8A4A", colourTertiary: "#356E35" },
-        "math_blocks": { colourPrimary: "#5C68A6", colourSecondary: "#4A568C", colourTertiary: "#374270" },
-        "text_blocks": { colourPrimary: "#5CA68D", colourSecondary: "#4A8A74", colourTertiary: "#356E5B" },
-        "variable_blocks": { colourPrimary: "#A65C81", colourSecondary: "#8A4A6D", colourTertiary: "#6E3552" },
-        "procedure_blocks": { colourPrimary: "#9A5CA6", colourSecondary: "#7D4A8C", colourTertiary: "#603570" },
+        logic_blocks: {
+          colourPrimary: '#5C81A6',
+          colourSecondary: '#4A6D8C',
+          colourTertiary: '#3A5270',
+        },
+        loop_blocks: {
+          colourPrimary: '#5CA65C',
+          colourSecondary: '#4A8A4A',
+          colourTertiary: '#356E35',
+        },
+        math_blocks: {
+          colourPrimary: '#5C68A6',
+          colourSecondary: '#4A568C',
+          colourTertiary: '#374270',
+        },
+        text_blocks: {
+          colourPrimary: '#5CA68D',
+          colourSecondary: '#4A8A74',
+          colourTertiary: '#356E5B',
+        },
+        variable_blocks: {
+          colourPrimary: '#A65C81',
+          colourSecondary: '#8A4A6D',
+          colourTertiary: '#6E3552',
+        },
+        procedure_blocks: {
+          colourPrimary: '#9A5CA6',
+          colourSecondary: '#7D4A8C',
+          colourTertiary: '#603570',
+        },
       },
-    });
+    })
 
     const workspaceInstance = Blockly.inject(blocklyDiv.current, {
       toolbox,
       trashcan: true,
       theme: darkTheme,
       zoom: { controls: true, wheel: true },
-      renderer: "zelos",
-    });
+      renderer: 'zelos',
+    })
 
     if (initialXml) {
-      const xml = Blockly.Xml.textToDom(initialXml);
-      Blockly.Xml.domToWorkspace(xml, workspaceInstance);
+      const xml = Blockly.Xml.textToDom(initialXml)
+      Blockly.Xml.domToWorkspace(xml, workspaceInstance)
     }
 
-    setWorkspace(workspaceInstance);
-    return () => workspaceInstance.dispose();
-  }, [darkMode, initialXml]);
+    setWorkspace(workspaceInstance)
+    return () => workspaceInstance.dispose()
+  }, [darkMode, initialXml])
 
   // --- Run code ---
-  const runCode = (language = "js") => {
-    if (!workspace) return;
+  const runCode = (language = 'js') => {
+    if (!workspace) return
 
-    let code;
-    if (language === "python") {
-      code = Blockly.Python.workspaceToCode(workspace);
+    let code
+    if (language === 'python') {
+      code = Blockly.Python.workspaceToCode(workspace)
       if (runPython) {
-        runPython(code);
-        setOutput("🕹️ Running Python in Playground...");
-        return;
+        runPython(code)
+        setOutput('🕹️ Running Python in Playground...')
+        return
       }
     } else {
       // code = javascriptGenerator.workspaceToCode(workspace);
-      code = javascriptGenerator.workspaceToCode(workspace);
-      setGeneratedCode?.(code);
+      code = javascriptGenerator.workspaceToCode(workspace)
+      setGeneratedCode?.(code)
     }
 
-    const iframe = iframeRef.current;
-    if (!iframe) return;
+    const iframe = iframeRef.current
+    if (!iframe) return
 
     const wrappedCode = `
       try {
@@ -489,69 +537,77 @@ export default function BlocklyEditor({ initialXml, darkMode = false, runPython,
       } catch (err) {
         parent.postMessage({ type: 'error', data: err.message }, '*');
       }
-    `;
+    `
 
-    const blob = new Blob([wrappedCode], { type: "text/javascript" });
-    const blobUrl = URL.createObjectURL(blob);
-    iframe.src = blobUrl;
-    iframe.onload = () => URL.revokeObjectURL(blobUrl);
+    const blob = new Blob([wrappedCode], { type: 'text/javascript' })
+    const blobUrl = URL.createObjectURL(blob)
+    iframe.src = blobUrl
+    iframe.onload = () => URL.revokeObjectURL(blobUrl)
 
-    setOutput("");
-  };
+    setOutput('')
+  }
 
   // --- Capture iframe console ---
   useEffect(() => {
     const listener = (event) => {
-      if (event.data.type === "log") setOutput((prev) => prev + event.data.data + "\n");
-      if (event.data.type === "error") setOutput((prev) => prev + "⚠️ Error: " + event.data.data + "\n");
-    };
-    window.addEventListener("message", listener);
-    return () => window.removeEventListener("message", listener);
-  }, []);
+      if (event.data.type === 'log')
+        setOutput((prev) => prev + event.data.data + '\n')
+      if (event.data.type === 'error')
+        setOutput((prev) => prev + '⚠️ Error: ' + event.data.data + '\n')
+    }
+    window.addEventListener('message', listener)
+    return () => window.removeEventListener('message', listener)
+  }, [])
 
   return (
     <div
-      className="w-screen h-screen flex flex-col md:flex-row"
-      style={{ background: darkMode ? "#121212" : "#f9f9f9", overflow: "hidden" }}
+      className="flex h-screen w-screen flex-col md:flex-row"
+      style={{
+        background: darkMode ? '#121212' : '#f9f9f9',
+        overflow: 'hidden',
+      }}
     >
       <div
         ref={blocklyDiv}
         className="flex-1"
-        style={{ height: "100%", width: "100%" }}
+        style={{ height: '100%', width: '100%' }}
       />
 
       <div
-        className="md:w-1/3 w-full h-full flex flex-col border-l border-gray-700 p-4"
-        style={{ background: darkMode ? "#181818" : "#fafafa" }}
+        className="flex h-full w-full flex-col border-l border-gray-700 p-4 md:w-1/3"
+        style={{ background: darkMode ? '#181818' : '#fafafa' }}
       >
         <button
-          onClick={() => runCode("js")}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mb-3 w-full"
+          onClick={() => runCode('js')}
+          className="mb-3 w-full rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
         >
           ▶ Run JavaScript
         </button>
         <button
-          onClick={() => runCode("python")}
-          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mb-3 w-full"
+          onClick={() => runCode('python')}
+          className="mb-3 w-full rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600"
         >
           🐍 Run Python
         </button>
 
-        <h3 className="font-semibold mb-2">Console Output</h3>
+        <h3 className="mb-2 font-semibold">Console Output</h3>
         <pre
-          className="p-3 rounded flex-1 overflow-auto"
-          style={{ background: darkMode ? "#222" : "#f3f3f3", color: darkMode ? "#eee" : "#111" }}
+          className="flex-1 overflow-auto rounded p-3"
+          style={{
+            background: darkMode ? '#222' : '#f3f3f3',
+            color: darkMode ? '#eee' : '#111',
+          }}
         >
-          {output || "🕹️ Waiting for code to run..."}
+          {output || '🕹️ Waiting for code to run...'}
         </pre>
 
         <iframe
           ref={iframeRef}
           sandbox="allow-scripts allow-same-origin"
           title="blockly-runner"
-          style={{ display: "none" }}
+          style={{ display: 'none' }}
         />
       </div>
     </div>
-  );
+  )
 }

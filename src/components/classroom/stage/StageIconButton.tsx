@@ -25,8 +25,8 @@ export function StageIconButton({
       title={label}
       className={`press grid size-10 place-items-center rounded-[6px] ${
         active
-          ? 'bg-white text-stage'
-          : 'bg-stage-control text-white hover:bg-stage-control-hover'
+          ? 'text-stage bg-white'
+          : 'bg-stage-control hover:bg-stage-control-hover text-white'
       }`}
       {...rest}
     >

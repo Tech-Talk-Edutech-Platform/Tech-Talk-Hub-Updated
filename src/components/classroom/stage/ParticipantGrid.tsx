@@ -54,7 +54,7 @@ export function ParticipantGrid({ participants, self }: ParticipantGridProps) {
         >
           <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[8px] bg-black/30">
             <VideoView stream={self.screen} fit="contain" />
-            <span className="absolute top-2 left-2 rounded-[4px] bg-black/55 px-2 py-0.5 text-[12.5px] text-white">
+            <span className="absolute left-2 top-2 rounded-[4px] bg-black/55 px-2 py-0.5 text-[12.5px] text-white">
               You are sharing your screen
             </span>
           </div>

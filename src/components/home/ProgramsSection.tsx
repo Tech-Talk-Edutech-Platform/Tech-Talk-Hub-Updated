@@ -15,11 +15,11 @@ export function ProgramsSection() {
 
   return (
     <div className="bg-slate-50">
-      <div className="mx-auto max-w-6xl px-4 pt-8 pb-12">
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-8">
         {/* Header */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-purple-50/30 to-purple-100/40">
-          <div className="mx-auto max-w-7xl px-6 pt-12 pb-12 text-center">
-            <span className="inline-flex rounded-full border border-purple-200 bg-white px-4 py-2 text-xs font-bold tracking-[0.12em] text-primary uppercase shadow-sm">
+          <div className="mx-auto max-w-7xl px-6 pb-12 pt-12 text-center">
+            <span className="inline-flex rounded-full border border-purple-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-primary shadow-sm">
               Premium Coding Pathways
             </span>
 

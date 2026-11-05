@@ -25,7 +25,7 @@
 //         .select("*")
 //         .eq("id", currentMarketerId)
 //         .single();
-      
+
 //       if (profErr) throw profErr;
 //       setProfile(profData);
 
@@ -45,7 +45,7 @@
 //         .select("marketer_id, marketer_profiles(full_name)");
 
 //       if (leaderErr) throw leaderErr;
-      
+
 //       // Group and calculate conversions per marketer dynamically
 //       const counts = (leaderboardData || []).reduce((acc, curr) => {
 //         const mId = curr.marketer_id;
@@ -82,7 +82,7 @@
 //   // Compensation threshold verification logic (4 conversions mandatory before payouts)
 //   const totalConversionsCount = myConversions.length;
 //   const eligibleForPayouts = totalConversionsCount >= 4;
-  
+
 //   const totalEarned = myConversions
 //     .filter(c => c.status === "paid")
 //     .reduce((acc, curr) => acc + Number(curr.calculated_commission), 0);
@@ -93,21 +93,21 @@
 
 //   return (
 //     <div className="p-6 max-w-[1600px] mx-auto space-y-8 bg-slate-950 text-slate-100 min-h-screen font-sans">
-      
+
 //       {/* HEADER ROW PROFILE METRICS */}
 //       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-900 border border-slate-800 p-6 rounded-[24px]">
 //         <div>
 //           <span className="text-[10px] font-black tracking-[0.2em] uppercase text-indigo-400 block mb-1">PRO-MARKETER PORTAL</span>
 //           <h2 className="text-xl font-black text-white">{profile.full_name}</h2>
 //         </div>
-        
+
 //         {/* LINK SHARE ACTION BOX */}
 //         <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex items-center gap-3 justify-between sm:justify-start">
 //           <div className="pl-2">
 //             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">YOUR REFERRAL LINK</p>
 //             <p className="text-xs font-mono font-bold text-indigo-400">{profile.referral_code}</p>
 //           </div>
-//           <button 
+//           <button
 //             onClick={() => copyReferralLink(profile.referral_code)}
 //             className="p-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 transition-all active:scale-95"
 //           >
@@ -125,10 +125,10 @@
 
 //       {/* TRACKING AND BONUS STRUCTURE GRID */}
 //       <div className="grid grid-cols-12 gap-8">
-        
+
 //         {/* LEFT COMPONENT: THRESHOLD MILESTONES & LEADERS */}
 //         <div className="col-span-12 lg:col-span-5 space-y-8">
-          
+
 //           {/* COMPENSATION TARGET PROGRESS */}
 //           <div className="bg-slate-900 border border-slate-800 p-6 rounded-[24px] shadow-xl relative overflow-hidden">
 //             <div className="flex justify-between items-start mb-4">
@@ -152,7 +152,7 @@
 //             {/* PROGRESS BAR TRACKING */}
 //             <div className="space-y-2 mt-6">
 //               <div className="w-full bg-slate-950 rounded-full h-2.5 border border-slate-800/80">
-//                 <div 
+//                 <div
 //                   className={`h-full rounded-full transition-all duration-500 ${eligibleForPayouts ? 'bg-emerald-500' : 'bg-indigo-500'}`}
 //                   style={{ width: `${Math.min((totalConversionsCount / 4) * 100, 100)}%` }}
 //                 />
@@ -233,4 +233,4 @@
 //     </div>
 //   );
 // }
-export {};
+export {}

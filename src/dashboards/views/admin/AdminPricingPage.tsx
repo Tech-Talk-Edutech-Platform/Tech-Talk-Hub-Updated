@@ -1,6 +1,6 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react'
 
 import {
   CheckCircle2,
@@ -14,71 +14,68 @@ import {
   Sparkles,
   Trash2,
   X,
-} from "lucide-react";
+} from 'lucide-react'
 
-import { supabase } from "../../../supabase"
+import { supabase } from '../../../supabase'
 
 const initialForm = {
-  name: "",
-  slug: "",
-  description: "",
+  name: '',
+  slug: '',
+  description: '',
   classes_per_week: 1,
   session_duration_minutes: 45,
-  monthly_kes: "",
-  monthly_usd: "",
-  quarterly_kes: "",
-  quarterly_usd: "",
+  monthly_kes: '',
+  monthly_usd: '',
+  quarterly_kes: '',
+  quarterly_usd: '',
   quarterly_discount: 5,
-  yearly_kes: "",
-  yearly_usd: "",
+  yearly_kes: '',
+  yearly_usd: '',
   yearly_discount: 10,
-  features: "",
+  features: '',
   is_popular: false,
   is_active: true,
   display_order: 0,
-};
+}
 
-function formatPrice(value, currency = "KES") {
-  const amount = Number(value || 0);
+function formatPrice(value, currency = 'KES') {
+  const amount = Number(value || 0)
 
-  return new Intl.NumberFormat("en-KE", {
-    style: "currency",
+  return new Intl.NumberFormat('en-KE', {
+    style: 'currency',
     currency,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount)
 }
 
 function createSlug(value) {
   return value
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 function planToForm(plan) {
   return {
-    name: plan.name || "",
-    slug: plan.slug || "",
-    description: plan.description || "",
+    name: plan.name || '',
+    slug: plan.slug || '',
+    description: plan.description || '',
     classes_per_week: plan.classes_per_week || 1,
-    session_duration_minutes:
-      plan.session_duration_minutes || 45,
-    monthly_kes: plan.monthly_kes ?? "",
-    monthly_usd: plan.monthly_usd ?? "",
-    quarterly_kes: plan.quarterly_kes ?? "",
-    quarterly_usd: plan.quarterly_usd ?? "",
+    session_duration_minutes: plan.session_duration_minutes || 45,
+    monthly_kes: plan.monthly_kes ?? '',
+    monthly_usd: plan.monthly_usd ?? '',
+    quarterly_kes: plan.quarterly_kes ?? '',
+    quarterly_usd: plan.quarterly_usd ?? '',
     quarterly_discount: plan.quarterly_discount ?? 5,
-    yearly_kes: plan.yearly_kes ?? "",
-    yearly_usd: plan.yearly_usd ?? "",
+    yearly_kes: plan.yearly_kes ?? '',
+    yearly_usd: plan.yearly_usd ?? '',
     yearly_discount: plan.yearly_discount ?? 10,
-    features: Array.isArray(plan.features)
-      ? plan.features.join("\n")
-      : "",
+    features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
     is_popular: Boolean(plan.is_popular),
     is_active: Boolean(plan.is_active),
     display_order: plan.display_order ?? 0,
-  };
+  }
 }
 
 function buildPayload(form) {
@@ -87,9 +84,7 @@ function buildPayload(form) {
     slug: createSlug(form.slug || form.name),
     description: form.description.trim() || null,
     classes_per_week: Number(form.classes_per_week),
-    session_duration_minutes: Number(
-      form.session_duration_minutes
-    ),
+    session_duration_minutes: Number(form.session_duration_minutes),
     monthly_kes: Number(form.monthly_kes),
     monthly_usd: Number(form.monthly_usd),
     quarterly_kes: Number(form.quarterly_kes),
@@ -99,13 +94,13 @@ function buildPayload(form) {
     yearly_usd: Number(form.yearly_usd),
     yearly_discount: Number(form.yearly_discount),
     features: form.features
-      .split("\n")
+      .split('\n')
       .map((feature) => feature.trim())
       .filter(Boolean),
     is_popular: Boolean(form.is_popular),
     is_active: Boolean(form.is_active),
     display_order: Number(form.display_order) || 0,
-  };
+  }
 }
 
 function InputField({
@@ -113,7 +108,7 @@ function InputField({
   name,
   value,
   onChange,
-  type = "text",
+  type = 'text',
   placeholder,
   required = false,
   min,
@@ -141,118 +136,113 @@ function InputField({
         className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
       />
     </div>
-  );
+  )
 }
 
 export default function AdminPricingPage() {
-  const [plans, setPlans] = useState([]);
+  const [plans, setPlans] = useState([])
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true)
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
-  const [busyPlanId, setBusyPlanId] = useState(null);
+  const [busyPlanId, setBusyPlanId] = useState(null)
 
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(false)
 
-  const [editingPlan, setEditingPlan] = useState(null);
+  const [editingPlan, setEditingPlan] = useState(null)
 
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(initialForm)
 
-  const [error, setError] = useState("");
+  const [error, setError] = useState('')
 
-  const [success, setSuccess] = useState("");
+  const [success, setSuccess] = useState('')
 
   useEffect(() => {
-    loadPlans();
-  }, []);
+    loadPlans()
+  }, [])
 
   async function loadPlans() {
-    setLoading(true);
+    setLoading(true)
 
     try {
       const { data, error: fetchError } = await supabase
-        .from("pricing_plans")
-        .select("*")
-        .order("display_order", {
+        .from('pricing_plans')
+        .select('*')
+        .order('display_order', {
           ascending: true,
         })
-        .order("created_at", {
+        .order('created_at', {
           ascending: true,
-        });
+        })
 
       if (fetchError) {
-        throw fetchError;
+        throw fetchError
       }
 
-      setPlans(data || []);
+      setPlans(data || [])
     } catch (fetchError) {
-      setError(
-        fetchError.message ||
-          "Unable to load pricing plans."
-      );
+      setError(fetchError.message || 'Unable to load pricing plans.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   function openCreateForm() {
-    setEditingPlan(null);
+    setEditingPlan(null)
 
     setForm({
       ...initialForm,
       display_order: plans.length + 1,
-    });
+    })
 
-    setError("");
-    setSuccess("");
-    setShowForm(true);
+    setError('')
+    setSuccess('')
+    setShowForm(true)
   }
 
   function openEditForm(plan) {
-    setEditingPlan(plan);
-    setForm(planToForm(plan));
-    setError("");
-    setSuccess("");
-    setShowForm(true);
+    setEditingPlan(plan)
+    setForm(planToForm(plan))
+    setError('')
+    setSuccess('')
+    setShowForm(true)
   }
 
   function closeForm() {
     if (saving) {
-      return;
+      return
     }
 
-    setEditingPlan(null);
-    setForm(initialForm);
-    setShowForm(false);
+    setEditingPlan(null)
+    setForm(initialForm)
+    setShowForm(false)
   }
 
   function handleChange(event) {
-    const { name, value, type, checked } = event.target;
+    const { name, value, type, checked } = event.target
 
     setForm((current) => {
       const next = {
         ...current,
-        [name]: type === "checkbox" ? checked : value,
-      };
-
-      if (name === "name" && !editingPlan) {
-        next.slug = createSlug(value);
+        [name]: type === 'checkbox' ? checked : value,
       }
 
-      return next;
-    });
+      if (name === 'name' && !editingPlan) {
+        next.slug = createSlug(value)
+      }
+
+      return next
+    })
   }
 
   function calculateDiscountedPrices() {
-    const monthlyKes = Number(form.monthly_kes);
-    const monthlyUsd = Number(form.monthly_usd);
+    const monthlyKes = Number(form.monthly_kes)
+    const monthlyUsd = Number(form.monthly_usd)
 
-    const quarterlyDiscount = Number(
-      form.quarterly_discount
-    );
+    const quarterlyDiscount = Number(form.quarterly_discount)
 
-    const yearlyDiscount = Number(form.yearly_discount);
+    const yearlyDiscount = Number(form.yearly_discount)
 
     if (
       !Number.isFinite(monthlyKes) ||
@@ -260,11 +250,9 @@ export default function AdminPricingPage() {
       monthlyKes < 0 ||
       monthlyUsd < 0
     ) {
-      setError(
-        "Enter valid monthly KES and USD prices first."
-      );
+      setError('Enter valid monthly KES and USD prices first.')
 
-      return;
+      return
     }
 
     if (
@@ -273,210 +261,173 @@ export default function AdminPricingPage() {
       yearlyDiscount < 0 ||
       yearlyDiscount > 100
     ) {
-      setError("Discounts must be between 0% and 100%.");
+      setError('Discounts must be between 0% and 100%.')
 
-      return;
+      return
     }
 
     setForm((current) => ({
       ...current,
 
-      quarterly_kes: Math.round(
-        monthlyKes *
-          3 *
-          (1 - quarterlyDiscount / 100)
-      ),
+      quarterly_kes: Math.round(monthlyKes * 3 * (1 - quarterlyDiscount / 100)),
 
-      quarterly_usd: Math.round(
-        monthlyUsd *
-          3 *
-          (1 - quarterlyDiscount / 100)
-      ),
+      quarterly_usd: Math.round(monthlyUsd * 3 * (1 - quarterlyDiscount / 100)),
 
-      yearly_kes: Math.round(
-        monthlyKes * 12 * (1 - yearlyDiscount / 100)
-      ),
+      yearly_kes: Math.round(monthlyKes * 12 * (1 - yearlyDiscount / 100)),
 
-      yearly_usd: Math.round(
-        monthlyUsd * 12 * (1 - yearlyDiscount / 100)
-      ),
-    }));
+      yearly_usd: Math.round(monthlyUsd * 12 * (1 - yearlyDiscount / 100)),
+    }))
 
-    setError("");
+    setError('')
   }
 
   async function handleSubmit(event) {
-    event.preventDefault();
+    event.preventDefault()
 
-    setSaving(true);
-    setError("");
-    setSuccess("");
+    setSaving(true)
+    setError('')
+    setSuccess('')
 
     try {
-      const payload = buildPayload(form);
+      const payload = buildPayload(form)
 
       if (!payload.name || !payload.slug) {
-        throw new Error(
-          "Plan name and slug are required."
-        );
+        throw new Error('Plan name and slug are required.')
       }
 
-      if (
-        payload.is_active &&
-        payload.is_popular
-      ) {
+      if (payload.is_active && payload.is_popular) {
         const anotherPopularPlan = plans.find(
           (plan) =>
-            plan.id !== editingPlan?.id &&
-            plan.is_active &&
-            plan.is_popular
-        );
+            plan.id !== editingPlan?.id && plan.is_active && plan.is_popular,
+        )
 
         if (anotherPopularPlan) {
           throw new Error(
-            `${anotherPopularPlan.name} is already marked as Most Popular. Remove that label first.`
-          );
+            `${anotherPopularPlan.name} is already marked as Most Popular. Remove that label first.`,
+          )
         }
       }
 
-      let request;
+      let request
 
       if (editingPlan) {
         request = await supabase
-          .from("pricing_plans")
+          .from('pricing_plans')
           .update(payload)
-          .eq("id", editingPlan.id)
+          .eq('id', editingPlan.id)
           .select()
-          .single();
+          .single()
       } else {
         request = await supabase
-          .from("pricing_plans")
+          .from('pricing_plans')
           .insert(payload)
           .select()
-          .single();
+          .single()
       }
 
       if (request.error) {
-        throw request.error;
+        throw request.error
       }
 
       setSuccess(
         editingPlan
           ? `${payload.name} was updated successfully.`
-          : `${payload.name} was created successfully.`
-      );
+          : `${payload.name} was created successfully.`,
+      )
 
-      setShowForm(false);
-      setEditingPlan(null);
-      setForm(initialForm);
+      setShowForm(false)
+      setEditingPlan(null)
+      setForm(initialForm)
 
-      await loadPlans();
+      await loadPlans()
     } catch (submitError) {
-      setError(
-        submitError.message ||
-          "Unable to save pricing plan."
-      );
+      setError(submitError.message || 'Unable to save pricing plan.')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
   async function toggleActive(plan) {
-    setBusyPlanId(plan.id);
-    setError("");
-    setSuccess("");
+    setBusyPlanId(plan.id)
+    setError('')
+    setSuccess('')
 
     try {
-      const nextActive = !plan.is_active;
+      const nextActive = !plan.is_active
 
       if (nextActive && plan.is_popular) {
         const anotherPopularPlan = plans.find(
-          (item) =>
-            item.id !== plan.id &&
-            item.is_active &&
-            item.is_popular
-        );
+          (item) => item.id !== plan.id && item.is_active && item.is_popular,
+        )
 
         if (anotherPopularPlan) {
           throw new Error(
-            `${anotherPopularPlan.name} is already the active Most Popular plan. Edit one of the plans before publishing this one.`
-          );
+            `${anotherPopularPlan.name} is already the active Most Popular plan. Edit one of the plans before publishing this one.`,
+          )
         }
       }
 
       const { error: updateError } = await supabase
-        .from("pricing_plans")
+        .from('pricing_plans')
         .update({
           is_active: nextActive,
         })
-        .eq("id", plan.id);
+        .eq('id', plan.id)
 
       if (updateError) {
-        throw updateError;
+        throw updateError
       }
 
       setSuccess(
         nextActive
           ? `${plan.name} is now visible on the website.`
-          : `${plan.name} has been hidden from the website.`
-      );
+          : `${plan.name} has been hidden from the website.`,
+      )
 
-      await loadPlans();
+      await loadPlans()
     } catch (updateError) {
-      setError(
-        updateError.message ||
-          "Unable to update plan visibility."
-      );
+      setError(updateError.message || 'Unable to update plan visibility.')
     } finally {
-      setBusyPlanId(null);
+      setBusyPlanId(null)
     }
   }
 
   async function deletePlan(plan) {
     const confirmed = window.confirm(
-      `Delete the ${plan.name} plan permanently? This cannot be undone.`
-    );
+      `Delete the ${plan.name} plan permanently? This cannot be undone.`,
+    )
 
     if (!confirmed) {
-      return;
+      return
     }
 
-    setBusyPlanId(plan.id);
-    setError("");
-    setSuccess("");
+    setBusyPlanId(plan.id)
+    setError('')
+    setSuccess('')
 
     try {
       const { error: deleteError } = await supabase
-        .from("pricing_plans")
+        .from('pricing_plans')
         .delete()
-        .eq("id", plan.id);
+        .eq('id', plan.id)
 
       if (deleteError) {
-        throw deleteError;
+        throw deleteError
       }
 
-      setSuccess(
-        `${plan.name} was deleted successfully.`
-      );
+      setSuccess(`${plan.name} was deleted successfully.`)
 
-      await loadPlans();
+      await loadPlans()
     } catch (deleteError) {
-      setError(
-        deleteError.message ||
-          "Unable to delete pricing plan."
-      );
+      setError(deleteError.message || 'Unable to delete pricing plan.')
     } finally {
-      setBusyPlanId(null);
+      setBusyPlanId(null)
     }
   }
 
-  const activePlans = plans.filter(
-    (plan) => plan.is_active
-  ).length;
+  const activePlans = plans.filter((plan) => plan.is_active).length
 
-  const popularPlan = plans.find(
-    (plan) => plan.is_active && plan.is_popular
-  );
+  const popularPlan = plans.find((plan) => plan.is_active && plan.is_popular)
 
   return (
     <div className="min-h-screen bg-slate-50 p-5 sm:p-8">
@@ -493,8 +444,8 @@ export default function AdminPricingPage() {
             </h1>
 
             <p className="mt-2 text-sm text-slate-600">
-              Manage subscriptions, prices, discounts,
-              features and public availability.
+              Manage subscriptions, prices, discounts, features and public
+              availability.
             </p>
           </div>
 
@@ -506,11 +457,8 @@ export default function AdminPricingPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
             >
               <RefreshCw
-                className={`h-4 w-4 ${
-                  loading ? "animate-spin" : ""
-                }`}
+                className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
               />
-
               Refresh
             </button>
 
@@ -520,7 +468,6 @@ export default function AdminPricingPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/20 transition hover:bg-purple-700"
             >
               <Plus className="h-4 w-4" />
-
               Add Plan
             </button>
           </div>
@@ -544,9 +491,7 @@ export default function AdminPricingPage() {
         {/* Overview */}
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">
-              Total Plans
-            </p>
+            <p className="text-sm text-slate-500">Total Plans</p>
 
             <p className="mt-2 text-3xl font-black text-slate-900">
               {plans.length}
@@ -554,9 +499,7 @@ export default function AdminPricingPage() {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">
-              Published Plans
-            </p>
+            <p className="text-sm text-slate-500">Published Plans</p>
 
             <p className="mt-2 text-3xl font-black text-emerald-600">
               {activePlans}
@@ -564,12 +507,10 @@ export default function AdminPricingPage() {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">
-              Most Popular
-            </p>
+            <p className="text-sm text-slate-500">Most Popular</p>
 
             <p className="mt-2 text-2xl font-black text-purple-600">
-              {popularPlan?.name || "Not selected"}
+              {popularPlan?.name || 'Not selected'}
             </p>
           </div>
         </div>
@@ -587,8 +528,7 @@ export default function AdminPricingPage() {
               </p>
 
               <p className="mt-2 text-sm text-slate-500">
-                Create your first plan to display it on the
-                website.
+                Create your first plan to display it on the website.
               </p>
 
               <button
@@ -597,7 +537,6 @@ export default function AdminPricingPage() {
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-3 text-sm font-bold text-white"
               >
                 <Plus className="h-4 w-4" />
-
                 Add Your First Plan
               </button>
             </div>
@@ -619,7 +558,6 @@ export default function AdminPricingPage() {
                           {plan.is_popular && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-xs font-bold text-pink-600">
                               <Sparkles className="h-3 w-3" />
-
                               Most Popular
                             </span>
                           )}
@@ -627,24 +565,19 @@ export default function AdminPricingPage() {
                           <span
                             className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                               plan.is_active
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-slate-100 text-slate-500"
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-slate-100 text-slate-500'
                             }`}
                           >
-                            {plan.is_active
-                              ? "Published"
-                              : "Hidden"}
+                            {plan.is_active ? 'Published' : 'Hidden'}
                           </span>
                         </div>
 
                         <p className="mt-2 text-sm text-slate-500">
-                          {plan.classes_per_week}{" "}
-                          {plan.classes_per_week === 1
-                            ? "class"
-                            : "classes"}{" "}
-                          per week ·{" "}
-                          {plan.session_duration_minutes}{" "}
-                          minutes each
+                          {plan.classes_per_week}{' '}
+                          {plan.classes_per_week === 1 ? 'class' : 'classes'}{' '}
+                          per week · {plan.session_duration_minutes} minutes
+                          each
                         </p>
                       </div>
 
@@ -672,10 +605,7 @@ export default function AdminPricingPage() {
                       </p>
 
                       <p className="mt-1 text-xs text-slate-500">
-                        {formatPrice(
-                          plan.monthly_usd,
-                          "USD"
-                        )}
+                        {formatPrice(plan.monthly_usd, 'USD')}
                       </p>
                     </div>
 
@@ -715,24 +645,20 @@ export default function AdminPricingPage() {
                     </p>
 
                     <ul className="mt-3 space-y-2">
-                      {(plan.features || [])
-                        .slice(0, 4)
-                        .map((feature) => (
-                          <li
-                            key={feature}
-                            className="flex items-start gap-2 text-sm text-slate-600"
-                          >
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                      {(plan.features || []).slice(0, 4).map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2 text-sm text-slate-600"
+                        >
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
 
-                            {feature}
-                          </li>
-                        ))}
+                          {feature}
+                        </li>
+                      ))}
 
                       {(plan.features || []).length > 4 && (
                         <li className="text-xs font-semibold text-purple-600">
-                          +
-                          {plan.features.length - 4} more
-                          features
+                          +{plan.features.length - 4} more features
                         </li>
                       )}
                     </ul>
@@ -741,24 +667,17 @@ export default function AdminPricingPage() {
                     <div className="mt-6 flex flex-wrap gap-3">
                       <button
                         type="button"
-                        onClick={() =>
-                          openEditForm(plan)
-                        }
+                        onClick={() => openEditForm(plan)}
                         className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-purple-200 hover:bg-purple-50"
                       >
                         <Pencil className="h-4 w-4" />
-
                         Edit
                       </button>
 
                       <button
                         type="button"
-                        disabled={
-                          busyPlanId === plan.id
-                        }
-                        onClick={() =>
-                          toggleActive(plan)
-                        }
+                        disabled={busyPlanId === plan.id}
+                        onClick={() => toggleActive(plan)}
                         className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
                       >
                         {busyPlanId === plan.id ? (
@@ -769,23 +688,16 @@ export default function AdminPricingPage() {
                           <Eye className="h-4 w-4" />
                         )}
 
-                        {plan.is_active
-                          ? "Hide"
-                          : "Publish"}
+                        {plan.is_active ? 'Hide' : 'Publish'}
                       </button>
 
                       <button
                         type="button"
-                        disabled={
-                          busyPlanId === plan.id
-                        }
-                        onClick={() =>
-                          deletePlan(plan)
-                        }
+                        disabled={busyPlanId === plan.id}
+                        onClick={() => deletePlan(plan)}
                         className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-60"
                       >
                         <Trash2 className="h-4 w-4" />
-
                         Delete
                       </button>
                     </div>
@@ -808,9 +720,7 @@ export default function AdminPricingPage() {
             aria-modal="true"
             aria-labelledby="pricing-plan-form-title"
             className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-5 sm:px-8">
               <div>
@@ -824,7 +734,7 @@ export default function AdminPricingPage() {
                 >
                   {editingPlan
                     ? `Edit ${editingPlan.name}`
-                    : "Add Pricing Plan"}
+                    : 'Add Pricing Plan'}
                 </h2>
               </div>
 
@@ -839,10 +749,7 @@ export default function AdminPricingPage() {
               </button>
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-8 p-6 sm:p-8"
-            >
+            <form onSubmit={handleSubmit} className="space-y-8 p-6 sm:p-8">
               {error && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   {error}
@@ -888,9 +795,7 @@ export default function AdminPricingPage() {
                     label="Session Duration (minutes)"
                     name="session_duration_minutes"
                     type="number"
-                    value={
-                      form.session_duration_minutes
-                    }
+                    value={form.session_duration_minutes}
                     onChange={handleChange}
                     min={1}
                     required
@@ -957,13 +862,10 @@ export default function AdminPricingPage() {
 
                   <button
                     type="button"
-                    onClick={
-                      calculateDiscountedPrices
-                    }
+                    onClick={calculateDiscountedPrices}
                     className="inline-flex items-center gap-2 text-sm font-semibold text-purple-600 transition hover:text-purple-700"
                   >
                     <RefreshCw className="h-4 w-4" />
-
                     Calculate discounted prices
                   </button>
                 </div>
@@ -1071,7 +973,7 @@ export default function AdminPricingPage() {
                   value={form.features}
                   onChange={handleChange}
                   placeholder={
-                    "2 personalized live classes each week\n45-minute learning sessions\nGuided projects and assignments"
+                    '2 personalized live classes each week\n45-minute learning sessions\nGuided projects and assignments'
                   }
                   className="mt-3 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
                 />
@@ -1102,7 +1004,6 @@ export default function AdminPricingPage() {
                         onChange={handleChange}
                         className="h-4 w-4 rounded border-slate-300 accent-purple-600"
                       />
-
                       Show on public website
                     </label>
 
@@ -1114,7 +1015,6 @@ export default function AdminPricingPage() {
                         onChange={handleChange}
                         className="h-4 w-4 rounded border-slate-300 accent-pink-500"
                       />
-
                       Mark as Most Popular
                     </label>
                   </div>
@@ -1140,16 +1040,13 @@ export default function AdminPricingPage() {
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-
                       Saving
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4" />
 
-                      {editingPlan
-                        ? "Update Plan"
-                        : "Create Plan"}
+                      {editingPlan ? 'Update Plan' : 'Create Plan'}
                     </>
                   )}
                 </button>
@@ -1159,5 +1056,5 @@ export default function AdminPricingPage() {
         </div>
       )}
     </div>
-  );
+  )
 }

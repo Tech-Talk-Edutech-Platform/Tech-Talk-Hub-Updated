@@ -1,32 +1,38 @@
-import SalesDashboard from "./SalesDashboard";
-import SalesDashboardCharts from "./SalesDashboardCharts";
-import { BarChart3, X } from "lucide-react";
+import SalesDashboard from './SalesDashboard'
+import SalesDashboardCharts from './SalesDashboardCharts'
+import { BarChart3, X } from 'lucide-react'
 
 interface AnalyticsDashboardProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen: boolean
+  onClose: () => void
 }
 
-export default function AnalyticsDashboard({ isOpen, onClose }: AnalyticsDashboardProps) {
-  if (!isOpen) return null;
+export default function AnalyticsDashboard({
+  isOpen,
+  onClose,
+}: AnalyticsDashboardProps) {
+  if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[1000] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[40px] w-full max-w-6xl max-h-[85vh] overflow-y-auto shadow-2xl">
-        <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-xl font-black flex items-center gap-2">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
+      <div className="max-h-[85vh] w-full max-w-6xl overflow-y-auto rounded-[40px] bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b p-6">
+          <h2 className="flex items-center gap-2 text-xl font-black">
             <BarChart3 className="text-purple-600" /> Sales Analytics
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl">
+          <button
+            onClick={onClose}
+            className="rounded-xl p-2 hover:bg-slate-100"
+          >
             <X />
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
+        <div className="space-y-8 p-6">
           <SalesDashboard />
           <SalesDashboardCharts />
         </div>
       </div>
     </div>
-  );
+  )
 }

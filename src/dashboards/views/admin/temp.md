@@ -1,6 +1,6 @@
-<ReactMarkdown 
-  remarkPlugins={[remarkGfm]}
-  components={{
+<ReactMarkdown
+remarkPlugins={[remarkGfm]}
+components={{
     h3: ({node, ...props}) => (
       <h3 className="bg-rose-500 text-white px-4 py-2 rounded-r-full font-black uppercase text-sm inline-block shadow-sm my-4" {...props} />
     ),
@@ -8,22 +8,25 @@
       <h4 className="bg-rose-500 text-white px-4 py-2 rounded-r-full font-black uppercase text-xs inline-block shadow-sm my-3" {...props} />
     )
   }}
+
 >
-  {lessonNoteContent}
+
+{lessonNoteContent}
 </ReactMarkdown>
 
+---
 
-----------------------------
 REMEMBER THIS
 ---------------------
+
 import { Lightbulb } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 // Inside your component render:
 <ReactMarkdown
-  remarkPlugins={[remarkGfm]}
-  components={{
+remarkPlugins={[remarkGfm]}
+components={{
     blockquote: ({ node, children, ...props }) => {
       // Check if the blockquote starts with "Remember This"
       return (
@@ -37,7 +40,9 @@ import remarkGfm from "remark-gfm";
       );
     }
   }}
+
 >
+
 {lessonNoteContent}
 </ReactMarkdown>
 

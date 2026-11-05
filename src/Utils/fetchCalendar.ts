@@ -1,34 +1,33 @@
-
-import { supabase } from "../supabase";
+import { supabase } from '../supabase'
 
 export interface CalendarEvent {
-  id: string;
-  title: string;
-  start: string;
-  end: string;
+  id: string
+  title: string
+  start: string
+  end: string
 }
 
 interface CalendarEventRow {
-  id: string;
-  title: string;
-  start_time: string;
-  end_time: string;
+  id: string
+  title: string
+  start_time: string
+  end_time: string
 }
 
 export const fetchEvents = async (): Promise<CalendarEvent[]> => {
   const { data, error } = await supabase
-    .from("calendar_events")
-    .select("id, title, start_time, end_time");
+    .from('calendar_events')
+    .select('id, title, start_time, end_time')
 
-  if (error || !data) return [];
+  if (error || !data) return []
 
   return data.map((e: CalendarEventRow) => ({
     id: e.id,
     title: e.title,
     start: e.start_time,
-    end: e.end_time
-  }));
-};
+    end: e.end_time,
+  }))
+}
 // Real-time updates (optional but 🔥)
 // supabase
 //   .channel("calendar_changes")

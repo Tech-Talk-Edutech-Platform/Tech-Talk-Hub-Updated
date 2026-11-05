@@ -32,11 +32,11 @@ export function CurriculumCard({ level }: CurriculumCardProps) {
 
       {/* Tags */}
       <div className="mb-4 flex flex-wrap gap-2">
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold tracking-wider text-blue-600 uppercase">
+        <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-600">
           {level.difficultyLevel || 'Beginner'}
         </span>
 
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold tracking-wider text-slate-600 uppercase">
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">
           {level.duration || 'Flexible'}
         </span>
       </div>
@@ -51,7 +51,7 @@ export function CurriculumCard({ level }: CurriculumCardProps) {
 
       {/* Skills */}
       <div className="mb-6">
-        <p className="mb-3 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
           Key Skills
         </p>
 
@@ -69,7 +69,7 @@ export function CurriculumCard({ level }: CurriculumCardProps) {
 
       {/* Bottom */}
       <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-5">
-        <p className="text-[11px] font-bold tracking-wider text-secondary uppercase">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-secondary">
           Explore Program
         </p>
 

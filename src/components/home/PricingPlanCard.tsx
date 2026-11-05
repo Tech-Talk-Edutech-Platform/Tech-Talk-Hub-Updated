@@ -38,7 +38,7 @@ export function PricingPlanCard({
       }`}
     >
       {plan.is_popular && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#FF3F7F] px-4 py-1 text-xs font-bold whitespace-nowrap text-white shadow-md">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#FF3F7F] px-4 py-1 text-xs font-bold text-white shadow-md">
           Most Popular
         </span>
       )}
@@ -100,7 +100,7 @@ export function PricingPlanCard({
 
       {/* Features */}
       <div className="flex flex-1 flex-col pt-5">
-        <p className="mb-4 text-xs font-bold tracking-[0.12em] text-slate-500 uppercase">
+        <p className="mb-4 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
           What’s included
         </p>
 

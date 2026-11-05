@@ -11,7 +11,7 @@ const CONTACT_ICON_CLASS = 'h-4 w-4 shrink-0 text-[#FF8BB2]'
 export function FooterContact() {
   return (
     <div>
-      <h3 className="text-sm font-bold tracking-[0.12em] text-white uppercase">
+      <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-white">
         Contact Us
       </h3>
 

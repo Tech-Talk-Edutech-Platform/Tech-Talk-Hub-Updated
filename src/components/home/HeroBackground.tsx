@@ -9,14 +9,14 @@ export function HeroBackground({ children }: HeroBackgroundProps) {
   return (
     <div className="relative w-full overflow-hidden bg-[#F8F5FF]">
       {/* Base background */}
-      <div className="absolute inset-0 hero-base-gradient" />
+      <div className="hero-base-gradient absolute inset-0" />
 
       {/* Soft glows */}
-      <div className="absolute top-20 -left-32 h-[380px] w-[380px] rounded-full bg-purple-300/15 blur-[100px]" />
-      <div className="absolute top-0 -right-24 h-[430px] w-[430px] rounded-full bg-pink-300/15 blur-[110px]" />
+      <div className="absolute -left-32 top-20 h-[380px] w-[380px] rounded-full bg-purple-300/15 blur-[100px]" />
+      <div className="absolute -right-24 top-0 h-[430px] w-[430px] rounded-full bg-pink-300/15 blur-[110px]" />
 
       {/* Tech grid */}
-      <div className="absolute inset-0 hero-tech-grid opacity-[0.035]" />
+      <div className="hero-tech-grid absolute inset-0 opacity-[0.035]" />
 
       {/* Background waves */}
       <svg
@@ -60,9 +60,9 @@ export function HeroBackground({ children }: HeroBackgroundProps) {
       </svg>
 
       {/* Small particles */}
-      <div className="absolute top-[31%] left-[7%] h-2 w-2 rounded-full bg-[#FF3F7F]/50 shadow-[0_0_18px_rgba(255,63,127,0.35)]" />
-      <div className="absolute top-[18%] left-[38%] h-1.5 w-1.5 rounded-full bg-[#9B6CFF]/40" />
-      <div className="absolute top-[20%] right-[10%] h-2 w-2 rounded-full bg-[#2947C7]/30" />
+      <div className="absolute left-[7%] top-[31%] h-2 w-2 rounded-full bg-[#FF3F7F]/50 shadow-[0_0_18px_rgba(255,63,127,0.35)]" />
+      <div className="absolute left-[38%] top-[18%] h-1.5 w-1.5 rounded-full bg-[#9B6CFF]/40" />
+      <div className="absolute right-[10%] top-[20%] h-2 w-2 rounded-full bg-[#2947C7]/30" />
 
       {/* Page content */}
       <div className="relative z-10">{children}</div>

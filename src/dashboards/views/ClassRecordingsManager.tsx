@@ -1,62 +1,75 @@
-import React, { useEffect, useState } from "react";
-import { supabase } from "../../supabase";
-import { Video, Plus, Trash2, Upload, User, Calendar, ExternalLink, X, Search, Sparkles } from "lucide-react";
+import React, { useEffect, useState } from 'react'
+import { supabase } from '../../supabase'
+import {
+  Video,
+  Plus,
+  Trash2,
+  Upload,
+  User,
+  Calendar,
+  ExternalLink,
+  X,
+  Search,
+  Sparkles,
+} from 'lucide-react'
 
 export default function ClassRecordingsManager() {
-  const [recordings, setRecordings] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [tutors, setTutors] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [recordings, setRecordings] = useState([])
+  const [students, setStudents] = useState([])
+  const [tutors, setTutors] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Form state
-  const [title, setTitle] = useState("");
-  const [courseName, setCourseName] = useState("");
-  const [recordingUrl, setRecordingUrl] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [studentId, setStudentId] = useState("");
-  const [tutorId, setTutorId] = useState("");
+  const [title, setTitle] = useState('')
+  const [courseName, setCourseName] = useState('')
+  const [recordingUrl, setRecordingUrl] = useState('')
+  const [thumbnailUrl, setThumbnailUrl] = useState('')
+  const [studentId, setStudentId] = useState('')
+  const [tutorId, setTutorId] = useState('')
 
   const fetchData = async () => {
-    setLoading(true);
+    setLoading(true)
     const { data: recs } = await supabase
-      .from("class_recordings")
-      .select(`
+      .from('class_recordings')
+      .select(
+        `
         *,
         tutor:users!tutor_id(full_name),
         student:users!student_id(full_name)
-      `)
-      .order("created_at", { ascending: false });
+      `,
+      )
+      .order('created_at', { ascending: false })
 
     const { data: studentList } = await supabase
-      .from("users")
-      .select("id, full_name")
-      .eq("role", "student");
+      .from('users')
+      .select('id, full_name')
+      .eq('role', 'student')
 
     const { data: tutorList } = await supabase
-      .from("users")
-      .select("id, full_name")
-      .in("role", ["tutor", "owner", "operations_admin", "tech_admin"]);
+      .from('users')
+      .select('id, full_name')
+      .in('role', ['tutor', 'owner', 'operations_admin', 'tech_admin'])
 
-    setRecordings(recs || []);
-    setStudents(studentList || []);
-    setTutors(tutorList || []);
-    setLoading(false);
-  };
+    setRecordings(recs || [])
+    setStudents(studentList || [])
+    setTutors(tutorList || [])
+    setLoading(false)
+  }
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData()
+  }, [])
 
   const handleUpload = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!title || !recordingUrl) {
-      alert("Please provide at least a title and recording URL.");
-      return;
+      alert('Please provide at least a title and recording URL.')
+      return
     }
 
-    const { error } = await supabase.from("class_recordings").insert([
+    const { error } = await supabase.from('class_recordings').insert([
       {
         title,
         course_name: courseName || null,
@@ -65,155 +78,197 @@ export default function ClassRecordingsManager() {
         student_id: studentId || null,
         tutor_id: tutorId || null,
       },
-    ]);
+    ])
 
     if (error) {
-      alert("Error uploading recording: " + error.message);
+      alert('Error uploading recording: ' + error.message)
     } else {
-      setIsModalOpen(false);
-      setTitle("");
-      setCourseName("");
-      setRecordingUrl("");
-      setThumbnailUrl("");
-      setStudentId("");
-      setTutorId("");
-      fetchData();
+      setIsModalOpen(false)
+      setTitle('')
+      setCourseName('')
+      setRecordingUrl('')
+      setThumbnailUrl('')
+      setStudentId('')
+      setTutorId('')
+      fetchData()
     }
-  };
+  }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this recording?")) return;
-    const { error } = await supabase.from("class_recordings").delete().eq("id", id);
+    if (!window.confirm('Are you sure you want to delete this recording?'))
+      return
+    const { error } = await supabase
+      .from('class_recordings')
+      .delete()
+      .eq('id', id)
     if (!error) {
-      setRecordings(recordings.filter((rec) => rec.id !== id));
+      setRecordings(recordings.filter((rec) => rec.id !== id))
     } else {
-      alert("Error deleting: " + error.message);
+      alert('Error deleting: ' + error.message)
     }
-  };
+  }
 
-  const filteredRecordings = recordings.filter((rec) =>
-    rec.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (rec.course_name && rec.course_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (rec.student?.full_name && rec.student.full_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredRecordings = recordings.filter(
+    (rec) =>
+      rec.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (rec.course_name &&
+        rec.course_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (rec.student?.full_name &&
+        rec.student.full_name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())),
+  )
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
-      
+    <div className="mx-auto min-h-screen max-w-7xl space-y-8 bg-slate-50 p-6 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100 md:p-10">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white dark:bg-slate-900/60 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-        <div className="space-y-1 relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/25 text-purple-600 dark:text-purple-400 text-xs font-medium">
+      <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 md:flex-row md:items-center">
+        <div className="relative z-10 space-y-1">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-600 dark:border-purple-500/25 dark:bg-purple-500/10 dark:text-purple-400">
             <Sparkles size={13} /> Session Library
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white md:text-3xl">
             Class Recordings
           </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xl">
-            Upload, browse, and organize video session recordings for individual students or global access.
+          <p className="max-w-xl text-sm text-slate-600 dark:text-slate-400">
+            Upload, browse, and organize video session recordings for individual
+            students or global access.
           </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 text-white rounded-xl font-medium text-sm shadow-sm transition-all shrink-0 cursor-pointer"
+          className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-purple-700 dark:hover:bg-purple-500"
         >
           <Plus size={18} /> Upload Recording
         </button>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-sm">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+        <div className="relative max-w-md flex-1">
+          <Search
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            size={17}
+          />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search recordings by title, course, or student..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:outline-none focus:border-purple-500 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-500"
           />
         </div>
-        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium px-2">
-          Showing <span className="text-purple-600 dark:text-purple-400 font-semibold">{filteredRecordings.length}</span> results
+        <div className="px-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+          Showing{' '}
+          <span className="font-semibold text-purple-600 dark:text-purple-400">
+            {filteredRecordings.length}
+          </span>{' '}
+          results
         </div>
       </div>
 
       {/* Recordings Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((n) => (
-            <div key={n} className="bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 h-72 animate-pulse flex flex-col justify-between">
-              <div className="bg-slate-100 dark:bg-slate-800 aspect-video rounded-xl" />
+            <div
+              key={n}
+              className="flex h-72 animate-pulse flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/30"
+            >
+              <div className="aspect-video rounded-xl bg-slate-100 dark:bg-slate-800" />
               <div className="space-y-2">
-                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-1/3" />
-                <div className="h-5 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
+                <div className="h-4 w-1/3 rounded bg-slate-100 dark:bg-slate-800" />
+                <div className="h-5 w-3/4 rounded bg-slate-100 dark:bg-slate-800" />
               </div>
             </div>
           ))}
         </div>
       ) : filteredRecordings.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredRecordings.map((rec) => (
             <div
               key={rec.id}
-              className="bg-white dark:bg-slate-900/50 hover:border-purple-500/50 dark:hover:border-slate-700 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-4 shadow-sm transition-all duration-200 group"
+              className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-purple-500/50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
             >
               {/* Thumbnail Video Container */}
-              <div className="aspect-video bg-slate-100 dark:bg-slate-950 rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-200 dark:border-slate-800">
+              <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
                 {rec.thumbnail_url ? (
-                  <img src={rec.thumbnail_url} alt={rec.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <img
+                    src={rec.thumbnail_url}
+                    alt={rec.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
                 ) : (
-                  <div className="w-full h-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
-                    <Video className="text-slate-400 dark:text-slate-600" size={36} />
+                  <div className="flex h-full w-full items-center justify-center bg-slate-100 dark:bg-slate-900">
+                    <Video
+                      className="text-slate-400 dark:text-slate-600"
+                      size={36}
+                    />
                   </div>
                 )}
                 <a
                   href={rec.recording_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="absolute inset-0 bg-slate-950/60 flex items-center justify-center transition-opacity opacity-0 group-hover:opacity-100"
+                  className="absolute inset-0 flex items-center justify-center bg-slate-950/60 opacity-0 transition-opacity group-hover:opacity-100"
                 >
-                  <div className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium text-xs flex items-center gap-1.5 shadow-md transition-colors">
+                  <div className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3.5 py-2 text-xs font-medium text-white shadow-md transition-colors hover:bg-purple-500">
                     <ExternalLink size={14} /> Watch Session
                   </div>
                 </a>
               </div>
 
               {/* Card Meta Content */}
-              <div className="space-y-2 flex-1">
+              <div className="flex-1 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider font-semibold bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 px-2.5 py-0.5 rounded-md">
-                    {rec.course_name || "General Session"}
+                  <span className="rounded-md border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-purple-600 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
+                    {rec.course_name || 'General Session'}
                   </span>
                 </div>
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors">
+                <h3 className="line-clamp-1 text-sm font-semibold text-slate-900 transition-colors group-hover:text-purple-600 dark:text-slate-100 dark:group-hover:text-purple-300">
                   {rec.title}
                 </h3>
 
-                <div className="text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5">
+                <div className="space-y-1.5 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800/80 dark:text-slate-400">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 dark:text-slate-500">Tutor:</span>
-                    <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                      <User size={12} className="text-slate-400 dark:text-slate-500" /> {rec.tutor?.full_name || "Auto-assigned"}
+                    <span className="text-slate-400 dark:text-slate-500">
+                      Tutor:
+                    </span>
+                    <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                      <User
+                        size={12}
+                        className="text-slate-400 dark:text-slate-500"
+                      />{' '}
+                      {rec.tutor?.full_name || 'Auto-assigned'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 dark:text-slate-500">Student:</span>
+                    <span className="text-slate-400 dark:text-slate-500">
+                      Student:
+                    </span>
                     <span className="font-medium text-slate-700 dark:text-slate-300">
-                      {rec.student?.full_name || "All Students (Global)"}
+                      {rec.student?.full_name || 'All Students (Global)'}
                     </span>
                   </div>
                 </div>
               </div>
 
               {/* Card Footer */}
-              <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 font-medium">
-                  <Calendar size={13} className="text-slate-400 dark:text-slate-500" /> {new Date(rec.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800/80">
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                  <Calendar
+                    size={13}
+                    className="text-slate-400 dark:text-slate-500"
+                  />{' '}
+                  {new Date(rec.created_at).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
                 </span>
                 <button
                   onClick={() => handleDelete(rec.id)}
-                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                  className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
                   title="Delete Recording"
                 >
                   <Trash2 size={15} />
@@ -223,12 +278,17 @@ export default function ClassRecordingsManager() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-16 bg-white dark:bg-slate-900/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-sm space-y-3 shadow-sm">
-          <div className="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800">
+        <div className="space-y-3 rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-400">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
             <Video size={20} />
           </div>
-          <p className="font-medium text-slate-700 dark:text-slate-300">No recordings found matching your search.</p>
-          <button onClick={() => setSearchQuery("")} className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-semibold cursor-pointer">
+          <p className="font-medium text-slate-700 dark:text-slate-300">
+            No recordings found matching your search.
+          </p>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="cursor-pointer text-xs font-semibold text-purple-600 hover:underline dark:text-purple-400"
+          >
             Clear search filters
           </button>
         </div>
@@ -236,21 +296,25 @@ export default function ClassRecordingsManager() {
 
       {/* Upload Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-xl space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm dark:bg-slate-950/80">
+          <div className="w-full max-w-lg space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl border border-purple-200 dark:border-purple-500/20">
+                <div className="rounded-xl border border-purple-200 bg-purple-50 p-2.5 text-purple-600 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
                   <Upload size={18} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900 dark:text-white">Upload Recording</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Share session archive with students.</p>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Upload Recording
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Share session archive with students.
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
+                className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
               >
                 <X size={18} />
               </button>
@@ -258,58 +322,68 @@ export default function ClassRecordingsManager() {
 
             <form onSubmit={handleUpload} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Session Title *</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  Session Title *
+                </label>
                 <input
                   type="text"
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Intro to Loops & Variables"
-                  className="w-full mt-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-sm focus:outline-none focus:border-purple-500 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 transition-colors"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Course Name</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  Course Name
+                </label>
                 <input
                   type="text"
                   value={courseName}
                   onChange={(e) => setCourseName(e.target.value)}
                   placeholder="e.g. Python Fundamentals"
-                  className="w-full mt-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-sm focus:outline-none focus:border-purple-500 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 transition-colors"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Recording URL (YouTube/Drive/Loom) *</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  Recording URL (YouTube/Drive/Loom) *
+                </label>
                 <input
                   type="url"
                   required
                   value={recordingUrl}
                   onChange={(e) => setRecordingUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full mt-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-sm focus:outline-none focus:border-purple-500 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 transition-colors"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Thumbnail Image URL (Optional)</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  Thumbnail Image URL (Optional)
+                </label>
                 <input
                   type="url"
                   value={thumbnailUrl}
                   onChange={(e) => setThumbnailUrl(e.target.value)}
                   placeholder="https://... image link"
-                  className="w-full mt-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-sm focus:outline-none focus:border-purple-500 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 transition-colors"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Assign Tutor</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Assign Tutor
+                  </label>
                   <select
                     value={tutorId}
                     onChange={(e) => setTutorId(e.target.value)}
-                    className="w-full mt-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-sm focus:outline-none focus:border-purple-500 text-slate-900 dark:text-slate-200 transition-colors"
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
                   >
                     <option value="">Auto-detect / Me</option>
                     {tutors.map((t) => (
@@ -321,11 +395,13 @@ export default function ClassRecordingsManager() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Target Student</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Target Student
+                  </label>
                   <select
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
-                    className="w-full mt-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-sm focus:outline-none focus:border-purple-500 text-slate-900 dark:text-slate-200 transition-colors"
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
                   >
                     <option value="">Global (All Students)</option>
                     {students.map((s) => (
@@ -337,17 +413,17 @@ export default function ClassRecordingsManager() {
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                  className="cursor-pointer rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+                  className="cursor-pointer rounded-xl bg-purple-600 px-5 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-purple-700 dark:hover:bg-purple-500"
                 >
                   Save & Publish
                 </button>
@@ -357,5 +433,5 @@ export default function ClassRecordingsManager() {
         </div>
       )}
     </div>
-  );
+  )
 }

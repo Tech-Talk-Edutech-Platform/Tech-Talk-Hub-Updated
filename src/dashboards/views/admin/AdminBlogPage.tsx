@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   ArrowLeft,
@@ -29,69 +24,64 @@ import {
   Trash2,
   Upload,
   X,
-} from "lucide-react";
-import BlogArticlePreview from "./BlogArticlePreview";
-import { supabase } from "../../../supabase";
-import { isAdminRole } from "../../../types/roles";
+} from 'lucide-react'
+import BlogArticlePreview from './BlogArticlePreview'
+import { supabase } from '../../../supabase'
+import { isAdminRole } from '../../../types/roles'
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 const BLOG_CATEGORIES = [
-  "Coding for Kids",
-  "Parent Guides",
-  "Student Stories",
-  "Education",
-  "Technology",
-  "Learning Tips",
-];
+  'Coding for Kids',
+  'Parent Guides',
+  'Student Stories',
+  'Education',
+  'Technology',
+  'Learning Tips',
+]
 
 const emptyForm = {
   id: null,
-  title: "",
-  slug: "",
-  excerpt: "",
-  category: "",
-  content: "",
-  cover_image_url: "",
-  status: "draft",
+  title: '',
+  slug: '',
+  excerpt: '',
+  category: '',
+  content: '',
+  cover_image_url: '',
+  status: 'draft',
   published_at: null,
-};
+}
 
-function createSlug(value = "") {
+function createSlug(value = '') {
   return String(value)
     .toLowerCase()
     .trim()
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 function formatDate(value) {
   if (!value) {
-    return "Not published";
+    return 'Not published'
   }
 
-  return new Intl.DateTimeFormat("en-KE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat('en-KE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value))
 }
 
-function countWords(value = "") {
-  return value.trim().split(/\s+/).filter(Boolean).length;
+function countWords(value = '') {
+  return value.trim().split(/\s+/).filter(Boolean).length
 }
 
-function getReadingTime(value = "") {
-  return Math.max(1, Math.ceil(countWords(value) / 220));
+function getReadingTime(value = '') {
+  return Math.max(1, Math.ceil(countWords(value) / 220))
 }
 
-function ToolbarButton({
-  title,
-  onClick,
-  children,
-  disabled = false,
-}) {
+function ToolbarButton({ title, onClick, children, disabled = false }) {
   return (
     <button
       type="button"
@@ -104,141 +94,128 @@ function ToolbarButton({
     >
       {children}
     </button>
-  );
+  )
 }
 
 function MessageAlert({ message }) {
   if (!message) {
-    return null;
+    return null
   }
 
   return (
     <div
       className={`mb-6 rounded-xl border p-4 text-sm font-medium ${
-        message.type === "error"
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-green-200 bg-green-50 text-green-700"
+        message.type === 'error'
+          ? 'border-red-200 bg-red-50 text-red-700'
+          : 'border-green-200 bg-green-50 text-green-700'
       }`}
     >
       {message.text}
     </div>
-  );
+  )
 }
 
-export default function AdminBlogPage({
-  userId,
-  role,
-}) {
-  const contentRef = useRef(null);
+export default function AdminBlogPage({ userId, role }) {
+  const contentRef = useRef(null)
 
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState([])
 
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(emptyForm)
 
-  const [view, setView] = useState("list");
+  const [view, setView] = useState('list')
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('')
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true)
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
-  const [uploadingCover, setUploadingCover] =
-    useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false)
 
-  const [uploadingArticleImage, setUploadingArticleImage] =
-    useState(false);
+  const [uploadingArticleImage, setUploadingArticleImage] = useState(false)
 
-  const [deletingId, setDeletingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null)
 
-  const [message, setMessage] = useState(null);
+  const [message, setMessage] = useState(null)
 
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(false)
 
-  const isAdmin = isAdminRole(role);
+  const isAdmin = isAdminRole(role)
 
-  const isUploading =
-    uploadingCover || uploadingArticleImage;
+  const isUploading = uploadingCover || uploadingArticleImage
 
   const loadPosts = useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
 
     try {
       const { data, error } = await supabase
-        .from("blog_posts")
-        .select("*")
-        .order("created_at", {
+        .from('blog_posts')
+        .select('*')
+        .order('created_at', {
           ascending: false,
-        });
+        })
 
       if (error) {
-        throw error;
+        throw error
       }
 
-      setPosts(data || []);
+      setPosts(data || [])
 
-      return true;
+      return true
     } catch (error) {
       setMessage({
-        type: "error",
+        type: 'error',
 
-        text:
-          error.message ||
-          "Unable to load articles.",
-      });
+        text: error.message || 'Unable to load articles.',
+      })
 
-      return false;
+      return false
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     if (isAdmin) {
-      loadPosts();
+      loadPosts()
     } else {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [isAdmin, loadPosts]);
+  }, [isAdmin, loadPosts])
 
   function updateField(name, value) {
     setForm((current) => ({
       ...current,
 
       [name]: value,
-    }));
+    }))
   }
 
   function handleTitleChange(value) {
     setForm((current) => {
-      const previousAutomaticSlug = createSlug(
-        current.title
-      );
+      const previousAutomaticSlug = createSlug(current.title)
 
       const shouldUpdateSlug =
-        !current.slug ||
-        current.slug === previousAutomaticSlug;
+        !current.slug || current.slug === previousAutomaticSlug
 
       return {
         ...current,
 
         title: value,
 
-        slug: shouldUpdateSlug
-          ? createSlug(value)
-          : current.slug,
-      };
-    });
+        slug: shouldUpdateSlug ? createSlug(value) : current.slug,
+      }
+    })
   }
 
   function startCreating() {
     setForm({
       ...emptyForm,
-    });
+    })
 
-    setMessage(null);
+    setMessage(null)
 
-    setView("editor");
+    setView('editor')
   }
 
   function startEditing(post) {
@@ -247,632 +224,522 @@ export default function AdminBlogPage({
 
       ...post,
 
-      title: post.title || "",
+      title: post.title || '',
 
-      slug: post.slug || "",
+      slug: post.slug || '',
 
-      excerpt: post.excerpt || "",
+      excerpt: post.excerpt || '',
 
-      category: post.category || "",
+      category: post.category || '',
 
-      content: post.content || "",
+      content: post.content || '',
 
-      cover_image_url:
-        post.cover_image_url || "",
-    });
+      cover_image_url: post.cover_image_url || '',
+    })
 
-    setMessage(null);
+    setMessage(null)
 
-    setView("editor");
+    setView('editor')
   }
 
   function returnToList() {
     setForm({
       ...emptyForm,
-    });
+    })
 
-    setMessage(null);
+    setMessage(null)
 
-    setView("list");
+    setView('list')
   }
 
   function validateImage(file) {
     if (!file) {
-      return "Please choose an image.";
+      return 'Please choose an image.'
     }
 
-    if (!file.type.startsWith("image/")) {
-      return "Please choose a valid image file.";
+    if (!file.type.startsWith('image/')) {
+      return 'Please choose a valid image file.'
     }
 
     if (file.size > MAX_IMAGE_SIZE) {
-      return "Images must be smaller than 5 MB.";
+      return 'Images must be smaller than 5 MB.'
     }
 
     if (!userId) {
-      return "Your user account could not be identified. Please sign in again.";
+      return 'Your user account could not be identified. Please sign in again.'
     }
 
-    return null;
+    return null
   }
 
-  async function uploadImageToStorage(
-    file,
-    folder
-  ) {
-    const extension =
-      file.name.split(".").pop()?.toLowerCase() ||
-      "jpg";
+  async function uploadImageToStorage(file, folder) {
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
 
     const fileName =
       `${userId}/${folder}/` +
-      `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      `${Date.now()}-${crypto.randomUUID()}.${extension}`
 
     const { error } = await supabase.storage
-      .from("blog-covers")
+      .from('blog-covers')
       .upload(fileName, file, {
-        cacheControl: "3600",
+        cacheControl: '3600',
 
         upsert: false,
 
         contentType: file.type,
-      });
+      })
 
     if (error) {
-      throw error;
+      throw error
     }
 
-    const { data } = supabase.storage
-      .from("blog-covers")
-      .getPublicUrl(fileName);
+    const { data } = supabase.storage.from('blog-covers').getPublicUrl(fileName)
 
     if (!data?.publicUrl) {
-      throw new Error(
-        "Could not generate an image URL."
-      );
+      throw new Error('Could not generate an image URL.')
     }
 
-    return data.publicUrl;
+    return data.publicUrl
   }
 
   async function uploadCoverImage(event) {
-    const input = event.target;
+    const input = event.target
 
-    const file = input.files?.[0];
+    const file = input.files?.[0]
 
     if (!file) {
-      return;
+      return
     }
 
-    const validationError = validateImage(file);
+    const validationError = validateImage(file)
 
     if (validationError) {
       setMessage({
-        type: "error",
+        type: 'error',
 
         text: validationError,
-      });
+      })
 
-      input.value = "";
+      input.value = ''
 
-      return;
+      return
     }
 
-    setUploadingCover(true);
+    setUploadingCover(true)
 
-    setMessage(null);
+    setMessage(null)
 
     try {
-      const publicUrl =
-        await uploadImageToStorage(
-          file,
-          "covers"
-        );
+      const publicUrl = await uploadImageToStorage(file, 'covers')
 
-      updateField(
-        "cover_image_url",
-        publicUrl
-      );
+      updateField('cover_image_url', publicUrl)
 
       setMessage({
-        type: "success",
+        type: 'success',
 
-        text: "Cover image uploaded successfully.",
-      });
+        text: 'Cover image uploaded successfully.',
+      })
     } catch (error) {
       setMessage({
-        type: "error",
+        type: 'error',
 
-        text:
-          error.message ||
-          "Unable to upload the cover image.",
-      });
+        text: error.message || 'Unable to upload the cover image.',
+      })
     } finally {
-      setUploadingCover(false);
+      setUploadingCover(false)
 
-      input.value = "";
+      input.value = ''
     }
   }
 
   function removeCoverImage() {
-    updateField("cover_image_url", "");
+    updateField('cover_image_url', '')
 
     setMessage({
-      type: "success",
+      type: 'success',
 
-      text: "Cover image removed from the article.",
-    });
+      text: 'Cover image removed from the article.',
+    })
   }
 
-  function insertMarkdown(
-    before,
-    after = "",
-    placeholder = ""
-  ) {
-    const textarea = contentRef.current;
+  function insertMarkdown(before, after = '', placeholder = '') {
+    const textarea = contentRef.current
 
     if (!textarea) {
-      return;
+      return
     }
 
-    const start = textarea.selectionStart;
+    const start = textarea.selectionStart
 
-    const end = textarea.selectionEnd;
+    const end = textarea.selectionEnd
 
-    const selectedText = form.content.slice(
-      start,
-      end
-    );
+    const selectedText = form.content.slice(start, end)
 
-    const insertedText =
-      selectedText || placeholder;
+    const insertedText = selectedText || placeholder
 
-    const replacement =
-      `${before}${insertedText}${after}`;
+    const replacement = `${before}${insertedText}${after}`
 
     const nextContent =
-      form.content.slice(0, start) +
-      replacement +
-      form.content.slice(end);
+      form.content.slice(0, start) + replacement + form.content.slice(end)
 
-    updateField("content", nextContent);
+    updateField('content', nextContent)
 
     requestAnimationFrame(() => {
-      textarea.focus();
+      textarea.focus()
 
-      const selectionStart =
-        start + before.length;
+      const selectionStart = start + before.length
 
-      const selectionEnd =
-        selectionStart +
-        insertedText.length;
+      const selectionEnd = selectionStart + insertedText.length
 
-      textarea.setSelectionRange(
-        selectionStart,
-        selectionEnd
-      );
-    });
+      textarea.setSelectionRange(selectionStart, selectionEnd)
+    })
   }
 
-  function insertBlock(
-    prefix,
-    placeholder = ""
-  ) {
-    const textarea = contentRef.current;
+  function insertBlock(prefix, placeholder = '') {
+    const textarea = contentRef.current
 
     if (!textarea) {
-      return;
+      return
     }
 
-    const start = textarea.selectionStart;
+    const start = textarea.selectionStart
 
-    const end = textarea.selectionEnd;
+    const end = textarea.selectionEnd
 
-    const selectedText =
-      form.content.slice(start, end) ||
-      placeholder;
+    const selectedText = form.content.slice(start, end) || placeholder
 
-    const lines = selectedText.split("\n");
+    const lines = selectedText.split('\n')
 
     const formattedText = lines
       .map((line, index) => {
-        if (prefix === "1. ") {
-          return `${index + 1}. ${line}`;
+        if (prefix === '1. ') {
+          return `${index + 1}. ${line}`
         }
 
-        return `${prefix}${line}`;
+        return `${prefix}${line}`
       })
-      .join("\n");
+      .join('\n')
 
-    const beforeContent = form.content.slice(
-      0,
-      start
-    );
+    const beforeContent = form.content.slice(0, start)
 
-    const afterContent = form.content.slice(
-      end
-    );
+    const afterContent = form.content.slice(end)
 
     const leadingBreak =
-      beforeContent &&
-      !beforeContent.endsWith("\n")
-        ? "\n\n"
-        : "";
+      beforeContent && !beforeContent.endsWith('\n') ? '\n\n' : ''
 
     const trailingBreak =
-      afterContent &&
-      !afterContent.startsWith("\n")
-        ? "\n\n"
-        : "";
+      afterContent && !afterContent.startsWith('\n') ? '\n\n' : ''
 
     const nextContent =
       beforeContent +
       leadingBreak +
       formattedText +
       trailingBreak +
-      afterContent;
+      afterContent
 
-    updateField("content", nextContent);
+    updateField('content', nextContent)
 
     requestAnimationFrame(() => {
-      textarea.focus();
+      textarea.focus()
 
       const cursorPosition =
-        beforeContent.length +
-        leadingBreak.length +
-        formattedText.length;
+        beforeContent.length + leadingBreak.length + formattedText.length
 
-      textarea.setSelectionRange(
-        cursorPosition,
-        cursorPosition
-      );
-    });
+      textarea.setSelectionRange(cursorPosition, cursorPosition)
+    })
   }
 
-  async function uploadArticleImage(
-    event
-  ) {
-    const input = event.target;
+  async function uploadArticleImage(event) {
+    const input = event.target
 
-    const file = input.files?.[0];
+    const file = input.files?.[0]
 
     if (!file) {
-      return;
+      return
     }
 
-    const validationError =
-      validateImage(file);
+    const validationError = validateImage(file)
 
     if (validationError) {
       setMessage({
-        type: "error",
+        type: 'error',
 
         text: validationError,
-      });
+      })
 
-      input.value = "";
+      input.value = ''
 
-      return;
+      return
     }
 
-    const textarea = contentRef.current;
+    const textarea = contentRef.current
 
-    const cursorPosition =
-      textarea?.selectionStart ??
-      form.content.length;
+    const cursorPosition = textarea?.selectionStart ?? form.content.length
 
-    setUploadingArticleImage(true);
+    setUploadingArticleImage(true)
 
-    setMessage(null);
+    setMessage(null)
 
     try {
-      const publicUrl =
-        await uploadImageToStorage(
-          file,
-          "article-images"
-        );
+      const publicUrl = await uploadImageToStorage(file, 'article-images')
 
       const imageDescription = file.name
-        .replace(/\.[^.]+$/, "")
-        .replace(/[-_]+/g, " ")
-        .replace(/[\[\]]/g, "")
-        .trim();
+        .replace(/\.[^.]+$/, '')
+        .replace(/[-_]+/g, ' ')
+        .replace(/[\[\]]/g, '')
+        .trim()
 
-      const imageMarkdown =
-        `\n\n![${imageDescription}]` +
-        `(${publicUrl})\n\n`;
+      const imageMarkdown = `\n\n![${imageDescription}]` + `(${publicUrl})\n\n`
 
       setForm((current) => ({
         ...current,
 
         content:
-          current.content.slice(
-            0,
-            cursorPosition
-          ) +
+          current.content.slice(0, cursorPosition) +
           imageMarkdown +
-          current.content.slice(
-            cursorPosition
-          ),
-      }));
+          current.content.slice(cursorPosition),
+      }))
 
       setMessage({
-        type: "success",
+        type: 'success',
 
-        text: "Article image inserted successfully.",
-      });
+        text: 'Article image inserted successfully.',
+      })
 
       requestAnimationFrame(() => {
         if (!textarea) {
-          return;
+          return
         }
 
-        textarea.focus();
+        textarea.focus()
 
-        const nextCursor =
-          cursorPosition +
-          imageMarkdown.length;
+        const nextCursor = cursorPosition + imageMarkdown.length
 
-        textarea.setSelectionRange(
-          nextCursor,
-          nextCursor
-        );
-      });
+        textarea.setSelectionRange(nextCursor, nextCursor)
+      })
     } catch (error) {
       setMessage({
-        type: "error",
+        type: 'error',
 
-        text:
-          error.message ||
-          "Unable to upload the article image.",
-      });
+        text: error.message || 'Unable to upload the article image.',
+      })
     } finally {
-      setUploadingArticleImage(false);
+      setUploadingArticleImage(false)
 
-      input.value = "";
+      input.value = ''
     }
   }
 
   async function publishFromPreview() {
-  await savePost("published");
+    await savePost('published')
 
-  setShowPreview(false);
-}
+    setShowPreview(false)
+  }
 
   async function savePost(status) {
-    const title = form.title.trim();
+    const title = form.title.trim()
 
-    const slug = createSlug(
-      form.slug || form.title
-    );
+    const slug = createSlug(form.slug || form.title)
 
-    const content = form.content.trim();
+    const content = form.content.trim()
 
     if (!userId) {
       setMessage({
-        type: "error",
+        type: 'error',
 
-        text: "Your user account could not be identified. Please sign in again.",
-      });
+        text: 'Your user account could not be identified. Please sign in again.',
+      })
 
-      return;
+      return
     }
 
     if (!title || !slug || !content) {
       setMessage({
-        type: "error",
+        type: 'error',
 
-        text: "Title, slug and article content are required.",
-      });
+        text: 'Title, slug and article content are required.',
+      })
 
-      return;
+      return
     }
 
     if (isUploading) {
       setMessage({
-        type: "error",
+        type: 'error',
 
-        text: "Please wait for image uploads to finish.",
-      });
+        text: 'Please wait for image uploads to finish.',
+      })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
-    setMessage(null);
+    setMessage(null)
 
     const publishedAt =
-      status === "published"
-        ? form.published_at ||
-          new Date().toISOString()
-        : null;
+      status === 'published'
+        ? form.published_at || new Date().toISOString()
+        : null
 
     const payload = {
       title,
 
       slug,
 
-      excerpt:
-        form.excerpt.trim() || null,
+      excerpt: form.excerpt.trim() || null,
 
-      category:
-        form.category.trim() || null,
+      category: form.category.trim() || null,
 
       content,
 
-      cover_image_url:
-        form.cover_image_url.trim() ||
-        null,
+      cover_image_url: form.cover_image_url.trim() || null,
 
       status,
 
       published_at: publishedAt,
 
-      updated_at:
-        new Date().toISOString(),
-    };
+      updated_at: new Date().toISOString(),
+    }
 
     if (!form.id) {
-      payload.author_id = userId;
+      payload.author_id = userId
     }
 
     try {
-      let result;
+      let result
 
       if (form.id) {
         result = await supabase
-          .from("blog_posts")
+          .from('blog_posts')
           .update(payload)
-          .eq("id", form.id)
+          .eq('id', form.id)
           .select()
-          .single();
+          .single()
       } else {
         result = await supabase
-          .from("blog_posts")
+          .from('blog_posts')
           .insert(payload)
           .select()
-          .single();
+          .single()
       }
 
       if (result.error) {
-        throw result.error;
+        throw result.error
       }
 
-      await loadPosts();
+      await loadPosts()
 
       setForm({
         ...emptyForm,
 
         ...result.data,
-      });
+      })
 
-      setView("list");
+      setView('list')
 
       setMessage({
-        type: "success",
+        type: 'success',
 
         text:
-          status === "published"
-            ? "Article published successfully."
-            : "Draft saved successfully.",
-      });
+          status === 'published'
+            ? 'Article published successfully.'
+            : 'Draft saved successfully.',
+      })
     } catch (error) {
       setMessage({
-        type: "error",
+        type: 'error',
 
         text:
-          error.code === "23505"
-            ? "That slug is already being used."
-            : error.message ||
-              "Unable to save the article.",
-      });
+          error.code === '23505'
+            ? 'That slug is already being used.'
+            : error.message || 'Unable to save the article.',
+      })
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
   async function deletePost(post) {
     const confirmed = window.confirm(
-      `Delete “${post.title}”? This cannot be undone.`
-    );
+      `Delete “${post.title}”? This cannot be undone.`,
+    )
 
     if (!confirmed) {
-      return;
+      return
     }
 
-    setDeletingId(post.id);
+    setDeletingId(post.id)
 
-    setMessage(null);
+    setMessage(null)
 
     try {
       const { error } = await supabase
-        .from("blog_posts")
+        .from('blog_posts')
         .delete()
-        .eq("id", post.id);
+        .eq('id', post.id)
 
       if (error) {
-        throw error;
+        throw error
       }
 
-      setPosts((current) =>
-        current.filter(
-          (item) => item.id !== post.id
-        )
-      );
+      setPosts((current) => current.filter((item) => item.id !== post.id))
 
       setMessage({
-        type: "success",
+        type: 'success',
 
-        text: "Article deleted.",
-      });
+        text: 'Article deleted.',
+      })
     } catch (error) {
       setMessage({
-        type: "error",
+        type: 'error',
 
-        text:
-          error.message ||
-          "Unable to delete the article.",
-      });
+        text: error.message || 'Unable to delete the article.',
+      })
     } finally {
-      setDeletingId(null);
+      setDeletingId(null)
     }
   }
 
-  const filteredPosts = posts.filter(
-    (post) => {
-      const value = search
-        .trim()
-        .toLowerCase();
+  const filteredPosts = posts.filter((post) => {
+    const value = search.trim().toLowerCase()
 
-      if (!value) {
-        return true;
-      }
-
-      return (
-        post.title
-          ?.toLowerCase()
-          .includes(value) ||
-        post.category
-          ?.toLowerCase()
-          .includes(value) ||
-        post.status
-          ?.toLowerCase()
-          .includes(value)
-      );
+    if (!value) {
+      return true
     }
-  );
 
-  const wordCount = countWords(
-    form.content
-  );
+    return (
+      post.title?.toLowerCase().includes(value) ||
+      post.category?.toLowerCase().includes(value) ||
+      post.status?.toLowerCase().includes(value)
+    )
+  })
 
-  const readingTime = getReadingTime(
-    form.content
-  );
+  const wordCount = countWords(form.content)
+
+  const readingTime = getReadingTime(form.content)
 
   if (!isAdmin) {
     return (
       <div className="p-8">
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
-          You do not have permission to manage
-          blog posts.
+          You do not have permission to manage blog posts.
         </div>
       </div>
-    );
+    )
   }
 
-  if (view === "editor") {
+  if (view === 'editor') {
     return (
       <div className="min-h-screen p-5 sm:p-8">
-           {showPreview && (
-        <BlogArticlePreview
-          article={form}
-          onClose={() => setShowPreview(false)}
-          onPublish={publishFromPreview}
-          publishing={saving}
-        />
-      )}
+        {showPreview && (
+          <BlogArticlePreview
+            article={form}
+            onClose={() => setShowPreview(false)}
+            onPublish={publishFromPreview}
+            publishing={saving}
+          />
+        )}
         <div className="mx-auto max-w-7xl">
           <button
             type="button"
@@ -881,7 +748,6 @@ export default function AdminBlogPage({
             className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-gray-500 transition hover:text-purple-600 disabled:opacity-50"
           >
             <ArrowLeft size={17} />
-
             Back to articles
           </button>
 
@@ -892,81 +758,57 @@ export default function AdminBlogPage({
               </p>
 
               <h1 className="mt-2 text-3xl font-black text-gray-900 dark:text-white">
-                {form.id
-                  ? "Edit Article"
-                  : "Create Article"}
+                {form.id ? 'Edit Article' : 'Create Article'}
               </h1>
 
               <p className="mt-2 text-sm text-gray-500">
-                Write, format and publish
-                engaging articles.
+                Write, format and publish engaging articles.
               </p>
             </div>
 
             {/*<div className="flex flex-wrap gap-3">*/}
             <div className="flex flex-wrap gap-3">
-  <button
-    type="button"
-    disabled={saving || isUploading}
-    onClick={() => setShowPreview(true)}
-    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-  >
-    <Eye size={17} />
-
-    Preview
-  </button>
               <button
                 type="button"
-                disabled={
-                  saving || isUploading
-                }
-                onClick={() =>
-                  savePost("draft")
-                }
+                disabled={saving || isUploading}
+                onClick={() => setShowPreview(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                <Eye size={17} />
+                Preview
+              </button>
+              <button
+                type="button"
+                disabled={saving || isUploading}
+                onClick={() => savePost('draft')}
                 className="inline-flex items-center gap-2 rounded-xl border border-purple-200 bg-white px-5 py-3 text-sm font-bold text-purple-700 transition hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
-                  <Loader2
-                    size={17}
-                    className="animate-spin"
-                  />
+                  <Loader2 size={17} className="animate-spin" />
                 ) : (
                   <Save size={17} />
                 )}
-
                 Save Draft
               </button>
 
               <button
                 type="button"
-                disabled={
-                  saving || isUploading
-                }
-                onClick={() =>
-                  savePost("published")
-                }
+                disabled={saving || isUploading}
+                onClick={() => savePost('published')}
                 className="inline-flex items-center gap-2 rounded-xl bg-pink-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-pink-500/20 transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
-                  <Loader2
-                    size={17}
-                    className="animate-spin"
-                  />
+                  <Loader2 size={17} className="animate-spin" />
                 ) : (
                   <Send size={17} />
                 )}
 
-                {form.status ===
-                "published"
-                  ? "Update Article"
-                  : "Publish"}
+                {form.status === 'published' ? 'Update Article' : 'Publish'}
               </button>
             </div>
           </div>
 
-          <MessageAlert
-            message={message}
-          />
+          <MessageAlert message={message} />
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-8">
@@ -978,20 +820,14 @@ export default function AdminBlogPage({
                 <input
                   type="text"
                   value={form.title}
-                  onChange={(event) =>
-                    handleTitleChange(
-                      event.target.value
-                    )
-                  }
+                  onChange={(event) => handleTitleChange(event.target.value)}
                   placeholder="Coding for Kids: A Parent’s Guide to Getting Started"
                   className="w-full rounded-xl border border-gray-200 bg-transparent px-4 py-3 outline-none transition focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 dark:border-white/10"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold">
-                  Slug
-                </label>
+                <label className="mb-2 block text-sm font-bold">Slug</label>
 
                 <div className="flex overflow-hidden rounded-xl border border-gray-200 focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-500/10 dark:border-white/10">
                   <span className="hidden items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-400 dark:border-white/10 dark:bg-white/5 sm:flex">
@@ -1003,11 +839,9 @@ export default function AdminBlogPage({
                     value={form.slug}
                     onChange={(event) =>
                       updateField(
-                        "slug",
+                        'slug',
 
-                        createSlug(
-                          event.target.value
-                        )
+                        createSlug(event.target.value),
                       )
                     }
                     placeholder="coding-for-kids"
@@ -1023,10 +857,7 @@ export default function AdminBlogPage({
                   </label>
 
                   <span className="text-xs text-gray-400">
-                    {
-                      form.excerpt
-                        .length
-                    }
+                    {form.excerpt.length}
                     /180
                   </span>
                 </div>
@@ -1037,9 +868,9 @@ export default function AdminBlogPage({
                   value={form.excerpt}
                   onChange={(event) =>
                     updateField(
-                      "excerpt",
+                      'excerpt',
 
-                      event.target.value
+                      event.target.value,
                     )
                   }
                   placeholder="A short description displayed on the blog page and search results."
@@ -1064,30 +895,26 @@ export default function AdminBlogPage({
                       title="Section heading"
                       onClick={() =>
                         insertBlock(
-                          "## ",
+                          '## ',
 
-                          "Section heading"
+                          'Section heading',
                         )
                       }
                     >
-                      <Heading2
-                        size={18}
-                      />
+                      <Heading2 size={18} />
                     </ToolbarButton>
 
                     <ToolbarButton
                       title="Subheading"
                       onClick={() =>
                         insertBlock(
-                          "### ",
+                          '### ',
 
-                          "Subheading"
+                          'Subheading',
                         )
                       }
                     >
-                      <Heading3
-                        size={18}
-                      />
+                      <Heading3 size={18} />
                     </ToolbarButton>
 
                     <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-white/10" />
@@ -1096,11 +923,11 @@ export default function AdminBlogPage({
                       title="Bold"
                       onClick={() =>
                         insertMarkdown(
-                          "**",
+                          '**',
 
-                          "**",
+                          '**',
 
-                          "Important text"
+                          'Important text',
                         )
                       }
                     >
@@ -1111,17 +938,15 @@ export default function AdminBlogPage({
                       title="Italic"
                       onClick={() =>
                         insertMarkdown(
-                          "*",
+                          '*',
 
-                          "*",
+                          '*',
 
-                          "Emphasized text"
+                          'Emphasized text',
                         )
                       }
                     >
-                      <Italic
-                        size={18}
-                      />
+                      <Italic size={18} />
                     </ToolbarButton>
 
                     <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-white/10" />
@@ -1130,9 +955,9 @@ export default function AdminBlogPage({
                       title="Bullet list"
                       onClick={() =>
                         insertBlock(
-                          "- ",
+                          '- ',
 
-                          "List item"
+                          'List item',
                         )
                       }
                     >
@@ -1143,24 +968,22 @@ export default function AdminBlogPage({
                       title="Numbered list"
                       onClick={() =>
                         insertBlock(
-                          "1. ",
+                          '1. ',
 
-                          "List item"
+                          'List item',
                         )
                       }
                     >
-                      <ListOrdered
-                        size={18}
-                      />
+                      <ListOrdered size={18} />
                     </ToolbarButton>
 
                     <ToolbarButton
                       title="Quote"
                       onClick={() =>
                         insertBlock(
-                          "> ",
+                          '> ',
 
-                          "Add an important quote"
+                          'Add an important quote',
                         )
                       }
                     >
@@ -1171,11 +994,11 @@ export default function AdminBlogPage({
                       title="Insert link"
                       onClick={() =>
                         insertMarkdown(
-                          "[",
+                          '[',
 
-                          "](https://techtalk-hub.com)",
+                          '](https://techtalk-hub.com)',
 
-                          "Link text"
+                          'Link text',
                         )
                       }
                     >
@@ -1188,36 +1011,25 @@ export default function AdminBlogPage({
                       title="Upload article image"
                       className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition ${
                         uploadingArticleImage
-                          ? "pointer-events-none text-gray-400"
-                          : "cursor-pointer text-purple-600 hover:bg-purple-50 dark:hover:bg-white/10"
+                          ? 'pointer-events-none text-gray-400'
+                          : 'cursor-pointer text-purple-600 hover:bg-purple-50 dark:hover:bg-white/10'
                       }`}
                     >
                       {uploadingArticleImage ? (
-                        <Loader2
-                          size={18}
-                          className="animate-spin"
-                        />
+                        <Loader2 size={18} className="animate-spin" />
                       ) : (
-                        <ImagePlus
-                          size={18}
-                        />
+                        <ImagePlus size={18} />
                       )}
 
                       <span className="hidden sm:inline">
-                        {uploadingArticleImage
-                          ? "Uploading..."
-                          : "Add Image"}
+                        {uploadingArticleImage ? 'Uploading...' : 'Add Image'}
                       </span>
 
                       <input
                         type="file"
                         accept="image/*"
-                        disabled={
-                          uploadingArticleImage
-                        }
-                        onChange={
-                          uploadArticleImage
-                        }
+                        disabled={uploadingArticleImage}
+                        onChange={uploadArticleImage}
                         className="hidden"
                       />
                     </label>
@@ -1226,17 +1038,12 @@ export default function AdminBlogPage({
                   <textarea
                     ref={contentRef}
                     rows={24}
-                    value={
-                      form.content
-                    }
-                    onChange={(
-                      event
-                    ) =>
+                    value={form.content}
+                    onChange={(event) =>
                       updateField(
-                        "content",
+                        'content',
 
-                        event.target
-                          .value
+                        event.target.value,
                       )
                     }
                     placeholder={`Start writing your article...
@@ -1262,16 +1069,12 @@ Use the Add Image button to insert pictures between sections.`}
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-400">
                   <p>
-                    Add headings, lists,
-                    quotes, links and
-                    images using the
+                    Add headings, lists, quotes, links and images using the
                     toolbar.
                   </p>
 
                   <span>
-                    {wordCount} words ·{" "}
-                    {readingTime} min
-                    read
+                    {wordCount} words · {readingTime} min read
                   </span>
                 </div>
               </div>
@@ -1279,22 +1082,17 @@ Use the Add Image button to insert pictures between sections.`}
 
             <aside className="space-y-6">
               <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
-                <label className="mb-2 block text-sm font-bold">
-                  Category
-                </label>
+                <label className="mb-2 block text-sm font-bold">Category</label>
 
                 <input
                   type="text"
                   list="blog-categories"
-                  value={
-                    form.category
-                  }
+                  value={form.category}
                   onChange={(event) =>
                     updateField(
-                      "category",
+                      'category',
 
-                      event.target
-                        .value
+                      event.target.value,
                     )
                   }
                   placeholder="Parent Guides"
@@ -1302,39 +1100,24 @@ Use the Add Image button to insert pictures between sections.`}
                 />
 
                 <datalist id="blog-categories">
-                  {BLOG_CATEGORIES.map(
-                    (category) => (
-                      <option
-                        key={
-                          category
-                        }
-                        value={
-                          category
-                        }
-                      />
-                    )
-                  )}
+                  {BLOG_CATEGORIES.map((category) => (
+                    <option key={category} value={category} />
+                  ))}
                 </datalist>
 
                 <p className="mt-2 text-xs text-gray-400">
-                  Choose an existing
-                  category or create a
-                  new one.
+                  Choose an existing category or create a new one.
                 </p>
               </div>
 
               <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-bold">
-                    Cover image
-                  </p>
+                  <p className="text-sm font-bold">Cover image</p>
 
                   {form.cover_image_url && (
                     <button
                       type="button"
-                      onClick={
-                        removeCoverImage
-                      }
+                      onClick={removeCoverImage}
                       title="Remove cover image"
                       className="rounded-lg p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
                     >
@@ -1346,30 +1129,24 @@ Use the Add Image button to insert pictures between sections.`}
                 {form.cover_image_url ? (
                   <div className="mb-4 overflow-hidden rounded-xl border border-gray-100 bg-purple-50 dark:border-white/10">
                     <img
-                      src={
-                        form.cover_image_url
-                      }
+                      src={form.cover_image_url}
                       alt="Article cover preview"
                       className="aspect-video w-full object-contain"
                     />
                   </div>
                 ) : (
                   <div className="mb-4 flex aspect-video flex-col items-center justify-center gap-2 rounded-xl bg-purple-50 text-purple-300">
-                    <FileImage
-                      size={35}
-                    />
+                    <FileImage size={35} />
 
-                    <span className="text-xs font-medium">
-                      No cover image
-                    </span>
+                    <span className="text-xs font-medium">No cover image</span>
                   </div>
                 )}
 
                 <label
                   className={`flex items-center justify-center gap-2 rounded-xl border border-purple-200 px-4 py-3 text-sm font-bold transition ${
                     uploadingCover
-                      ? "pointer-events-none text-gray-400"
-                      : "cursor-pointer text-purple-700 hover:bg-purple-50"
+                      ? 'pointer-events-none text-gray-400'
+                      : 'cursor-pointer text-purple-700 hover:bg-purple-50'
                   }`}
                 >
                   {uploadingCover ? (
@@ -1379,64 +1156,49 @@ Use the Add Image button to insert pictures between sections.`}
                       className="animate-spin"
                     />
                   ) : (
-                    <Upload
-                      size={17}
-                    />
+                    <Upload size={17} />
                   )}
 
                   {uploadingCover
-                    ? "Uploading..."
+                    ? 'Uploading...'
                     : form.cover_image_url
-                      ? "Replace Image"
-                      : "Upload Image"}
+                      ? 'Replace Image'
+                      : 'Upload Image'}
 
                   <input
                     type="file"
 
                     accept="image/*"
 
-                    disabled={
-                      uploadingCover
-                    }
+                    disabled={uploadingCover}
 
-                    onChange={
-                      uploadCoverImage
-                    }
+                    onChange={uploadCoverImage}
 
                     className="hidden"
                   />
                 </label>
 
                 <p className="mt-3 text-xs leading-5 text-gray-400">
-                  Recommended ratio:
-                  16:9. Maximum file
-                  size: 5 MB.
+                  Recommended ratio: 16:9. Maximum file size: 5 MB.
                 </p>
               </div>
 
               <div className="rounded-3xl border border-gray-100 bg-white p-6 text-sm shadow-sm dark:border-white/10 dark:bg-white/5">
-                <p className="font-bold">
-                  Current status
-                </p>
+                <p className="font-bold">Current status</p>
 
                 <span
                   className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase ${
-                    form.status ===
-                    "published"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-amber-100 text-amber-700"
+                    form.status === 'published'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-amber-100 text-amber-700'
                   }`}
                 >
-                  {form.status ||
-                    "draft"}
+                  {form.status || 'draft'}
                 </span>
 
                 {form.published_at && (
                   <p className="mt-4 text-xs text-gray-400">
-                    Published{" "}
-                    {formatDate(
-                      form.published_at
-                    )}
+                    Published {formatDate(form.published_at)}
                   </p>
                 )}
               </div>
@@ -1452,9 +1214,7 @@ Use the Add Image button to insert pictures between sections.`}
                       ## Heading
                     </code>
 
-                    <span className="ml-2">
-                      Main section
-                    </span>
+                    <span className="ml-2">Main section</span>
                   </div>
 
                   <div>
@@ -1462,9 +1222,7 @@ Use the Add Image button to insert pictures between sections.`}
                       ### Heading
                     </code>
 
-                    <span className="ml-2">
-                      Subsection
-                    </span>
+                    <span className="ml-2">Subsection</span>
                   </div>
 
                   <div>
@@ -1472,9 +1230,7 @@ Use the Add Image button to insert pictures between sections.`}
                       **Text**
                     </code>
 
-                    <span className="ml-2">
-                      Bold text
-                    </span>
+                    <span className="ml-2">Bold text</span>
                   </div>
 
                   <div>
@@ -1482,9 +1238,7 @@ Use the Add Image button to insert pictures between sections.`}
                       - Item
                     </code>
 
-                    <span className="ml-2">
-                      Bullet point
-                    </span>
+                    <span className="ml-2">Bullet point</span>
                   </div>
 
                   <div>
@@ -1492,9 +1246,7 @@ Use the Add Image button to insert pictures between sections.`}
                       &gt; Quote
                     </code>
 
-                    <span className="ml-2">
-                      Highlighted quote
-                    </span>
+                    <span className="ml-2">Highlighted quote</span>
                   </div>
                 </div>
               </div>
@@ -1502,7 +1254,7 @@ Use the Add Image button to insert pictures between sections.`}
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -1519,8 +1271,7 @@ Use the Add Image button to insert pictures between sections.`}
             </h1>
 
             <p className="mt-2 text-sm text-gray-500">
-              Create, edit, publish and
-              manage website articles.
+              Create, edit, publish and manage website articles.
             </p>
           </div>
 
@@ -1530,29 +1281,19 @@ Use the Add Image button to insert pictures between sections.`}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-5 py-3 font-bold text-white shadow-lg shadow-pink-500/20 transition hover:-translate-y-0.5 hover:bg-pink-600"
           >
             <Plus size={18} />
-
             New Article
           </button>
         </div>
 
-        <MessageAlert
-          message={message}
-        />
+        <MessageAlert message={message} />
 
         <div className="mb-6 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5">
-          <Search
-            size={19}
-            className="text-gray-400"
-          />
+          <Search size={19} className="text-gray-400" />
 
           <input
             type="search"
             value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
-            }
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search articles..."
             className="w-full bg-transparent text-sm outline-none"
           />
@@ -1562,36 +1303,27 @@ Use the Add Image button to insert pictures between sections.`}
           <div className="flex min-h-72 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
           </div>
-        ) : filteredPosts.length ===
-          0 ? (
+        ) : filteredPosts.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center dark:border-white/10 dark:bg-white/5">
-            <FileText
-              size={40}
-              className="mx-auto text-gray-300"
-            />
+            <FileText size={40} className="mx-auto text-gray-300" />
 
             <h2 className="mt-4 text-xl font-bold">
-              {search
-                ? "No matching articles"
-                : "No articles yet"}
+              {search ? 'No matching articles' : 'No articles yet'}
             </h2>
 
             <p className="mt-2 text-sm text-gray-500">
               {search
-                ? "Try a different search."
-                : "Create your first Tech Talk Hub article."}
+                ? 'Try a different search.'
+                : 'Create your first Tech Talk Hub article.'}
             </p>
 
             {!search && (
               <button
                 type="button"
-                onClick={
-                  startCreating
-                }
+                onClick={startCreating}
                 className="mt-6 inline-flex items-center gap-2 rounded-xl bg-pink-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-pink-600"
               >
                 <Plus size={16} />
-
                 Create Article
               </button>
             )}
@@ -1602,194 +1334,132 @@ Use the Add Image button to insert pictures between sections.`}
               <table className="w-full min-w-[850px]">
                 <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500 dark:bg-white/5">
                   <tr>
-                    <th className="px-6 py-4">
-                      Article
-                    </th>
+                    <th className="px-6 py-4">Article</th>
 
-                    <th className="px-6 py-4">
-                      Category
-                    </th>
+                    <th className="px-6 py-4">Category</th>
 
-                    <th className="px-6 py-4">
-                      Status
-                    </th>
+                    <th className="px-6 py-4">Status</th>
 
-                    <th className="px-6 py-4">
-                      Date
-                    </th>
+                    <th className="px-6 py-4">Date</th>
 
-                    <th className="px-6 py-4 text-right">
-                      Actions
-                    </th>
+                    <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-gray-100 dark:divide-white/10">
-                  {filteredPosts.map(
-                    (post) => (
-                      <tr
-                        key={post.id}
-                        className="transition hover:bg-gray-50 dark:hover:bg-white/5"
-                      >
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-4">
-                            {post.cover_image_url ? (
-                              <img
-                                src={
-                                  post.cover_image_url
-                                }
+                  {filteredPosts.map((post) => (
+                    <tr
+                      key={post.id}
+                      className="transition hover:bg-gray-50 dark:hover:bg-white/5"
+                    >
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          {post.cover_image_url ? (
+                            <img
+                              src={post.cover_image_url}
 
-                                alt={
-                                  post.title
-                                }
+                              alt={post.title}
 
-                                className="h-14 w-20 rounded-lg bg-purple-50 object-contain"
+                              className="h-14 w-20 rounded-lg bg-purple-50 object-contain"
+                            />
+                          ) : (
+                            <div className="flex h-14 w-20 items-center justify-center rounded-lg bg-purple-50 text-purple-300">
+                              <FileImage size={23} />
+                            </div>
+                          )}
+
+                          <div>
+                            <p className="max-w-sm font-bold text-gray-900 dark:text-white">
+                              {post.title}
+                            </p>
+
+                            <p className="mt-1 text-xs text-gray-400">
+                              /blog/
+                              {post.slug}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-5 text-sm text-gray-600 dark:text-gray-300">
+                        {post.category || 'Uncategorized'}
+                      </td>
+
+                      <td className="px-6 py-5">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${
+                            post.status === 'published'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {post.status}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-5 text-sm text-gray-500">
+                        <span className="flex items-center gap-2">
+                          <Calendar size={14} />
+
+                          {formatDate(post.published_at || post.created_at)}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-5">
+                        <div className="flex justify-end gap-2">
+                          {post.status === 'published' && (
+                            <a
+                              href={`/blog/${post.slug}`}
+
+                              target="_blank"
+
+                              rel="noreferrer"
+
+                              title="View article"
+
+                              className="rounded-lg p-2 text-gray-500 transition hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              <Eye size={17} />
+                            </a>
+                          )}
+
+                          <button
+                            type="button"
+
+                            onClick={() => startEditing(post)}
+
+                            title="Edit article"
+
+                            className="rounded-lg p-2 text-gray-500 transition hover:bg-purple-50 hover:text-purple-600"
+                          >
+                            <Edit3 size={17} />
+                          </button>
+
+                          <button
+                            type="button"
+
+                            disabled={deletingId === post.id}
+
+                            onClick={() => deletePost(post)}
+
+                            title="Delete article"
+
+                            className="rounded-lg p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                          >
+                            {deletingId === post.id ? (
+                              <Loader2
+                                size={17}
+
+                                className="animate-spin"
                               />
                             ) : (
-                              <div className="flex h-14 w-20 items-center justify-center rounded-lg bg-purple-50 text-purple-300">
-                                <FileImage
-                                  size={
-                                    23
-                                  }
-                                />
-                              </div>
+                              <Trash2 size={17} />
                             )}
-
-                            <div>
-                              <p className="max-w-sm font-bold text-gray-900 dark:text-white">
-                                {
-                                  post.title
-                                }
-                              </p>
-
-                              <p className="mt-1 text-xs text-gray-400">
-                                /blog/
-                                {
-                                  post.slug
-                                }
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-5 text-sm text-gray-600 dark:text-gray-300">
-                          {post.category ||
-                            "Uncategorized"}
-                        </td>
-
-                        <td className="px-6 py-5">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${
-                              post.status ===
-                              "published"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-amber-100 text-amber-700"
-                            }`}
-                          >
-                            {
-                              post.status
-                            }
-                          </span>
-                        </td>
-
-                        <td className="px-6 py-5 text-sm text-gray-500">
-                          <span className="flex items-center gap-2">
-                            <Calendar
-                              size={
-                                14
-                              }
-                            />
-
-                            {formatDate(
-                              post.published_at ||
-                                post.created_at
-                            )}
-                          </span>
-                        </td>
-
-                        <td className="px-6 py-5">
-                          <div className="flex justify-end gap-2">
-                            {post.status ===
-                              "published" && (
-                              <a
-                                href={`/blog/${post.slug}`}
-
-                                target="_blank"
-
-                                rel="noreferrer"
-
-                                title="View article"
-
-                                className="rounded-lg p-2 text-gray-500 transition hover:bg-blue-50 hover:text-blue-600"
-                              >
-                                <Eye
-                                  size={
-                                    17
-                                  }
-                                />
-                              </a>
-                            )}
-
-                            <button
-                              type="button"
-
-                              onClick={() =>
-                                startEditing(
-                                  post
-                                )
-                              }
-
-                              title="Edit article"
-
-                              className="rounded-lg p-2 text-gray-500 transition hover:bg-purple-50 hover:text-purple-600"
-                            >
-                              <Edit3
-                                size={
-                                  17
-                                }
-                              />
-                            </button>
-
-                            <button
-                              type="button"
-
-                              disabled={
-                                deletingId ===
-                                post.id
-                              }
-
-                              onClick={() =>
-                                deletePost(
-                                  post
-                                )
-                              }
-
-                              title="Delete article"
-
-                              className="rounded-lg p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                            >
-                              {deletingId ===
-                              post.id ? (
-                                <Loader2
-                                  size={
-                                    17
-                                  }
-
-                                  className="animate-spin"
-                                />
-                              ) : (
-                                <Trash2
-                                  size={
-                                    17
-                                  }
-                                />
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1797,5 +1467,5 @@ Use the Add Image button to insert pictures between sections.`}
         )}
       </div>
     </div>
-  );
+  )
 }

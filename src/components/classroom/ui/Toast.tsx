@@ -44,7 +44,7 @@ export function Toast({ item }: ToastProps) {
     <output
       onPointerEnter={() => controls.current.pause()}
       onPointerLeave={() => controls.current.resume()}
-      className="pointer-events-auto flex max-w-[min(440px,calc(100vw-32px))] items-center gap-4 rounded-[4px] bg-toast px-5 py-3 text-[13.5px] leading-5 text-white shadow-[0_8px_24px_-8px_rgb(0_0_0/0.45)] motion-safe:animate-[toast-in_220ms_var(--ease-out)]"
+      className="bg-toast pointer-events-auto flex max-w-[min(440px,calc(100vw-32px))] items-center gap-4 rounded-[4px] px-5 py-3 text-[13.5px] leading-5 text-white shadow-[0_8px_24px_-8px_rgb(0_0_0/0.45)] motion-safe:animate-[toast-in_220ms_var(--ease-out)]"
     >
       <span>{item.message}</span>
       {action && (
@@ -54,7 +54,7 @@ export function Toast({ item }: ToastProps) {
             action.onClick()
             dismissToast(id)
           }}
-          className="press -my-1 shrink-0 rounded px-1.5 py-1 font-semibold text-brand-faded hover:text-white"
+          className="press text-brand-faded -my-1 shrink-0 rounded px-1.5 py-1 font-semibold hover:text-white"
         >
           {action.label}
         </button>

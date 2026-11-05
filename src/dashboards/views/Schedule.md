@@ -3,18 +3,21 @@
 We'll turn the calendar into a complete class scheduling and management system while keeping the existing Supabase + React + FullCalendar stack.
 
 ### 1. Tutor availability
+
 - Tutors create **one-hour class slots**.
 - Every slot has a compulsory **15-minute break** afterward.
 - Prevent overlapping slots and double bookings.
 - Display accurate free slots, booked classes, and tutor workload.
 
 ### 2. Automatic trial assignment
+
 - When a trial student books a date and time, the system checks tutor availability.
 - If a tutor is available, automatically assign the tutor and schedule the trial.
 - If nobody is available, leave the trial unassigned and **bubble it to the top of the admin's unassigned list**.
 - Admins can manually assign or reassign tutors.
 
 ### 3. Subscribed student bookings
+
 - Students can view the calendar and request available slots.
 - The assigned tutor can accept or reject each booking.
 - Accepted bookings become confirmed classes.
@@ -22,6 +25,7 @@ We'll turn the calendar into a complete class scheduling and management system w
 - Prevent two students from booking the same tutor's slot.
 
 ### 4. Permanent student meeting links
+
 - Generate a personal meeting link for each student, incorporating their name where the meeting provider supports it.
 - Keep that link consistent from the trial class throughout their course.
 - Store the link against the student, rather than generating a new one for every class.
@@ -29,6 +33,7 @@ We'll turn the calendar into a complete class scheduling and management system w
 **Important:** Generating actual meeting rooms requires a supported provider, such as Google Meet or Zoom, and potentially its API. We should not simply construct a URL and assume it creates a valid meeting.
 
 ### 5. Admin controls
+
 - Change the tutor assigned to any booked class.
 - View unassigned trials and rejected bookings at the top.
 - Merge **up to two students into one class**, where appropriate.
@@ -38,6 +43,7 @@ We'll turn the calendar into a complete class scheduling and management system w
 ### 6. Manage classes directly from the calendar
 
 **Tutors can:**
+
 - Join a class.
 - Start and end a class.
 - View the student's details.
@@ -45,15 +51,18 @@ We'll turn the calendar into a complete class scheduling and management system w
 - Upload class recordings.
 
 **Students can:**
+
 - Join their confirmed classes.
 - Access their class materials and available recordings.
 
 **Admins can:**
+
 - Monitor class status.
 - Reassign tutors.
 - Review recordings and scheduling issues.
 
 ### 7. Accurate reporting and notifications
+
 - Count actual free slots and booked classes, excluding breaks.
 - Track completed, ongoing, cancelled, and upcoming classes separately.
 - Notify admins when tutors reject bookings or scheduling issues require intervention.

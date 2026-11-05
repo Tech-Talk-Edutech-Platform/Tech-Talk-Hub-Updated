@@ -55,7 +55,7 @@ export function ChatPanel({
       onClose={onClose}
       footer={
         <form
-          className="shrink-0 border-t border-line px-3 pt-3 pb-2"
+          className="border-line shrink-0 border-t px-3 pb-2 pt-3"
           onSubmit={(event) => {
             event.preventDefault()
             send()
@@ -85,21 +85,21 @@ export function ChatPanel({
                 }
               }}
               placeholder={'Send a message\nPress Shift + Enter for new line'}
-              className={`[field-sizing:content] max-h-32 min-h-[42px] flex-1 resize-none border-b-2 bg-transparent py-1 text-[14px] leading-[18px] text-ink outline-none placeholder:text-[13px] placeholder:text-muted ${
+              className={`text-ink placeholder:text-muted max-h-32 min-h-[42px] flex-1 resize-none border-b-2 bg-transparent py-1 text-[14px] leading-[18px] outline-none [field-sizing:content] placeholder:text-[13px] ${
                 focused ? 'border-brand' : 'border-transparent'
               }`}
             />
             <button
               type="submit"
               disabled={!text}
-              className="press mb-1 flex h-[30px] items-center gap-1.5 rounded-[4px] bg-brand px-2.5 text-[14px] font-medium text-white hover:bg-brand-strong disabled:bg-brand-faded"
+              className="press bg-brand hover:bg-brand-strong disabled:bg-brand-faded mb-1 flex h-[30px] items-center gap-1.5 rounded-[4px] px-2.5 text-[14px] font-medium text-white"
             >
               Send
               <SendHorizontal size={14} strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
           <p
-            className="mt-0.5 text-right text-[11px] text-muted tabular-nums"
+            className="text-muted mt-0.5 text-right text-[11px] tabular-nums"
             aria-live="off"
           >
             {draft.length}/{LIMIT}
@@ -115,8 +115,8 @@ export function ChatPanel({
             aria-hidden="true"
             className="text-line-strong"
           />
-          <p className="mt-4 text-[15px] text-muted">No messages yet</p>
-          <p className="mt-1 max-w-[220px] text-[12.5px] leading-[18px] text-faint">
+          <p className="text-muted mt-4 text-[15px]">No messages yet</p>
+          <p className="text-faint mt-1 max-w-[220px] text-[12.5px] leading-[18px]">
             Messages reach everyone in the room, including other tabs.
           </p>
         </div>
@@ -139,8 +139,8 @@ export function ChatPanel({
                 className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${grouped ? '-mt-2' : ''}`}
               >
                 {!grouped && (
-                  <p className="mb-1 text-[12px] text-muted">
-                    <span className="font-semibold text-ink-soft">
+                  <p className="text-muted mb-1 text-[12px]">
+                    <span className="text-ink-soft font-semibold">
                       {mine ? 'You' : message.from.name}
                     </span>{' '}
                     ·{' '}
@@ -150,7 +150,7 @@ export function ChatPanel({
                   </p>
                 )}
                 <p
-                  className={`max-w-[88%] rounded-[8px] px-3 py-2 text-[14px] leading-5 break-words whitespace-pre-wrap ${
+                  className={`max-w-[88%] whitespace-pre-wrap break-words rounded-[8px] px-3 py-2 text-[14px] leading-5 ${
                     mine ? 'bg-brand text-white' : 'bg-surface-2 text-ink'
                   }`}
                 >

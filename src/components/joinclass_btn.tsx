@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../supabase'; // Adjust your import
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabase' // Adjust your import
 
 export default function JoinClassButton({ studentId }) {
-  const [classInfo, setClassInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [classInfo, setClassInfo] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchUpcomingClass() {
@@ -12,30 +12,30 @@ export default function JoinClassButton({ studentId }) {
         .select('*')
         .eq('student_id', studentId)
         .order('start_time', { ascending: true })
-        .single();
+        .single()
 
-      if (!error) setClassInfo(data);
-      setLoading(false);
+      if (!error) setClassInfo(data)
+      setLoading(false)
     }
-    fetchUpcomingClass();
-  }, [studentId]);
+    fetchUpcomingClass()
+  }, [studentId])
 
-  if (loading || !classInfo) return null;
+  if (loading || !classInfo) return null
 
   const handleJoin = () => {
-    // You could also log the attendance here if you wanted to track 
+    // You could also log the attendance here if you wanted to track
     // exactly when they clicked 'Join'
-    window.open(classInfo.meet_link, '_blank', 'noopener,noreferrer');
-  };
+    window.open(classInfo.meet_link, '_blank', 'noopener,noreferrer')
+  }
 
   return (
     <button
       onClick={handleJoin}
-      className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg animate-pulse transition-all"
+      className="animate-pulse rounded-lg bg-green-600 px-6 py-3 font-bold text-white shadow-lg transition-all hover:bg-green-700"
     >
       Join {classInfo.title} Now
     </button>
-  );
+  )
 }
 // 'use client';
 // import { useEffect, useState } from 'react';
@@ -121,7 +121,7 @@ export default function JoinClassButton({ studentId }) {
 // //   );
 // // }
 
-// // // Include your JoinClassButton component logic here 
+// // // Include your JoinClassButton component logic here
 // // // or import it if you placed it in a separate file
 // // import { useEffect, useState } from 'react';
 // // import { supabase } from '../supabase'; // Adjust your import
@@ -148,7 +148,7 @@ export default function JoinClassButton({ studentId }) {
 // //   if (loading || !classInfo) return null;
 
 // //   const handleJoin = () => {
-// //     // You could also log the attendance here if you wanted to track 
+// //     // You could also log the attendance here if you wanted to track
 // //     // exactly when they clicked 'Join'
 // //     window.open(classInfo.meet_link, '_blank', 'noopener,noreferrer');
 // //   };

@@ -24,7 +24,7 @@ export function MoreMenu({ anchorRef, open, onClose, actions }: MoreMenuProps) {
     >
       {actions.map(({ id, label, icon: Icon, onSelect, danger, divider }) => (
         <div key={id}>
-          {divider && <hr className="my-1.5 h-px border-0 bg-line" />}
+          {divider && <hr className="bg-line my-1.5 h-px border-0" />}
           <button
             type="button"
             role="menuitem"
@@ -32,7 +32,7 @@ export function MoreMenu({ anchorRef, open, onClose, actions }: MoreMenuProps) {
               onClose()
               onSelect()
             }}
-            className={`press flex h-10 w-full items-center gap-3 px-3.5 text-left text-[14.5px] hover:bg-surface-2 ${
+            className={`press hover:bg-surface-2 flex h-10 w-full items-center gap-3 px-3.5 text-left text-[14.5px] ${
               danger ? 'text-brand' : 'text-ink'
             }`}
           >

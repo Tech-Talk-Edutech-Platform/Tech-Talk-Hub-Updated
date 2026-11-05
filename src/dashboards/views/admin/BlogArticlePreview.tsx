@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo } from 'react'
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 import {
   ArrowRight,
@@ -13,92 +13,85 @@ import {
   Sparkles,
   UserRound,
   X,
-} from "lucide-react";
+} from 'lucide-react'
 
-function countWords(content = "") {
+function countWords(content = '') {
   const text = content
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/[#>*_`~-]/g, "")
-    .trim();
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[#>*_`~-]/g, '')
+    .trim()
 
-  return text
-    .split(/\s+/)
-    .filter(Boolean).length;
+  return text.split(/\s+/).filter(Boolean).length
 }
 
-function getReadingTime(content = "") {
-  return Math.max(
-    1,
-    Math.ceil(countWords(content) / 220)
-  );
+function getReadingTime(content = '') {
+  return Math.max(1, Math.ceil(countWords(content) / 220))
 }
 
-function createHeadingId(value = "") {
+function createHeadingId(value = '') {
   return String(value)
     .toLowerCase()
     .trim()
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 function getText(value) {
-  if (typeof value === "string") {
-    return value;
+  if (typeof value === 'string') {
+    return value
   }
 
-  if (typeof value === "number") {
-    return String(value);
+  if (typeof value === 'number') {
+    return String(value)
   }
 
   if (Array.isArray(value)) {
-    return value.map(getText).join("");
+    return value.map(getText).join('')
   }
 
   if (value?.props?.children) {
-    return getText(value.props.children);
+    return getText(value.props.children)
   }
 
-  return "";
+  return ''
 }
 
-function extractHeadings(content = "") {
+function extractHeadings(content = '') {
   return content
-    .split("\n")
+    .split('\n')
     .map((line) => {
-      const match = line.match(/^##\s+(.+)$/);
+      const match = line.match(/^##\s+(.+)$/)
 
       if (!match) {
-        return null;
+        return null
       }
 
-      const title = match[1].trim();
+      const title = match[1].trim()
 
       return {
         title,
 
         id: createHeadingId(title),
-      };
+      }
     })
-    .filter(Boolean);
+    .filter(Boolean)
 }
 
 function formatDate(value) {
-  return new Intl.DateTimeFormat("en-KE", {
-    day: "numeric",
+  return new Intl.DateTimeFormat('en-KE', {
+    day: 'numeric',
 
-    month: "long",
+    month: 'long',
 
-    year: "numeric",
-  }).format(
-    value ? new Date(value) : new Date()
-  );
+    year: 'numeric',
+  }).format(value ? new Date(value) : new Date())
 }
 
 function PreviewArticleImage({ src, alt }) {
   if (!src) {
-    return null;
+    return null
   }
 
   return (
@@ -106,7 +99,7 @@ function PreviewArticleImage({ src, alt }) {
       <div className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-[#F8F6FF] shadow-lg shadow-purple-950/5">
         <img
           src={src}
-          alt={alt || "Article illustration"}
+          alt={alt || 'Article illustration'}
           loading="lazy"
           className="mx-auto block max-h-[650px] w-full object-contain"
         />
@@ -118,7 +111,7 @@ function PreviewArticleImage({ src, alt }) {
         </figcaption>
       )}
     </figure>
-  );
+  )
 }
 
 function PreviewArticleContent({ content }) {
@@ -127,7 +120,7 @@ function PreviewArticleContent({ content }) {
       remarkPlugins={[remarkGfm]}
       components={{
         h1({ children }) {
-          const title = getText(children);
+          const title = getText(children)
 
           return (
             <h2
@@ -136,11 +129,11 @@ function PreviewArticleContent({ content }) {
             >
               {children}
             </h2>
-          );
+          )
         },
 
         h2({ children }) {
-          const title = getText(children);
+          const title = getText(children)
 
           return (
             <h2
@@ -149,11 +142,11 @@ function PreviewArticleContent({ content }) {
             >
               {children}
             </h2>
-          );
+          )
         },
 
         h3({ children }) {
-          const title = getText(children);
+          const title = getText(children)
 
           return (
             <h3
@@ -162,7 +155,7 @@ function PreviewArticleContent({ content }) {
             >
               {children}
             </h3>
-          );
+          )
         },
 
         h4({ children }) {
@@ -170,24 +163,23 @@ function PreviewArticleContent({ content }) {
             <h4 className="mb-3 mt-8 text-lg font-bold text-[#172554]">
               {children}
             </h4>
-          );
+          )
         },
 
         p({ children, node }) {
-          const containsImage =
-            node?.children?.some(
-              (child) => child.tagName === "img"
-            );
+          const containsImage = node?.children?.some(
+            (child) => child.tagName === 'img',
+          )
 
           if (containsImage) {
-            return <>{children}</>;
+            return <>{children}</>
           }
 
           return (
             <p className="my-5 text-base leading-[1.95] text-slate-600 sm:text-[17px]">
               {children}
             </p>
-          );
+          )
         },
 
         strong({ children }) {
@@ -195,15 +187,11 @@ function PreviewArticleContent({ content }) {
             <strong className="font-extrabold text-[#172554]">
               {children}
             </strong>
-          );
+          )
         },
 
         em({ children }) {
-          return (
-            <em className="text-slate-700">
-              {children}
-            </em>
-          );
+          return <em className="text-slate-700">{children}</em>
         },
 
         ul({ children }) {
@@ -211,7 +199,7 @@ function PreviewArticleContent({ content }) {
             <ul className="my-7 list-disc space-y-3 pl-6 marker:text-[#FF3F7F]">
               {children}
             </ul>
-          );
+          )
         },
 
         ol({ children }) {
@@ -219,7 +207,7 @@ function PreviewArticleContent({ content }) {
             <ol className="my-7 list-decimal space-y-3 pl-6 marker:font-bold marker:text-[#FF3F7F]">
               {children}
             </ol>
-          );
+          )
         },
 
         li({ children }) {
@@ -227,7 +215,7 @@ function PreviewArticleContent({ content }) {
             <li className="pl-2 text-base leading-8 text-slate-600 sm:text-[17px] [&_p]:my-0">
               {children}
             </li>
-          );
+          )
         },
 
         blockquote({ children }) {
@@ -237,7 +225,7 @@ function PreviewArticleContent({ content }) {
                 {children}
               </div>
             </blockquote>
-          );
+          )
         },
 
         a({ href, children }) {
@@ -250,22 +238,15 @@ function PreviewArticleContent({ content }) {
             >
               {children}
             </a>
-          );
+          )
         },
 
         img({ src, alt }) {
-          return (
-            <PreviewArticleImage
-              src={src}
-              alt={alt}
-            />
-          );
+          return <PreviewArticleImage src={src} alt={alt} />
         },
 
         hr() {
-          return (
-            <hr className="my-12 border-slate-200" />
-          );
+          return <hr className="my-12 border-slate-200" />
         },
 
         table({ children }) {
@@ -275,23 +256,17 @@ function PreviewArticleContent({ content }) {
                 {children}
               </table>
             </div>
-          );
+          )
         },
 
         thead({ children }) {
           return (
-            <thead className="bg-[#F8F5FF] text-[#2947C7]">
-              {children}
-            </thead>
-          );
+            <thead className="bg-[#F8F5FF] text-[#2947C7]">{children}</thead>
+          )
         },
 
         th({ children }) {
-          return (
-            <th className="px-5 py-4 font-black">
-              {children}
-            </th>
-          );
+          return <th className="px-5 py-4 font-black">{children}</th>
         },
 
         td({ children }) {
@@ -299,7 +274,7 @@ function PreviewArticleContent({ content }) {
             <td className="border-t border-slate-100 px-5 py-4 text-slate-600">
               {children}
             </td>
-          );
+          )
         },
 
         pre({ children }) {
@@ -307,23 +282,16 @@ function PreviewArticleContent({ content }) {
             <pre className="my-8 overflow-x-auto rounded-2xl bg-[#172554] p-5 text-sm leading-7 text-white">
               {children}
             </pre>
-          );
+          )
         },
 
-        code({
-          children,
-          className,
-          ...props
-        }) {
+        code({ children, className, ...props }) {
           if (className) {
             return (
-              <code
-                className={className}
-                {...props}
-              >
+              <code className={className} {...props}>
                 {children}
               </code>
-            );
+            )
           }
 
           return (
@@ -333,13 +301,13 @@ function PreviewArticleContent({ content }) {
             >
               {children}
             </code>
-          );
+          )
         },
       }}
     >
-      {content || ""}
+      {content || ''}
     </ReactMarkdown>
-  );
+  )
 }
 
 export default function BlogArticlePreview({
@@ -349,25 +317,19 @@ export default function BlogArticlePreview({
   publishing = false,
 }) {
   const headings = useMemo(
-    () =>
-      extractHeadings(
-        article?.content || ""
-      ),
+    () => extractHeadings(article?.content || ''),
 
-    [article?.content]
-  );
+    [article?.content],
+  )
 
   const readingTime = useMemo(
-    () =>
-      getReadingTime(
-        article?.content || ""
-      ),
+    () => getReadingTime(article?.content || ''),
 
-    [article?.content]
-  );
+    [article?.content],
+  )
 
   if (!article) {
-    return null;
+    return null
   }
 
   return (
@@ -385,8 +347,7 @@ export default function BlogArticlePreview({
             </p>
 
             <p className="mt-1 hidden text-sm text-slate-500 sm:block">
-              Review how your article will
-              appear before publishing.
+              Review how your article will appear before publishing.
             </p>
           </div>
 
@@ -398,9 +359,7 @@ export default function BlogArticlePreview({
                 disabled={publishing}
                 className="inline-flex items-center gap-2 rounded-xl bg-pink-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {publishing
-                  ? "Publishing..."
-                  : "Publish"}
+                {publishing ? 'Publishing...' : 'Publish'}
               </button>
             )}
 
@@ -427,13 +386,11 @@ export default function BlogArticlePreview({
             <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#FF3F7F]">
               <Sparkles size={14} />
 
-              {article.category ||
-                "Tech Talk Hub"}
+              {article.category || 'Tech Talk Hub'}
             </span>
 
             <h1 className="mt-6 max-w-4xl text-4xl font-black leading-[1.08] tracking-tight text-[#2947C7] sm:text-5xl lg:text-6xl">
-              {article.title ||
-                "Untitled article"}
+              {article.title || 'Untitled article'}
             </h1>
 
             {article.excerpt && (
@@ -445,21 +402,17 @@ export default function BlogArticlePreview({
             <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-500">
               <span className="flex items-center gap-2">
                 <UserRound size={16} />
-
                 Tech Talk Hub Team
               </span>
 
               <span className="flex items-center gap-2">
                 <Calendar size={16} />
 
-                {formatDate(
-                  article.published_at
-                )}
+                {formatDate(article.published_at)}
               </span>
 
               <span className="flex items-center gap-2">
                 <Clock3 size={16} />
-
                 {readingTime} min read
               </span>
             </div>
@@ -470,13 +423,8 @@ export default function BlogArticlePreview({
           <section className="relative z-10 mx-auto -mt-9 max-w-6xl px-5 sm:-mt-12 sm:px-6 lg:px-8">
             <div className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white shadow-2xl shadow-purple-900/10 sm:rounded-[2rem]">
               <img
-                src={
-                  article.cover_image_url
-                }
-                alt={
-                  article.title ||
-                  "Article cover"
-                }
+                src={article.cover_image_url}
+                alt={article.title || 'Article cover'}
                 className="aspect-video w-full object-contain"
               />
             </div>
@@ -491,27 +439,19 @@ export default function BlogArticlePreview({
                   <div className="rounded-[1.75rem] border border-purple-100 bg-[#FCFAFF] p-5">
                     <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#2947C7]">
                       <List size={16} />
-
                       In this article
                     </p>
 
                     <nav className="mt-5 space-y-3">
-                      {headings.map(
-                        (
-                          heading,
-                          index
-                        ) => (
-                          <a
-                            key={`${heading.id}-${index}`}
-                            href={`#${heading.id}`}
-                            className="block border-l-2 border-transparent pl-3 text-sm leading-6 text-slate-500 transition hover:border-[#FF3F7F] hover:text-[#2947C7]"
-                          >
-                            {
-                              heading.title
-                            }
-                          </a>
-                        )
-                      )}
+                      {headings.map((heading, index) => (
+                        <a
+                          key={`${heading.id}-${index}`}
+                          href={`#${heading.id}`}
+                          className="block border-l-2 border-transparent pl-3 text-sm leading-6 text-slate-500 transition hover:border-[#FF3F7F] hover:text-[#2947C7]"
+                        >
+                          {heading.title}
+                        </a>
+                      ))}
                     </nav>
                   </div>
                 )}
@@ -522,22 +462,16 @@ export default function BlogArticlePreview({
                   </p>
 
                   <h3 className="mt-3 text-lg font-black leading-snug">
-                    Help your child start
-                    coding.
+                    Help your child start coding.
                   </h3>
 
                   <p className="mt-3 text-sm leading-6 text-white/75">
-                    Live, personalized
-                    classes for young
-                    creators.
+                    Live, personalized classes for young creators.
                   </p>
 
                   <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-[#2947C7]">
                     Book a trial
-
-                    <ArrowRight
-                      size={14}
-                    />
+                    <ArrowRight size={14} />
                   </span>
                 </div>
               </div>
@@ -549,52 +483,36 @@ export default function BlogArticlePreview({
                   <summary className="cursor-pointer list-none text-sm font-black text-[#2947C7]">
                     <span className="inline-flex items-center gap-2">
                       <List size={17} />
-
                       In this article
                     </span>
                   </summary>
 
                   <nav className="mt-4 space-y-3">
-                    {headings.map(
-                      (
-                        heading,
-                        index
-                      ) => (
-                        <a
-                          key={`${heading.id}-${index}`}
-                          href={`#${heading.id}`}
-                          className="block text-sm leading-6 text-slate-600 hover:text-[#FF3F7F]"
-                        >
-                          {
-                            heading.title
-                          }
-                        </a>
-                      )
-                    )}
+                    {headings.map((heading, index) => (
+                      <a
+                        key={`${heading.id}-${index}`}
+                        href={`#${heading.id}`}
+                        className="block text-sm leading-6 text-slate-600 hover:text-[#FF3F7F]"
+                      >
+                        {heading.title}
+                      </a>
+                    ))}
                   </nav>
                 </details>
               )}
 
               {article.content ? (
-                <PreviewArticleContent
-                  content={
-                    article.content
-                  }
-                />
+                <PreviewArticleContent content={article.content} />
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
-                  Add article content to
-                  preview it here.
+                  Add article content to preview it here.
                 </div>
               )}
 
               <div className="mt-16 overflow-hidden rounded-[2rem] border border-purple-100 bg-gradient-to-br from-[#FBF8FF] via-white to-[#FFF5F8] p-7 shadow-sm sm:p-9">
                 <div className="flex items-start gap-4">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pink-100 text-[#FF3F7F]">
-                    <Heart
-                      size={21}
-                      fill="currentColor"
-                    />
+                    <Heart size={21} fill="currentColor" />
                   </span>
 
                   <div>
@@ -603,55 +521,34 @@ export default function BlogArticlePreview({
                     </p>
 
                     <h2 className="mt-2 text-2xl font-black leading-tight text-[#2947C7]">
-                      Help your child
-                      become a creator of
-                      technology.
+                      Help your child become a creator of technology.
                     </h2>
 
                     <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
-                      Explore personalized
-                      coding classes
-                      designed around your
-                      child’s age,
-                      interests and
-                      learning pace.
+                      Explore personalized coding classes designed around your
+                      child’s age, interests and learning pace.
                     </p>
 
                     <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-slate-500">
                       <span className="inline-flex items-center gap-1.5">
-                        <CheckCircle2
-                          size={15}
-                          className="text-green-500"
-                        />
-
+                        <CheckCircle2 size={15} className="text-green-500" />
                         Live classes
                       </span>
 
                       <span className="inline-flex items-center gap-1.5">
-                        <CheckCircle2
-                          size={15}
-                          className="text-green-500"
-                        />
-
+                        <CheckCircle2 size={15} className="text-green-500" />
                         Practical projects
                       </span>
 
                       <span className="inline-flex items-center gap-1.5">
-                        <CheckCircle2
-                          size={15}
-                          className="text-green-500"
-                        />
-
+                        <CheckCircle2 size={15} className="text-green-500" />
                         Ages 5–18
                       </span>
                     </div>
 
                     <span className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#FF3F7F] px-5 py-3 text-sm font-black text-white shadow-lg shadow-pink-500/20">
                       Book a trial class
-
-                      <ArrowRight
-                        size={16}
-                      />
+                      <ArrowRight size={16} />
                     </span>
                   </div>
                 </div>
@@ -661,5 +558,5 @@ export default function BlogArticlePreview({
         </section>
       </main>
     </div>
-  );
+  )
 }

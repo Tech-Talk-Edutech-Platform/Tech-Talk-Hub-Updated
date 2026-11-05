@@ -35,8 +35,8 @@ export function GiveBadgePopover({
       label="Coding badges"
       className="w-[min(840px,calc(100vw-16px))] rounded-[12px] bg-white shadow-[0_16px_48px_-12px_rgb(0_0_0/0.32),0_0_0_1px_rgb(0_0_0/0.04)]"
     >
-      <div className="pt-[19px] pb-[18px]">
-        <h2 className="px-[22px] text-[17px] leading-6 font-medium text-ink">
+      <div className="pb-[18px] pt-[19px]">
+        <h2 className="text-ink px-[22px] text-[17px] font-medium leading-6">
           Coding badges
         </h2>
         <ul className="mt-0.5 flex flex-wrap justify-between gap-y-2 px-1 max-[860px]:justify-center">
@@ -46,7 +46,7 @@ export function GiveBadgePopover({
                 type="button"
                 onClick={() => onGive(badge)}
                 aria-label={`Give ${badge.name} to ${studentName}`}
-                className="press group flex w-[104px] flex-col items-center rounded-[10px] px-1 pt-0.5 pb-1.5 hover:bg-brand-soft"
+                className="press hover:bg-brand-soft group flex w-[104px] flex-col items-center rounded-[10px] px-1 pb-1.5 pt-0.5"
               >
                 <span className="transition-transform duration-200 ease-out group-hover:-translate-y-0.5">
                   <BadgeMedal
@@ -55,7 +55,7 @@ export function GiveBadgePopover({
                     size={104}
                   />
                 </span>
-                <span className="-mt-1 text-center text-[13.5px] leading-[17px] text-ink-soft">
+                <span className="text-ink-soft -mt-1 text-center text-[13.5px] leading-[17px]">
                   {badge.name}
                 </span>
               </button>

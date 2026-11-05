@@ -6,26 +6,26 @@ The internal operations platform for **Tech Talk Hub**, providing role-based das
 
 ## Overview
 
-| Dashboard | Purpose |
-|-----------|---------|
-| **Admin** | User management, courses, scheduling, analytics, leads, shop/blog/testimonials, live class monitoring |
-| **Tutor** | Class schedule, student management, course assignments, recordings |
-| **Student** | Course access, homework, exams, grades, support |
-| **Marketer** | Referral tracking, commission management |
-| **Playgrounds** | Blockly & Scratch coding environments |
+| Dashboard       | Purpose                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------- |
+| **Admin**       | User management, courses, scheduling, analytics, leads, shop/blog/testimonials, live class monitoring |
+| **Tutor**       | Class schedule, student management, course assignments, recordings                                    |
+| **Student**     | Course access, homework, exams, grades, support                                                       |
+| **Marketer**    | Referral tracking, commission management                                                              |
+| **Playgrounds** | Blockly & Scratch coding environments                                                                 |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Framework** | React 18 + Vite |
-| **Routing** | React Router v7 |
-| **Styling** | Tailwind CSS v3 |
-| **Backend** | Supabase (auth + PostgreSQL) |
-| **Server** | Express (push notifications, receipts, SMS) |
-| **UI Libraries** | FullCalendar, Recharts, Lucide Icons |
+| Layer            | Technology                                  |
+| ---------------- | ------------------------------------------- |
+| **Framework**    | React 18 + Vite                             |
+| **Routing**      | React Router v7                             |
+| **Styling**      | Tailwind CSS v3                             |
+| **Backend**      | Supabase (auth + PostgreSQL)                |
+| **Server**       | Express (push notifications, receipts, SMS) |
+| **UI Libraries** | FullCalendar, Recharts, Lucide Icons        |
 
 ---
 
@@ -46,6 +46,7 @@ npm run build
 ```
 
 **Browser environment variables** (create `.env.local`):
+
 ```
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
@@ -116,13 +117,13 @@ Dashboards/
 └── tailwind.config.ts
 ```
 
-| Folder | Purpose |
-|--------|---------|
-| `auth/` | Authentication & route guards |
-| `dashboards/views/` | Role-specific dashboard views |
-| `features/` | Feature modules with business logic |
-| `components/` | Reusable UI primitives |
-| `Utils/` | Pure helper functions |
+| Folder              | Purpose                             |
+| ------------------- | ----------------------------------- |
+| `auth/`             | Authentication & route guards       |
+| `dashboards/views/` | Role-specific dashboard views       |
+| `features/`         | Feature modules with business logic |
+| `components/`       | Reusable UI primitives              |
+| `Utils/`            | Pure helper functions               |
 
 ---
 
@@ -130,30 +131,32 @@ Dashboards/
 
 ### Roles
 
-| Role | Access Level |
-|------|--------------|
-| `owner` | Full platform access |
-| `operations_admin` | Full platform access |
-| `tech_admin` | Full platform access |
-| `tutor` | Teaching, scheduling, students |
-| `student` | Courses, exams, grades |
-| `marketer` | Referrals, commissions |
+| Role               | Access Level                   |
+| ------------------ | ------------------------------ |
+| `owner`            | Full platform access           |
+| `operations_admin` | Full platform access           |
+| `tech_admin`       | Full platform access           |
+| `tutor`            | Teaching, scheduling, students |
+| `student`          | Courses, exams, grades         |
+| `marketer`         | Referrals, commissions         |
 
 ### Current Implementation
 
 Route protection via `RoleGate` component:
 
 ```jsx
-<Route path="/admin/*" element={
-  <RoleGate allowedRoles={['owner', 'operations_admin', 'tech_admin']}>
-    <AdminDashboard />
-  </RoleGate>
-} />
+<Route
+  path="/admin/*"
+  element={
+    <RoleGate allowedRoles={['owner', 'operations_admin', 'tech_admin']}>
+      <AdminDashboard />
+    </RoleGate>
+  }
+/>
 ```
 
-
-
 **Key files:**
+
 - [`src/auth/RoleGate.tsx`](./src/auth/RoleGate.tsx) — Route-level access control
 - [`src/dashboards/DashboardLayout.tsx`](./src/dashboards/DashboardLayout.tsx) — Role-based UI rendering
 
@@ -163,12 +166,12 @@ Route protection via `RoleGate` component:
 
 Tokens defined in [`tailwind.config.ts`](./tailwind.config.ts):
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `primary` | `#3F51B5` (Royal Blue) | Actions, links, brand |
-| `secondary` | `#FF4081` (Hot Pink) | Secondary CTAs |
-| `accent` | `#00BFA5` (Teal) | Success, badges |
-| `funPop` | `#FFEB3B` (Yellow) | Playful highlights |
+| Token       | Value                  | Usage                 |
+| ----------- | ---------------------- | --------------------- |
+| `primary`   | `#3F51B5` (Royal Blue) | Actions, links, brand |
+| `secondary` | `#FF4081` (Hot Pink)   | Secondary CTAs        |
+| `accent`    | `#00BFA5` (Teal)       | Success, badges       |
+| `funPop`    | `#FFEB3B` (Yellow)     | Playful highlights    |
 
 **Font:** Poppins
 
@@ -176,47 +179,47 @@ Tokens defined in [`tailwind.config.ts`](./tailwind.config.ts):
 
 ## Key Features
 
-| Feature | Description |
-|---------|-------------|
-| **Scheduling** | FullCalendar integration, real-time updates |
-| **Assessments** | Exam builder, grading, assignments |
-| **Commerce** | Sales analytics, leads, referral system |
-| **Playgrounds** | Blockly & Scratch with Skulpt Python runtime |
-| **Notifications** | Web Push via Express server |
+| Feature           | Description                                  |
+| ----------------- | -------------------------------------------- |
+| **Scheduling**    | FullCalendar integration, real-time updates  |
+| **Assessments**   | Exam builder, grading, assignments           |
+| **Commerce**      | Sales analytics, leads, referral system      |
+| **Playgrounds**   | Blockly & Scratch with Skulpt Python runtime |
+| **Notifications** | Web Push via Express server                  |
 
 ---
 
 ## Database (Supabase)
 
-| Table | Purpose |
-|-------|---------|
-| `users` | Profiles with roles |
-| `courses` | Course definitions |
-| `classes` | Scheduled sessions |
+| Table         | Purpose                |
+| ------------- | ---------------------- |
+| `users`       | Profiles with roles    |
+| `courses`     | Course definitions     |
+| `classes`     | Scheduled sessions     |
 | `enrollments` | Student-course mapping |
-| `exams` | Exam definitions |
-| `payments` | Payment records |
-| `leads` | Sales leads |
+| `exams`       | Exam definitions       |
+| `payments`    | Payment records        |
+| `leads`       | Sales leads            |
 
 ---
 
 ## Deployment
 
-| Component | Deploy to |
-|-----------|-----------|
-| Frontend | Static hosting (Vercel, Netlify) |
-| Server | Node.js host (port 5000) |
-| Database | Supabase (managed) |
+| Component | Deploy to                        |
+| --------- | -------------------------------- |
+| Frontend  | Static hosting (Vercel, Netlify) |
+| Server    | Node.js host (port 5000)         |
+| Database  | Supabase (managed)               |
 
 ---
 
 ## Related Projects
 
-| Project | Description |
-|---------|-------------|
-| [`website/`](../website/) | Public marketing site (Next.js) |
-| [`techtalk-app/`](../techtalk-app/) | Mobile app (Flutter) |
-| [`techtalkhub/`](../techtalkhub/) | Sanity CMS |
+| Project                             | Description                     |
+| ----------------------------------- | ------------------------------- |
+| [`website/`](../website/)           | Public marketing site (Next.js) |
+| [`techtalk-app/`](../techtalk-app/) | Mobile app (Flutter)            |
+| [`techtalkhub/`](../techtalkhub/)   | Sanity CMS                      |
 
 ---
 

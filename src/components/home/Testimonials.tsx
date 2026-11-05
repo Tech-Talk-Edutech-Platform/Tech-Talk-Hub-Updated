@@ -17,7 +17,7 @@ export function Testimonials() {
     <div className="bg-white px-4 py-14 sm:px-6 sm:py-16">
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <span className="inline-flex items-center gap-2 text-xs font-bold tracking-[0.15em] text-secondary uppercase">
+          <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-secondary">
             <BadgeCheck className="h-4 w-4" />
             Verified Parent Feedback
           </span>

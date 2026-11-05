@@ -1,10 +1,10 @@
-"use client";
+'use client'
 
-import React, { useState } from "react";
-import type { ReactNode } from "react";
-import type { DashboardIdentity } from "../types/dashboardIdentity";
-import type { AppRole } from "../types/roles";
-import { isAdminRole } from "../types/roles";
+import React, { useState } from 'react'
+import type { ReactNode } from 'react'
+import type { DashboardIdentity } from '../types/dashboardIdentity'
+import type { AppRole } from '../types/roles'
+import { isAdminRole } from '../types/roles'
 
 import {
   Award,
@@ -27,37 +27,37 @@ import {
   Users,
   Users2,
   Video,
-} from "lucide-react";
-import AdminPricingPage from "./views/admin/AdminPricingPage";
+} from 'lucide-react'
+import AdminPricingPage from './views/admin/AdminPricingPage'
 // Shared Views
-import GlobalScheduleView from "./views/GlobalScheduleView";
-import ClassRecordingsManager from "./views/ClassRecordingsManager";
+import GlobalScheduleView from './views/GlobalScheduleView'
+import ClassRecordingsManager from './views/ClassRecordingsManager'
 
 // Student Views
-import StudentCoursesView from "./views/student/StudentCoursesView";
-import ExamPage from "./views/student/StudentExam";
-import StudentGradesView from "./views/student/StudentGradesView";
-import SharedSupportView from "./views/student/SharedSupportView";
-import StudentSettingsView from "./views/student/StudentSettingsView";
-import StudentHomeView from "./views/student/StudentHomeView";
+import StudentCoursesView from './views/student/StudentCoursesView'
+import ExamPage from './views/student/StudentExam'
+import StudentGradesView from './views/student/StudentGradesView'
+import SharedSupportView from './views/student/SharedSupportView'
+import StudentSettingsView from './views/student/StudentSettingsView'
+import StudentHomeView from './views/student/StudentHomeView'
 
 // Tutor Views
-import TutorHomeView from "./views/tutor/TutorHomeView";
-import TutorStudentsView from "./views/tutor/TutorStudentsView";
-import TutorCourseAssignmentView from "./views/tutor/TutorCourseAssignmentView";
+import TutorHomeView from './views/tutor/TutorHomeView'
+import TutorStudentsView from './views/tutor/TutorStudentsView'
+import TutorCourseAssignmentView from './views/tutor/TutorCourseAssignmentView'
 
 // Admin Views
-import AdminHomeView from "./views/admin/AdminHomeView";
-import AdminUsersView from "./views/admin/AdminUsersView";
-import AdminCoursesView from "./views/admin/AdminCoursesView";
+import AdminHomeView from './views/admin/AdminHomeView'
+import AdminUsersView from './views/admin/AdminUsersView'
+import AdminCoursesView from './views/admin/AdminCoursesView'
 // import AdminAnalyticsView from "./views/admin/AdminAnalyticsView";
-import LiveClassMonitor from "./views/admin/LiveClassMonitor";
-import AdminSettingsView from "./views/admin/AdminSettingsView";
+import LiveClassMonitor from './views/admin/LiveClassMonitor'
+import AdminSettingsView from './views/admin/AdminSettingsView'
 // import AdminProgramsPage from "./views/admin/AdminProgramsPage";
-import LeadsPage from "./views/admin/LeadsPage";
-import AdminShopPage from "./views/admin/AdminShopPage";
-import AdminBlogPage from "./views/admin/AdminBlogPage";
-import AdminTestimonialsPage from "./views/admin/AdminTestimonialsPage";
+import LeadsPage from './views/admin/LeadsPage'
+import AdminShopPage from './views/admin/AdminShopPage'
+import AdminBlogPage from './views/admin/AdminBlogPage'
+import AdminTestimonialsPage from './views/admin/AdminTestimonialsPage'
 
 function SidebarButton({
   icon: Icon,
@@ -67,38 +67,27 @@ function SidebarButton({
   setActiveView,
   isCollapsed,
 }) {
-  const isActive = activeView === view;
+  const isActive = activeView === view
 
   return (
     <button
       type="button"
       onClick={() => setActiveView(view)}
-      title={isCollapsed ? label : ""}
+      title={isCollapsed ? label : ''}
       className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-medium transition-all duration-200 ${
         isActive
-          ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
-          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+          ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white'
       }`}
     >
-      <Icon
-        size={18}
-        className="shrink-0"
-      />
+      <Icon size={18} className="shrink-0" />
 
-      {!isCollapsed && (
-        <span className="whitespace-nowrap">
-          {label}
-        </span>
-      )}
+      {!isCollapsed && <span className="whitespace-nowrap">{label}</span>}
     </button>
-  );
+  )
 }
 
-function SidebarGroup({
-  title,
-  children,
-  isCollapsed,
-}) {
+function SidebarGroup({ title, children, isCollapsed }) {
   return (
     <div>
       {!isCollapsed && (
@@ -109,13 +98,13 @@ function SidebarGroup({
 
       <div className="space-y-1">{children}</div>
     </div>
-  );
+  )
 }
 
 interface DashboardLayoutProps {
-  role: AppRole;
-  user: DashboardIdentity | null;
-  children?: ReactNode;
+  role: AppRole
+  user: DashboardIdentity | null
+  children?: ReactNode
 }
 
 export default function DashboardLayout({
@@ -123,13 +112,11 @@ export default function DashboardLayout({
   user,
   children,
 }: DashboardLayoutProps) {
-  const [activeView, setActiveView] =
-    useState("dashboard");
+  const [activeView, setActiveView] = useState('dashboard')
 
-  const [isCollapsed, setIsCollapsed] =
-    useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
-  const isAdmin = Boolean(isAdminRole(role));
+  const isAdmin = Boolean(isAdminRole(role))
 
   if (!user) {
     return (
@@ -140,89 +127,68 @@ export default function DashboardLayout({
           Signing out...
         </p>
       </div>
-    );
+    )
   }
 
   function renderMainContent() {
     // Shared support
-    if (activeView === "support") {
-      return <SharedSupportView user={user} />;
+    if (activeView === 'support') {
+      return <SharedSupportView user={user} />
     }
 
     // Role-specific settings
-    if (activeView === "settings") {
+    if (activeView === 'settings') {
       if (isAdmin) {
-        return (
-          <AdminSettingsView
-            userId={user.id}
-            role={role}
-          />
-        );
+        return <AdminSettingsView userId={user.id} role={role} />
       }
 
-      return <StudentSettingsView user={user} />;
+      return <StudentSettingsView user={user} />
     }
 
     // Shared recordings manager
-    if (activeView === "recordings") {
-      return <ClassRecordingsManager />;
+    if (activeView === 'recordings') {
+      return <ClassRecordingsManager />
     }
 
     // Student views
-    if (role === "student") {
+    if (role === 'student') {
       switch (activeView) {
-        case "courses":
+        case 'courses':
           return (
             <StudentCoursesView
               userId={user.id}
               courseId={user.assigned_course_id}
             />
-          );
+          )
 
-        case "exams":
-          return <ExamPage user={user} />;
+        case 'exams':
+          return <ExamPage user={user} />
 
-        case "schedule":
-          return <GlobalScheduleView />;
+        case 'schedule':
+          return <GlobalScheduleView />
 
-        case "grades":
-          return (
-            <StudentGradesView
-              userId={user.id}
-            />
-          );
+        case 'grades':
+          return <StudentGradesView userId={user.id} />
 
-        case "dashboard":
+        case 'dashboard':
         default:
-          return (
-            <StudentHomeView
-              userId={user.id}
-            />
-          );
+          return <StudentHomeView userId={user.id} />
       }
     }
 
     // Tutor views
-    if (role === "tutor") {
+    if (role === 'tutor') {
       switch (activeView) {
-        case "students":
-          return (
-            <TutorStudentsView
-              userId={user.id}
-            />
-          );
+        case 'students':
+          return <TutorStudentsView userId={user.id} />
 
-        case "schedule":
-          return <GlobalScheduleView />;
+        case 'schedule':
+          return <GlobalScheduleView />
 
-        case "course-assignment":
-          return (
-            <TutorCourseAssignmentView
-              userId={user.id}
-            />
-          );
+        case 'course-assignment':
+          return <TutorCourseAssignmentView userId={user.id} />
 
-        case "dashboard":
+        case 'dashboard':
         default:
           return (
             <TutorHomeView
@@ -230,34 +196,24 @@ export default function DashboardLayout({
               courseId={user.assigned_course_id}
               user={user}
             />
-          );
+          )
       }
     }
 
     // Admin views
     if (isAdmin) {
       switch (activeView) {
-        case "users":
-          return (
-            <AdminUsersView
-              userId={user.id}
-              role={role}
-            />
-          );
+        case 'users':
+          return <AdminUsersView userId={user.id} role={role} />
 
         // case "programs":
         //   return <AdminProgramsPage />;
 
-        case "Leads":
-          return <LeadsPage />;
+        case 'Leads':
+          return <LeadsPage />
 
-        case "courses-hub":
-          return (
-            <AdminCoursesView
-              userId={user.id}
-              role={role}
-            />
-          );
+        case 'courses-hub':
+          return <AdminCoursesView userId={user.id} role={role} />
 
         // case "analytics":
         //   return (
@@ -266,49 +222,29 @@ export default function DashboardLayout({
         //       role={role}
         //     />
         //   );
-        case "Live Class Monitor":
-          return <LiveClassMonitor />;
+        case 'Live Class Monitor':
+          return <LiveClassMonitor />
 
-        case "global-schedule":
-          return <GlobalScheduleView />;
+        case 'global-schedule':
+          return <GlobalScheduleView />
 
-        case "shop":
-          return <AdminShopPage />;
+        case 'shop':
+          return <AdminShopPage />
 
-        case "blog":
-          return (
-            <AdminBlogPage
-              userId={user.id}
-              role={role}
-            />
-          );
+        case 'blog':
+          return <AdminBlogPage userId={user.id} role={role} />
 
-        case "testimonials":
-          return (
-            <AdminTestimonialsPage
-              userId={user.id}
-              role={role}
-            />
-          );
-      case "pricing":
-        return (
-          <AdminPricingPage
-            userId={user.id}
-            role={role}
-          />
-        );
-        case "dashboard":
+        case 'testimonials':
+          return <AdminTestimonialsPage userId={user.id} role={role} />
+        case 'pricing':
+          return <AdminPricingPage userId={user.id} role={role} />
+        case 'dashboard':
         default:
-          return (
-            <AdminHomeView
-              userId={user.id}
-              role={role}
-            />
-          );
+          return <AdminHomeView userId={user.id} role={role} />
       }
     }
 
-    return <div className="p-6">{children}</div>;
+    return <div className="p-6">{children}</div>
   }
 
   return (
@@ -316,27 +252,17 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         className={`relative flex min-h-screen shrink-0 flex-col border-r border-gray-100 bg-white p-5 transition-all duration-300 dark:border-white/10 dark:bg-white/5 ${
-          isCollapsed ? "w-20" : "w-64"
+          isCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Collapse button */}
         <button
           type="button"
-          onClick={() =>
-            setIsCollapsed((current) => !current)
-          }
+          onClick={() => setIsCollapsed((current) => !current)}
           className="absolute -right-3 top-7 z-10 rounded-full bg-purple-600 p-1 text-white shadow-md transition hover:bg-purple-700"
-          title={
-            isCollapsed
-              ? "Expand Sidebar"
-              : "Collapse Sidebar"
-          }
+          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
-          {isCollapsed ? (
-            <ChevronRight size={14} />
-          ) : (
-            <ChevronLeft size={14} />
-          )}
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
         {/* Sidebar heading */}
@@ -347,7 +273,7 @@ export default function DashboardLayout({
             </h1>
 
             <div className="mt-0.5 whitespace-nowrap text-xs font-medium capitalize text-gray-400">
-              {role?.replaceAll("_", " ")} Portal 🚀
+              {role?.replaceAll('_', ' ')} Portal 🚀
             </div>
           </div>
         )}
@@ -355,10 +281,7 @@ export default function DashboardLayout({
         {/* Sidebar navigation */}
         <nav className="flex-1 space-y-6 overflow-y-auto overflow-x-hidden">
           {/* Overview */}
-          <SidebarGroup
-            title="Overview"
-            isCollapsed={isCollapsed}
-          >
+          <SidebarGroup title="Overview" isCollapsed={isCollapsed}>
             <SidebarButton
               icon={LayoutDashboard}
               label="Dashboard"
@@ -370,11 +293,8 @@ export default function DashboardLayout({
           </SidebarGroup>
 
           {/* Student navigation */}
-          {role === "student" && (
-            <SidebarGroup
-              title="Learning"
-              isCollapsed={isCollapsed}
-            >
+          {role === 'student' && (
+            <SidebarGroup title="Learning" isCollapsed={isCollapsed}>
               <SidebarButton
                 icon={BookOpen}
                 label="My Courses"
@@ -413,11 +333,8 @@ export default function DashboardLayout({
           )}
 
           {/* Tutor navigation */}
-          {role === "tutor" && (
-            <SidebarGroup
-              title="Teaching"
-              isCollapsed={isCollapsed}
-            >
+          {role === 'tutor' && (
+            <SidebarGroup title="Teaching" isCollapsed={isCollapsed}>
               <SidebarButton
                 icon={Users}
                 label="My Students"
@@ -458,10 +375,7 @@ export default function DashboardLayout({
 
           {/* E-commerce */}
           {isAdmin && (
-            <SidebarGroup
-              title="E-Commerce"
-              isCollapsed={isCollapsed}
-            >
+            <SidebarGroup title="E-Commerce" isCollapsed={isCollapsed}>
               <SidebarButton
                 icon={ShoppingBag}
                 label="Shop Management"
@@ -475,10 +389,7 @@ export default function DashboardLayout({
 
           {/* Website */}
           {isAdmin && (
-            <SidebarGroup
-              title="Website"
-              isCollapsed={isCollapsed}
-            >
+            <SidebarGroup title="Website" isCollapsed={isCollapsed}>
               <SidebarButton
                 icon={Newspaper}
                 label="Blog Management"
@@ -487,15 +398,15 @@ export default function DashboardLayout({
                 setActiveView={setActiveView}
                 isCollapsed={isCollapsed}
               />
-            <SidebarButton
-              icon={CreditCard}
-              label="Pricing Plans"
-              view="pricing"
-              activeView={activeView}
-              setActiveView={setActiveView}
-              isCollapsed={isCollapsed}
-            />
-            <SidebarButton
+              <SidebarButton
+                icon={CreditCard}
+                label="Pricing Plans"
+                view="pricing"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarButton
                 icon={MessageSquareQuote}
                 label="Testimonials"
                 view="testimonials"
@@ -508,10 +419,7 @@ export default function DashboardLayout({
 
           {/* Admin management */}
           {isAdmin && (
-            <SidebarGroup
-              title="Management"
-              isCollapsed={isCollapsed}
-            >
+            <SidebarGroup title="Management" isCollapsed={isCollapsed}>
               <SidebarButton
                 icon={Users2}
                 label="Users & Staff"
@@ -521,7 +429,7 @@ export default function DashboardLayout({
                 isCollapsed={isCollapsed}
               />
 
-             <SidebarButton
+              <SidebarButton
                 icon={Layers3}
                 label="Leads"
                 view="Leads"
@@ -539,7 +447,7 @@ export default function DashboardLayout({
                 isCollapsed={isCollapsed}
               />
 
-           <SidebarButton
+              <SidebarButton
                 icon={Activity}
                 label="Live Class Monitor"
                 view="Live Class Monitor"
@@ -547,7 +455,6 @@ export default function DashboardLayout({
                 setActiveView={setActiveView}
                 isCollapsed={isCollapsed}
               />
-               
 
               <SidebarButton
                 icon={Calendar}
@@ -570,11 +477,8 @@ export default function DashboardLayout({
           )}
 
           {/* System */}
-          <SidebarGroup
-            title="System"
-            isCollapsed={isCollapsed}
-          >
-           {/* <SidebarButton
+          <SidebarGroup title="System" isCollapsed={isCollapsed}>
+            {/* <SidebarButton
               icon={HelpCircle}
               label="Help & Support"
               view="support"
@@ -600,5 +504,5 @@ export default function DashboardLayout({
         {renderMainContent()}
       </main>
     </div>
-  );
+  )
 }

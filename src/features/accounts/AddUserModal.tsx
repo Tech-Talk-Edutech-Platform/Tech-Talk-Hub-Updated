@@ -1,9 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabase';
-import { X, Save, Package, History, Clock, Link, ShieldCheck, UserPlus } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import React, { useState, useEffect } from 'react'
+import { supabase } from '../../supabase'
+import {
+  X,
+  Save,
+  Package,
+  History,
+  Clock,
+  Link,
+  ShieldCheck,
+  UserPlus,
+} from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
-export default function UserManagementModal({ isOpen, onClose, onRefresh, editingUser = null }) {
+export default function UserManagementModal({
+  isOpen,
+  onClose,
+  onRefresh,
+  editingUser = null,
+}) {
   const [formData, setFormData] = useState({
     email: '',
     fullName: '',
@@ -11,11 +25,11 @@ export default function UserManagementModal({ isOpen, onClose, onRefresh, editin
     meetLink: '',
     subscriptionTier: 'Starter',
     totalClasses: 4,
-    classesRemaining: 4
-  });
+    classesRemaining: 4,
+  })
 
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(false)
 
   // 1. Handle Modal Open / Load User Data
   useEffect(() => {
@@ -27,10 +41,10 @@ export default function UserManagementModal({ isOpen, onClose, onRefresh, editin
         meetLink: editingUser.personal_meet_link || '',
         subscriptionTier: editingUser.subscription_tier || 'Starter',
         totalClasses: editingUser.total_classes || 0,
-        classesRemaining: editingUser.classes_remaining || 0
-      });
+        classesRemaining: editingUser.classes_remaining || 0,
+      })
       if (editingUser.role === 'student') {
-        fetchHistory(editingUser.id);
+        fetchHistory(editingUser.id)
       }
     } else {
       // Reset for new user
@@ -41,121 +55,164 @@ export default function UserManagementModal({ isOpen, onClose, onRefresh, editin
         meetLink: '',
         subscriptionTier: 'Starter',
         totalClasses: 4,
-        classesRemaining: 4
-      });
-      setHistory([]);
+        classesRemaining: 4,
+      })
+      setHistory([])
     }
-  }, [editingUser, isOpen]);
+  }, [editingUser, isOpen])
 
   // 2. Fetch Attendance History
   const fetchHistory = async (uid) => {
     try {
       const { data, error } = await supabase
         .from('event_attendance')
-        .select(`
+        .select(
+          `
           created_at, 
           calendar_events (title, start_time)
-        `)
+        `,
+        )
         .eq('student_id', uid)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
 
-      if (error) throw error;
-      setHistory(data || []);
+      if (error) throw error
+      setHistory(data || [])
     } catch (err) {
-      console.error("Error fetching history:", err.message);
+      console.error('Error fetching history:', err.message)
     }
-  };
+  }
 
   // 3. Increment Classes (Top-Up)
   const handleTopUp = (amount) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       totalClasses: parseInt(prev.totalClasses || 0) + amount,
-      classesRemaining: parseInt(prev.classesRemaining || 0) + amount
-    }));
-    toast.success(`Added ${amount} classes to draft`);
-  };
+      classesRemaining: parseInt(prev.classesRemaining || 0) + amount,
+    }))
+    toast.success(`Added ${amount} classes to draft`)
+  }
 
   // 4. Save Logic (Create or Update)
   const handleSave = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault()
+    setLoading(true)
 
     try {
       const payload = {
         full_name: formData.fullName,
         role: formData.role,
-        personal_meet_link: formData.role === 'tutor' ? formData.meetLink : null,
-        subscription_tier: formData.role === 'student' ? formData.subscriptionTier : null,
-        total_classes: formData.role === 'student' ? parseInt(formData.totalClasses) : null,
-        classes_remaining: formData.role === 'student' ? parseInt(formData.classesRemaining) : null,
-      };
+        personal_meet_link:
+          formData.role === 'tutor' ? formData.meetLink : null,
+        subscription_tier:
+          formData.role === 'student' ? formData.subscriptionTier : null,
+        total_classes:
+          formData.role === 'student' ? parseInt(formData.totalClasses) : null,
+        classes_remaining:
+          formData.role === 'student'
+            ? parseInt(formData.classesRemaining)
+            : null,
+      }
 
       if (editingUser) {
         // UPDATE EXISTING
         const { error } = await supabase
           .from('users')
           .update(payload)
-          .eq('id', editingUser.id);
+          .eq('id', editingUser.id)
 
-        if (error) throw error;
-        toast.success("Profile & Package Updated");
+        if (error) throw error
+        toast.success('Profile & Package Updated')
       } else {
         // CREATE NEW
         const { error } = await supabase.auth.signUp({
           email: formData.email,
           password: 'TempPassword123!', // You should ideally handle this via reset email
           options: {
-            data: { ...payload }
-          }
-        });
+            data: { ...payload },
+          },
+        })
 
-        if (error) throw error;
-        toast.success("Account created successfully!");
+        if (error) throw error
+        toast.success('Account created successfully!')
       }
 
-      onRefresh();
-      onClose();
+      onRefresh()
+      onClose()
     } catch (err) {
-      toast.error(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl flex flex-col md:flex-row overflow-hidden max-h-[90vh]">
-
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl md:flex-row">
         {/* LEFT SIDE: FORM */}
-        <div className="flex-1 p-8 overflow-y-auto border-r border-slate-100">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-black flex items-center gap-2 text-slate-900">
-              {editingUser ? <ShieldCheck className="text-blue-600" /> : <UserPlus className="text-blue-600" />}
-              {editingUser ? "Edit Profile" : "Add Team Member"}
+        <div className="flex-1 overflow-y-auto border-r border-slate-100 p-8">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-xl font-black text-slate-900">
+              {editingUser ? (
+                <ShieldCheck className="text-blue-600" />
+              ) : (
+                <UserPlus className="text-blue-600" />
+              )}
+              {editingUser ? 'Edit Profile' : 'Add Team Member'}
             </h3>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
+            <button
+              onClick={onClose}
+              className="rounded-full p-2 transition-colors hover:bg-slate-100"
+            >
+              <X size={20} />
+            </button>
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Full Name</label>
-              <input required placeholder="Alex Rivera" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} />
+              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Full Name
+              </label>
+              <input
+                required
+                placeholder="Alex Rivera"
+                className="w-full rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.fullName}
+                onChange={(e) =>
+                  setFormData({ ...formData, fullName: e.target.value })
+                }
+              />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Email</label>
-              <input required disabled={!!editingUser} type="email" placeholder="email@company.com" className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-sm outline-none disabled:opacity-50"
-                value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Email
+              </label>
+              <input
+                required
+                disabled={!!editingUser}
+                type="email"
+                placeholder="email@company.com"
+                className="w-full rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-none disabled:opacity-50"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+              />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Position / Permissions</label>
-              <select className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })}>
+              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Position / Permissions
+              </label>
+              <select
+                className="w-full appearance-none rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.role}
+                onChange={(e) =>
+                  setFormData({ ...formData, role: e.target.value })
+                }
+              >
                 <option value="student">Student</option>
                 <option value="tutor">Tutor</option>
                 <option value="operations_admin">Operations Admin</option>
@@ -166,22 +223,32 @@ export default function UserManagementModal({ isOpen, onClose, onRefresh, editin
 
             {/* STUDENT PACKAGE SECTION */}
             {formData.role === 'student' && (
-              <div className="p-4 bg-purple-50 rounded-3xl space-y-4 border border-purple-100 animate-in fade-in zoom-in-95">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2 text-purple-600 font-black text-[10px] uppercase tracking-widest">
+              <div className="animate-in fade-in zoom-in-95 space-y-4 rounded-3xl border border-purple-100 bg-purple-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-purple-600">
                     <Package size={14} /> Course Package
                   </div>
-                  <span className={`text-[10px] font-bold ${formData.classesRemaining > 0 ? 'text-purple-400' : 'text-red-500 animate-pulse'}`}>
-                    Status: {formData.classesRemaining > 0 ? 'Active' : 'Low Balance'}
+                  <span
+                    className={`text-[10px] font-bold ${formData.classesRemaining > 0 ? 'text-purple-400' : 'animate-pulse text-red-500'}`}
+                  >
+                    Status:{' '}
+                    {formData.classesRemaining > 0 ? 'Active' : 'Low Balance'}
                   </span>
                 </div>
 
                 {/* Quick Top-Up */}
                 <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-purple-400 ml-1 uppercase">Quick Top-Up</label>
+                  <label className="ml-1 text-[9px] font-bold uppercase text-purple-400">
+                    Quick Top-Up
+                  </label>
                   <div className="flex gap-2">
                     {[4, 8, 12].map((num) => (
-                      <button key={num} type="button" onClick={() => handleTopUp(num)} className="flex-1 py-2 bg-white border border-purple-200 rounded-xl text-purple-600 font-bold text-xs hover:bg-purple-600 hover:text-white transition-colors">
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleTopUp(num)}
+                        className="flex-1 rounded-xl border border-purple-200 bg-white py-2 text-xs font-bold text-purple-600 transition-colors hover:bg-purple-600 hover:text-white"
+                      >
                         +{num}
                       </button>
                     ))}
@@ -190,14 +257,36 @@ export default function UserManagementModal({ isOpen, onClose, onRefresh, editin
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-purple-400 ml-1 uppercase">Total</label>
-                    <input type="number" className="w-full p-3 bg-white border-none rounded-xl font-bold text-xs outline-none"
-                      value={formData.totalClasses} onChange={(e) => setFormData({ ...formData, totalClasses: e.target.value })} />
+                    <label className="ml-1 text-[9px] font-bold uppercase text-purple-400">
+                      Total
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full rounded-xl border-none bg-white p-3 text-xs font-bold outline-none"
+                      value={formData.totalClasses}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          totalClasses: e.target.value,
+                        })
+                      }
+                    />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-red-500 ml-1 uppercase">Remaining</label>
-                    <input type="number" className="w-full p-3 bg-red-50 border-none rounded-xl font-bold text-xs outline-none text-red-600"
-                      value={formData.classesRemaining} onChange={(e) => setFormData({ ...formData, classesRemaining: e.target.value })} />
+                    <label className="ml-1 text-[9px] font-bold uppercase text-red-500">
+                      Remaining
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full rounded-xl border-none bg-red-50 p-3 text-xs font-bold text-red-600 outline-none"
+                      value={formData.classesRemaining}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          classesRemaining: e.target.value,
+                        })
+                      }
+                    />
                   </div>
                 </div>
               </div>
@@ -205,43 +294,65 @@ export default function UserManagementModal({ isOpen, onClose, onRefresh, editin
 
             {formData.role === 'tutor' && (
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-1 tracking-widest"><Link size={12} /> Company Meet Link</label>
-                <input placeholder="https://meet.google.com/xxx-xxxx-xxx" className="w-full p-4 bg-blue-50 border border-blue-100 rounded-2xl font-bold text-sm outline-none"
-                  value={formData.meetLink} onChange={(e) => setFormData({ ...formData, meetLink: e.target.value })} />
+                <label className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600">
+                  <Link size={12} /> Company Meet Link
+                </label>
+                <input
+                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                  className="w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold outline-none"
+                  value={formData.meetLink}
+                  onChange={(e) =>
+                    setFormData({ ...formData, meetLink: e.target.value })
+                  }
+                />
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50">
-              {loading ? "Processing..." : editingUser ? "Update Profile" : "Create Account"}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg transition-all hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+            >
+              {loading
+                ? 'Processing...'
+                : editingUser
+                  ? 'Update Profile'
+                  : 'Create Account'}
             </button>
           </form>
         </div>
 
         {/* RIGHT SIDE: HISTORY (Only for existing students) */}
-        <div className="w-full md:w-72 bg-slate-50 p-6 overflow-y-auto">
-          <h4 className="text-xs font-black uppercase text-slate-400 mb-4 flex items-center gap-2">
+        <div className="w-full overflow-y-auto bg-slate-50 p-6 md:w-72">
+          <h4 className="mb-4 flex items-center gap-2 text-xs font-black uppercase text-slate-400">
             <History size={14} /> Class History
           </h4>
           <div className="space-y-3">
             {history.length > 0 ? (
               history.map((h, i) => (
-                <div key={i} className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 animate-in slide-in-from-right-2">
-                  <p className="text-[10px] font-bold text-slate-900 leading-tight">
+                <div
+                  key={i}
+                  className="animate-in slide-in-from-right-2 rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
+                >
+                  <p className="text-[10px] font-bold leading-tight text-slate-900">
                     {h.calendar_events?.title || 'Unnamed Session'}
                   </p>
-                  <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-1">
-                    <Clock size={8} /> {new Date(h.created_at).toLocaleDateString()}
+                  <p className="mt-1 flex items-center gap-1 text-[9px] text-slate-400">
+                    <Clock size={8} />{' '}
+                    {new Date(h.created_at).toLocaleDateString()}
                   </p>
                 </div>
               ))
             ) : (
-              <div className="text-center py-10">
-                <p className="text-[10px] text-slate-400 italic">No classes attended yet.</p>
+              <div className="py-10 text-center">
+                <p className="text-[10px] italic text-slate-400">
+                  No classes attended yet.
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -69,14 +69,14 @@ export function ClassToolbar({
     setMenu((current) => (current === name ? null : name))
 
   return (
-    <header className="relative z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line bg-white px-4 py-[7px] max-md:px-3">
+    <header className="border-line relative z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b bg-white px-4 py-[7px] max-md:px-3">
       <div className="flex min-w-0 items-center gap-[29px] max-md:flex-1 max-md:gap-3 md:shrink-0">
         <BrandMark size={32} />
         <div className="min-w-0">
-          <h1 className="truncate text-[13.5px] leading-5 font-semibold text-ink">
+          <h1 className="text-ink truncate text-[13.5px] font-semibold leading-5">
             {classroom.title}
           </h1>
-          <p className="text-[11px] leading-4 text-muted">
+          <p className="text-muted text-[11px] leading-4">
             Classroom ID: {classroom.id}
           </p>
         </div>
@@ -84,7 +84,7 @@ export function ClassToolbar({
 
       <nav
         aria-label="Class tools"
-        className="order-last flex min-w-0 flex-1 items-center gap-2 max-md:-mx-3 max-md:basis-full max-md:[scrollbar-width:none] max-md:overflow-x-auto max-md:px-3 max-md:py-1 md:order-none md:ml-1"
+        className="order-last flex min-w-0 flex-1 items-center gap-2 max-md:-mx-3 max-md:basis-full max-md:overflow-x-auto max-md:px-3 max-md:py-1 max-md:[scrollbar-width:none] md:order-none md:ml-1"
       >
         <ToolbarButton
           icon={CloudUpload}
@@ -140,7 +140,7 @@ export function ClassToolbar({
       </nav>
 
       <span
-        className="text-[13.5px] font-semibold text-ink tabular-nums max-md:order-1"
+        className="text-ink text-[13.5px] font-semibold tabular-nums max-md:order-1"
         title="Class time"
         aria-label={`Class time ${formatElapsed(elapsedMs)}`}
       >
@@ -150,7 +150,7 @@ export function ClassToolbar({
       <button
         type="button"
         onClick={onOpenHelp}
-        className="press flex min-h-[30px] items-center justify-center gap-1.5 rounded-[3px] border border-brand bg-white px-3 py-1 text-[13.5px] leading-4 text-brand hover:bg-brand-soft max-md:order-1 max-md:px-2"
+        className="press border-brand text-brand hover:bg-brand-soft flex min-h-[30px] items-center justify-center gap-1.5 rounded-[3px] border bg-white px-3 py-1 text-[13.5px] leading-4 max-md:order-1 max-md:px-2"
       >
         <MessageSquare size={13} strokeWidth={2} aria-hidden="true" />
         <span className="text-balance max-md:sr-only">Need help?</span>
@@ -159,7 +159,7 @@ export function ClassToolbar({
       <button
         type="button"
         onClick={onEndClass}
-        className="press min-h-[30px] rounded-[3px] bg-brand px-[13px] py-1 text-[14px] leading-4 font-medium text-balance text-white hover:bg-brand-strong max-md:order-1"
+        className="press bg-brand hover:bg-brand-strong min-h-[30px] text-balance rounded-[3px] px-[13px] py-1 text-[14px] font-medium leading-4 text-white max-md:order-1"
       >
         End class
       </button>
