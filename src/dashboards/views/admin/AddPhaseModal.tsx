@@ -4,10 +4,11 @@ import {
   useForm,
   type SubmitHandler,
 } from "react-hook-form";
-import { Plus, Loader2, Sparkles } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { supabase } from "../../../supabase";
 import toast from "react-hot-toast";
 import { FormTextField } from "../../../components/forms/FormTextField";
+import { Button } from "../../../components/ui/Button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v3";
 
@@ -85,9 +86,12 @@ export default function AddPhaseModal({ courseId, onPhaseAdded }: AddPhaseModalP
 
   return (
     <>
-      <button onClick={() => setIsOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider px-5 py-3 rounded-2xl shadow-md transition-all">
+      <Button
+        onClick={() => setIsOpen(true)}
+        className="rounded-2xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-wider shadow-md hover:bg-blue-700 focus-visible:ring-blue-500"
+      >
         <Plus size={16} /> Add Structured Phase
-      </button>
+      </Button>
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -96,7 +100,15 @@ export default function AddPhaseModal({ courseId, onPhaseAdded }: AddPhaseModalP
               <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Sparkles className="text-blue-500" size={20} /> Add Curriculum Phase
               </h3>
-              <button onClick={() => setIsOpen(false)} className="text-slate-400">✕</button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close add phase dialog"
+                className="text-slate-400"
+              >
+                ✕
+              </Button>
             </div>
 
             <FormProvider {...form}>
@@ -131,10 +143,10 @@ export default function AddPhaseModal({ courseId, onPhaseAdded }: AddPhaseModalP
                 />
 
                 <div className="flex justify-end gap-3 pt-4">
-                  <button type="button" onClick={() => setIsOpen(false)} className="px-5 py-3 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-xs uppercase">Cancel</button>
-                  <button type="submit" disabled={loading} className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase flex items-center gap-2">
-                    {loading && <Loader2 className="animate-spin" size={16} />} Save Phase
-                  </button>
+                  <Button type="button" variant="secondary" onClick={() => setIsOpen(false)} className="rounded-2xl bg-slate-100 px-5 py-3 text-xs font-black uppercase dark:bg-white/5 dark:text-slate-300">Cancel</Button>
+                  <Button type="submit" loading={loading} className="rounded-2xl bg-blue-600 px-6 py-3 text-xs font-black uppercase hover:bg-blue-700 focus-visible:ring-blue-500">
+                    Save Phase
+                  </Button>
                 </div>
               </form>
             </FormProvider>
