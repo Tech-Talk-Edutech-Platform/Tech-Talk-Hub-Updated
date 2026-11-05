@@ -1,0 +1,369 @@
+@import 'tailwindcss';
+
+/* 1. Define base variables in the layer base */
+@layer base {
+  :root {
+    --background: 0 0% 96%; /* #F5F5F5 */
+    --foreground: 0 0% 20%; /* #333333 */
+
+    /* Branding Design Tokens */
+    --primary: 231 62% 43%; /* Royal Blue (#3F51B5) */
+    --secondary: 341 100% 64%; /* Hot Pink (#FF4081) */
+    --accent: 174 100% 37%; /* Emerald Teal (#00BFA5) */
+    --fun-pop: 51 100% 59%; /* Sunny Yellow (#FFEB3B) */
+
+    --border: 214 32% 91%;
+  }
+}
+
+/* 2. Map variables to Tailwind utilities via @theme */
+@theme {
+  --font-poppins: 'Poppins', sans-serif;
+
+  /* Isolated tokens for the incoming role-based dashboard shell. */
+  --color-dashboard-canvas: #f8fafc;
+  --color-dashboard-night: #0b1020;
+  --color-dashboard-accent: #9333ea;
+  --color-dashboard-accent-hover: #7e22ce;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-secondary: hsl(var(--secondary));
+  --color-accent: hsl(var(--accent));
+  --color-fun-pop: hsl(var(--fun-pop));
+  --color-border: hsl(var(--border));
+
+  /* Custom Gradients */
+  --background-image-hero-gradient: linear-gradient(
+    to bottom right,
+    var(--color-primary),
+    var(--color-secondary),
+    var(--color-accent)
+  );
+
+  /* Animations */
+  --animate-smooth-pulse: smoothPulse 3s ease-in-out infinite;
+
+  @keyframes smoothPulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.08);
+      opacity: 0.9;
+    }
+  }
+
+  /* Shadows & Radius */
+  --radius-xl: 1rem;
+  --shadow-card: 0 10px 20px rgba(0, 0, 0, 0.1);
+  --shadow-btn: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 3. Landing page hero effects (static, so they live here instead of inline styles) */
+@utility hero-base-gradient {
+  background:
+    radial-gradient(
+      circle at 8% 12%,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.9) 22%,
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 92% 16%,
+      rgba(255, 63, 127, 0.12) 0%,
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 56% 100%,
+      rgba(155, 108, 255, 0.18) 0%,
+      transparent 48%
+    ),
+    linear-gradient(135deg, #ffffff 0%, #fbf9ff 35%, #f5efff 68%, #eee5ff 100%);
+}
+
+@utility hero-tech-grid {
+  background-image:
+    linear-gradient(#2947c7 1px, transparent 1px),
+    linear-gradient(90deg, #2947c7 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 88%);
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+@utility hero-image-fade {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.65) 14%,
+    black 30%,
+    black 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.65) 14%,
+    black 30%,
+    black 100%
+  );
+}
+
+/*
+  4. Virtual classroom (/classroom/*)
+  Design tokens sampled from the reference recording (docs/breakdown/01-design-tokens.md).
+  Every classroom component reads these; no raw hex values outside this block.
+*/
+@theme {
+  --font-figtree:
+    'Figtree Variable', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+
+  /* Brand: End class, Special requirement, active toolbar buttons, links */
+  --color-brand: #f85a45;
+  --color-brand-strong: #e0442f;
+  --color-brand-soft: #fff1ee;
+  --color-brand-faded: #f8b2a8;
+
+  /* The video room */
+  --color-stage: #b34831;
+  --color-stage-ink: #2a1512;
+  --color-stage-control: rgb(0 0 0 / 0.56);
+  --color-stage-control-hover: rgb(0 0 0 / 0.68);
+  --color-stage-muted: #f36b4b;
+  --color-stage-muted-hover: #f57e62;
+  --color-stage-recording: #f18e84;
+  --color-avatar: #f7e3c8;
+
+  /* Surfaces and text */
+  --color-ink: #1c1c1e;
+  --color-ink-soft: #404046;
+  --color-muted: #6b6b73;
+  --color-faint: #a1a1aa;
+  --color-line: #e7e7ea;
+  --color-line-strong: #d4d4d8;
+  --color-surface-2: #f3f3f5;
+  --color-callout: #fff7e5;
+  --color-callout-edge: #f4c95d;
+  --color-warning-soft: #fde4e4;
+  --color-warning-ink: #7f1d1d;
+  --color-toast: #303030;
+  --color-backdrop: rgb(58 58 58 / 0.62);
+
+  /*
+    Motion (emil-design-eng): strong ease-out for entrances, never ease-in.
+    These replace Tailwind's default ease-out / ease-in-out curves site-wide;
+    the landing page doesn't use either utility.
+  */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/*
+  The classroom's page-level styles. ClassroomLayout sets data-app="classroom"
+  on <html> while a classroom route is open, so these also cover popovers
+  portalled into <body>, and nothing else on the site.
+  :where() keeps the specificity of the original selectors.
+*/
+@layer base {
+  :where(html[data-app='classroom']) body {
+    background: #fff;
+    color: var(--color-ink);
+    font-family: var(--font-figtree);
+    font-feature-settings: 'tnum' 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  :where(html[data-app='classroom']) ::selection {
+    background: color-mix(in srgb, var(--color-brand) 24%, transparent);
+  }
+
+  :where(html[data-app='classroom']) :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Focus rings on the rust stage need to be light to be seen */
+  :where(html[data-app='classroom']) [data-surface='stage'] :focus-visible {
+    outline-color: #fff;
+  }
+
+  :where(html[data-app='classroom']) a {
+    text-underline-offset: 2px;
+  }
+
+  :where(html[data-app='classroom']) :is(textarea, input) {
+    caret-color: var(--color-brand);
+  }
+
+  /* Thin, quiet scrollbars like the reference side panel (the page's too) */
+  :where(html[data-app='classroom']),
+  :where(html[data-app='classroom']) * {
+    scrollbar-width: thin;
+    scrollbar-color: #c9c9ce transparent;
+  }
+
+  :where(html[data-app='classroom']) button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Press feedback for anything clickable (emil: 0.97 on :active, 160ms) */
+  .press {
+    transition-property:
+      transform, background-color, border-color, color, opacity;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out);
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  /* Native <dialog> modal: enter from 0.97 + fade, exit faster than enter */
+  .modal {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 200ms var(--ease-out),
+      overlay 200ms allow-discrete,
+      display 200ms allow-discrete;
+  }
+  .modal:not([open]) {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+    transition-duration: 140ms;
+  }
+  @starting-style {
+    .modal[open] {
+      opacity: 0;
+      transform: scale(0.97) translateY(4px);
+    }
+  }
+  .modal::backdrop {
+    background: var(--color-backdrop);
+    opacity: 1;
+    transition:
+      opacity 200ms var(--ease-out),
+      overlay 200ms allow-discrete,
+      display 200ms allow-discrete;
+  }
+  .modal:not([open])::backdrop {
+    opacity: 0;
+  }
+  @starting-style {
+    .modal[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* Popovers scale from their trigger (transform-origin set inline) */
+  .pop {
+    animation: pop-in 180ms var(--ease-out);
+  }
+
+  /* Side panel content swap */
+  .panel-in {
+    animation: panel-in 200ms var(--ease-out);
+  }
+
+  .skeleton {
+    background: var(--color-surface-2);
+    border-radius: 8px;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.9);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -24px) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--drift, 0px)), -220px) scale(1);
+  }
+}
+
+@keyframes fade-out-late {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-only {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active:not(:disabled) {
+    transform: none;
+  }
+  .modal,
+  .modal:not([open]) {
+    transform: none;
+  }
+  @starting-style {
+    .modal[open] {
+      transform: none;
+    }
+  }
+  .pop,
+  .panel-in {
+    animation-name: fade-in-only;
+  }
+  .reaction-float {
+    animation-name: fade-out-late !important;
+    transform: translate(-50%, -80px) !important;
+  }
+}
