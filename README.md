@@ -1,35 +1,33 @@
-# React + TypeScript + Vite
+# Tech Talk Hub
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+[![CI](https://github.com/Tech-Talk-Edutech-Platform/Tech-Talk-Hub-Updated/actions/workflows/ci.yml/badge.svg)](https://github.com/Tech-Talk-Edutech-Platform/Tech-Talk-Hub-Updated/actions/workflows/ci.yml)
 
-Currently, two official plugins are available:
+Built with React 19, TypeScript, Vite, Tailwind CSS v4 and React Router.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Getting started
 
-## React Compiler
+Requires [Bun](https://bun.sh) 1.4+.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+bun install
+bun run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Scripts
+
+| Script                 | What it does                                        |
+| ---------------------- | --------------------------------------------------- |
+| `bun run dev`          | Start the dev server                                |
+| `bun run build`        | Type check and build for production                 |
+| `bun run preview`      | Preview the production build                        |
+| `bun run check`        | Run every CI check (format, lint, typecheck, build) |
+| `bun run lint`         | Lint with oxlint (warnings fail)                    |
+| `bun run lint:fix`     | Auto-fix lint issues                                |
+| `bun run format`       | Format all files with Prettier                      |
+| `bun run format:check` | Check formatting without changing files             |
+| `bun run typecheck`    | Type check with TypeScript                          |
+
+## Contributing
+
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request — it covers the git
+workflow, merge requirements and coding standards.
