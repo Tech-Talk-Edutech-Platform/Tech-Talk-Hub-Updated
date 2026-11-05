@@ -6,7 +6,7 @@ import {
 } from "react-hook-form";
 import { Plus, Sparkles } from "lucide-react";
 import { supabase } from "../../../supabase";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { FormTextField } from "../../../components/forms/FormTextField";
 import { Button } from "../../../components/ui/Button";
 import { zodResolver } from "@hookform/resolvers/zod";

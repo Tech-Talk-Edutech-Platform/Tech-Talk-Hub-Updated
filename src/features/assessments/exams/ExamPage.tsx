@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../../supabase";
 import { Clock, Flag, CheckCircle, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import type { User } from "@supabase/supabase-js";
 
 interface ExamPageProps {

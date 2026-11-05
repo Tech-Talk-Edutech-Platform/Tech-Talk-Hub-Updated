@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../../supabase";
 import { User, Lock, Bell, Shield, Save, Loader2, Sun, Moon, LogOut, Camera } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function StudentSettingsView({ user }) {
   const [fullName, setFullName] = useState(user?.full_name || user?.name || "");

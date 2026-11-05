@@ -4,7 +4,7 @@
 // import { ChevronDown, ChevronUp, Plus, Loader2, Save } from "lucide-react";
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../../supabase"; // Ensure this is your local file
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { ChevronDown, ChevronUp, Plus, Loader2 } from "lucide-react";
 
 interface CreateExamProps {

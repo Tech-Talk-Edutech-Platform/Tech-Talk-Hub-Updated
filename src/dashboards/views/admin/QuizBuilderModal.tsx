@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Plus, Trash2, ChevronDown, ChevronUp, FileText, HelpCircle } from "lucide-react";
 import { supabase } from "../../../supabase";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function QuizBuilderModal({ selectedLesson, selectedCourse, onClose }) {
   const [lessonContentType, setLessonContentType] = useState("notes");

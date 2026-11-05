@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../../supabase";
 import { StatCard } from "../../../components/dashboard/ui/StatCard";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 export default function MarketerDashboard({ currentMarketerId }) {

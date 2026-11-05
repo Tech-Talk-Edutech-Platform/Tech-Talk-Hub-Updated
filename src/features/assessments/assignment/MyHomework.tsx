@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom"; // IMPORT THIS
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { supabase } from "../../../supabase";
 import { Loader2, CheckCircle, Clock, Send, MessageSquare, Star, ArrowLeft } from "lucide-react"; // ADDED ArrowLeft
 

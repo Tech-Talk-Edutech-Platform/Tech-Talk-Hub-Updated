@@ -291,7 +291,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../supabase";
 import { X } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function StudentList({ tutorId }) {
   const [students, setStudents] = useState([]);

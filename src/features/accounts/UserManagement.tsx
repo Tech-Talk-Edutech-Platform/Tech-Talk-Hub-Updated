@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 import { Search, UserCheck, BookOpen, GraduationCap, AlertTriangle, Loader2, Users, LayoutGrid, Mail, Globe } from 'lucide-react';
 import UserManagementModal from './AddUserModal';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom'
 
 interface UserManagementProps {

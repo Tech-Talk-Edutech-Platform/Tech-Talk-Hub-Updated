@@ -16,7 +16,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "../../../supabase";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 function LessonRenderer({ content }) {
   return (

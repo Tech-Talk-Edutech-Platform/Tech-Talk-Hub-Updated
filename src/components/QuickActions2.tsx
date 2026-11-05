@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "../supabase";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 // Component Imports
 import UserManagement from "../features/accounts/UserManagement";

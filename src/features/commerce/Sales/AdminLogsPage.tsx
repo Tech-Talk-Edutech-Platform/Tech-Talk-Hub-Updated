@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Clock, Search, Filter, ArrowLeft, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../supabase';
-import toast, { Toaster } from 'react-hot-toast';
+import { toast, Toaster } from 'react-hot-toast';
 
 export default function AdminLogsPage() {
   const [logs, setLogs] = useState([]);

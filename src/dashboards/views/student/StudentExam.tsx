@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../../supabase";
 import { Clock, Flag, CheckCircle, ArrowLeft, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function ExamPage({ user }) {
   const { id } = useParams();

@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../../supabase";
 import { Loader2, MessageSquare, CheckCircle, ExternalLink, Star } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import type { User } from "@supabase/supabase-js";
 
 interface StudentAssignmentsProps {

@@ -8,7 +8,7 @@ import { supabase } from "../../../supabase";
 import { notifyTutor } from "../../../Utils/adminActions";
 import { StatCard } from "../../../components/dashboard/ui/StatCard";
 import Messages from "../../../Utils/fetchMessage";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function AdminHomeView({ userId, role }) {
   const [stats, setStats] = useState({ revenue: 0, tutors: 0, students: 0, conversion: 0, issues: 0 });

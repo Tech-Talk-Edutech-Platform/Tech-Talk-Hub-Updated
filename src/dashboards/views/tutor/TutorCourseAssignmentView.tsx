@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../../supabase";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { BookOpen, CheckCircle2, User, Layers, Send, AlertCircle, Award, FileCode2, ExternalLink } from "lucide-react";
 
 export default function TutorCourseAssignmentView({ userId }) {

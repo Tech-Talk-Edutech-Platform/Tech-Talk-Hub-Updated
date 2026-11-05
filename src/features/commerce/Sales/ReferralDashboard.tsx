@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Users2, Ticket, DollarSign, ArrowUpRight, Trash2, ArrowLeft } from "lucide-react";
 import { supabase } from "../../../supabase";
 import { StatCard } from "../../../components/dashboard/ui/StatCard";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function ReferralDashboard() {
   const [marketers, setMarketers] = useState([]);

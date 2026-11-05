@@ -22,7 +22,7 @@
 // $$ LANGUAGE plpgsql STABLE;
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabase";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { X, Send, FilePlus, ChevronRight, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 

@@ -10,7 +10,7 @@ import {
   XCircle, Play, Square, FileText, Link2, RefreshCw,
   UserRoundCheck, UserPlus, AlertTriangle, ExternalLink, X
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 import "../../../src/fullcalendar.css";
 import type { ReactNode, MouseEvent } from "react";
 import type { LucideIcon } from "lucide-react";

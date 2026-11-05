@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BookOpen, Plus, Trash2, Layers, BookMarked, Users, GraduationCap, X, LayoutList, Activity, CheckCircle2, Image as ImageIcon, Edit3, FileText, HelpCircle } from "lucide-react";
 import { supabase } from "../../../supabase";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import QuizBuilderModal from "./QuizBuilderModal";
 
 export default function AdminCoursesView() {

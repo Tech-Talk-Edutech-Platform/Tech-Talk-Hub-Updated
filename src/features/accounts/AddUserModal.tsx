@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 import { X, Save, Package, History, Clock, Link, ShieldCheck, UserPlus } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 
 export default function UserManagementModal({ isOpen, onClose, onRefresh, editingUser = null }) {
   const [formData, setFormData] = useState({

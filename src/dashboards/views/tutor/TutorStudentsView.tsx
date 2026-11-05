@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BookOpen, Search, FileText, User, CheckCircle2, AlertCircle, Unlock, Lock, ChevronDown, ChevronUp, HelpCircle, ExternalLink, ChevronLeft, ChevronRight, Layers } from "lucide-react";
 import { supabase } from "../../../supabase";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function TutorStudentsView({ userId }) {
   const [students, setStudents] = useState([]);

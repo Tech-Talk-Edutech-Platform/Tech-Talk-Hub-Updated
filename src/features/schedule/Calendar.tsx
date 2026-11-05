@@ -333,7 +333,7 @@ import { supabase } from "../../supabase";
 import { isAdminRole } from "../../types/roles";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 import "../../../src/fullcalendar.css";
 
 export default function FullCalendarView() {

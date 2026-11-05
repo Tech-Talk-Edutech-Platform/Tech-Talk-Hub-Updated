@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Users2, Plus, Search, Shield, Filter, Trash2, Mail, LayoutGrid, Table as TableIcon, Edit3, UserCheck, BookOpen, X, Check } from "lucide-react";
 import { supabase } from "../../../supabase";
 import AddUserModal from "../../../features/accounts/AddUserModal";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function AdminUsersView() {
   const [users, setUsers] = useState([]);
