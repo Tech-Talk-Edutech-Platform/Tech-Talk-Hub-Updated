@@ -1,0 +1,177 @@
+import React, { useState, useEffect, useMemo } from "react";
+import { supabase } from "../../supabase";
+import { PhoneCall, TrendingUp, Plus, MessageCircle, X, LayoutGrid, List } from "lucide-react";
+import CallCost from "./CallCost";
+
+const TAB_TYPES = {
+  ALL: "all",
+  OVERDUE: "overdue",
+  TODAY: "today",
+  UPCOMING: "upcoming",
+};
+
+const Loading = ({ label }) => (
+  <div className="p-20 text-center font-black animate-pulse text-slate-400">
+    {label}
+  </div>
+);
+
+const ModalShell = ({ title, icon: Icon, children, onClose }) => (
+  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[1000] flex items-center justify-center p-4">
+    <div className="bg-white rounded-[40px] w-full max-w-5xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col">
+      <div className="p-8 border-b flex justify-between items-center">
+        <h2 className="text-2xl font-black flex items-center gap-2">
+          {Icon && <Icon className="text-blue-600" />}
+          {title}
+        </h2>
+        <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-2xl">
+          <X size={24} />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-8">{children}</div>
+    </div>
+  </div>
+);
+
+export default function SalesPipelineModal({ isOpen, onClose }) {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(TAB_TYPES.ALL);
+  const [viewMode, setViewMode] = useState("grid"); // "grid" | "list"
+
+  const [showAddLead, setShowAddLead] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [newLead, setNewLead] = useState({
+    parent_name: "",
+    phone: "",
+    email: "",
+    country: "",
+    grade: "",
+    class_date: "",
+    class_time: "",
+    next_follow_up_at: "",
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchLeads = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("leads")
+        .select("*")
+        .order("next_follow_up_at", { ascending: true });
+      setLeads(data || []);
+      setLoading(false);
+    };
+    fetchLeads();
+  }, [isOpen]);
+
+  const getFollowUpBadge = (next_follow_up_at) => {
+    if (!next_follow_up_at) return null;
+    const now = new Date();
+    const date = new Date(next_follow_up_at);
+    if (date < now) return { label: "Overdue", color: "bg-red-500", icon: "⚠️" };
+    if (date.toDateString() === now.toDateString()) return { label: "Today", color: "bg-blue-500", icon: "📅" };
+    return { label: "Upcoming", color: "bg-green-500", icon: "⏳" };
+  };
+
+  const filteredLeads = useMemo(() => {
+    const now = new Date();
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const end = new Date(); end.setHours(23, 59, 59, 999);
+    let filtered = leads.filter((l) => {
+      if (activeTab === TAB_TYPES.ALL) return true;
+      if (!l.next_follow_up_at) return false;
+      const d = new Date(l.next_follow_up_at);
+      if (activeTab === TAB_TYPES.OVERDUE) return d < now;
+      if (activeTab === TAB_TYPES.TODAY) return d >= start && d <= end;
+      if (activeTab === TAB_TYPES.UPCOMING) return d > end;
+      return true;
+    });
+    return filtered;
+  }, [leads, activeTab]);
+
+  const whatsappLink = (phone) => `https://wa.me/${phone.replace(/\D/g, "")}`;
+  const updateStatus = async (id, status) => {
+    const { data } = await supabase.from("leads").update({ status, last_contacted_at: status === "contacted" ? new Date() : null }).eq("id", id).select().single();
+    if (data) setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...data } : l)));
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <ModalShell title="Sales & Leads Pipeline" icon={TrendingUp} onClose={onClose}>
+      <div className="flex justify-between mb-6 items-center">
+        <div className="flex gap-2">
+          {Object.values(TAB_TYPES).map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-full font-bold ${activeTab === tab ? "bg-blue-500 text-white" : "bg-gray-100"}`}>
+              {tab.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")} className="p-2 hover:bg-gray-100 rounded-full">
+            {viewMode === "grid" ? <List size={20} /> : <LayoutGrid size={20} />}
+          </button>
+          <button onClick={() => setShowAddLead(true)} className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-full font-bold">
+            <Plus size={16} /> Add Lead
+          </button>
+        </div>
+      </div>
+
+      {loading ? <Loading label="SYNCING PIPELINE..." /> : (
+        viewMode === "grid" ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredLeads.map((l) => (
+              <div key={l.id} className="p-6 rounded-[32px] border bg-white flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase bg-slate-100 px-2 py-1 rounded">{l.status || "NEW"}</span>
+                  {getFollowUpBadge(l.next_follow_up_at) && <span className={`text-[10px] text-white px-2 py-1 rounded-full ${getFollowUpBadge(l.next_follow_up_at).color}`}>{getFollowUpBadge(l.next_follow_up_at).label}</span>}
+                </div>
+                <h4 className="font-black text-lg">{l.parent_name}</h4>
+                <div className="text-xs text-slate-500 space-y-0.5">
+                  <p>Email: {l.email || "-"}</p>
+                  <p>Grade: {l.grade || "-"}</p>
+                  <p>Follow-up: {l.next_follow_up_at ? new Date(l.next_follow_up_at).toLocaleString() : "None"}</p>
+                </div>
+                <CallCost phone={l.phone} />
+                <div className="flex gap-2 mt-2">
+                  <a href={whatsappLink(l.phone)} target="_blank" rel="noreferrer" className="p-2 bg-green-100 rounded-xl text-green-600"><MessageCircle size={16} /></a>
+                  <a href={`tel:${l.phone}`} className="p-2 bg-yellow-100 rounded-xl text-yellow-800"><PhoneCall size={16} /></a>
+                  <button onClick={() => updateStatus(l.id, "contacted")} className="flex-1 text-xs font-bold py-2 bg-blue-50 text-blue-600 rounded-xl">Contacted</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="border rounded-3xl overflow-hidden">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                <tr>
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Contact</th>
+                  <th className="p-4">Follow Up</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filteredLeads.map((l) => (
+                  <tr key={l.id}>
+                    <td className="p-4 font-bold">{l.parent_name}</td>
+                    <td className="p-4 text-sm">{l.phone}</td>
+                    <td className="p-4 text-sm">{l.next_follow_up_at ? new Date(l.next_follow_up_at).toLocaleDateString() : "-"}</td>
+                    <td className="p-4"><span className="text-[10px] font-bold uppercase px-2 py-1 bg-slate-100 rounded-full">{l.status || "NEW"}</span></td>
+                    <td className="p-4 flex gap-2">
+                      <button onClick={() => updateStatus(l.id, "contacted")} className="text-xs px-3 py-1 bg-blue-100 rounded-full">Contacted</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+    </ModalShell>
+  );
+}

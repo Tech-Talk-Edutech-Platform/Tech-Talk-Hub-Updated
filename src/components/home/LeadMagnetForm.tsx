@@ -1,4 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod/v3'
 
 import { requestRoadmap } from '../../lib/api/roadmap'
 
@@ -7,13 +10,17 @@ type LeadMagnetFormProps = {
 }
 
 type Status = 'idle' | 'loading' | 'success'
+const leadMagnetSchema = z.object({ email: z.string().email('Enter a valid email address.') })
+type LeadMagnetValues = z.infer<typeof leadMagnetSchema>
 
 /** Collects a parent's email to send them the curriculum roadmap PDF. */
 export function LeadMagnetForm({ onClose }: LeadMagnetFormProps) {
-  const [email, setEmail] = useState('')
   const [status, setStatus] = useState<Status>('idle')
+  const { register, handleSubmit, formState: { errors } } = useForm<LeadMagnetValues>({
+    resolver: zodResolver(leadMagnetSchema), defaultValues: { email: '' },
+  })
 
-  async function submit() {
+  async function submit({ email }: LeadMagnetValues) {
     setStatus('loading')
 
     try {
@@ -28,13 +35,8 @@ export function LeadMagnetForm({ onClose }: LeadMagnetFormProps) {
     setTimeout(onClose, 3000)
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    void submit()
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-3">
       {status === 'success' ? (
         <p className="text-center font-bold text-green-600">
           Thanks! Check your email for the PDF.
@@ -46,10 +48,10 @@ export function LeadMagnetForm({ onClose }: LeadMagnetFormProps) {
             aria-label="Parent email"
             placeholder="Enter parent email"
             className="rounded-lg border border-slate-200 p-3"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            {...register('email')}
+            aria-invalid={Boolean(errors.email)}
           />
+          {errors.email && <p role="alert" className="text-sm text-red-600">{errors.email.message}</p>}
 
           <button
             type="submit"

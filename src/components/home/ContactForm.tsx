@@ -1,10 +1,11 @@
 import { CheckCircle2, Send } from 'lucide-react'
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod/v3'
 
 import { PROGRAM_INTEREST_OPTIONS } from '../../data/home'
 import {
   buildContactWhatsAppUrl,
-  EMPTY_CONTACT_FORM,
   type ContactFormValues,
 } from '../../lib/contact'
 import { FORM_CONTROL_CLASS } from '../ui/formControlClass'
@@ -12,23 +13,27 @@ import { FormField } from '../ui/FormField'
 import { HoverArrow } from '../ui/HoverArrow'
 import { TextField } from '../ui/TextField'
 
+const contactSchema = z.object({
+  parentName: z.string().trim().min(1, 'Enter your name.'),
+  childAge: z.string().min(1, 'Enter your child’s age.').refine((age) => {
+    const value = Number(age)
+    return Number.isInteger(value) && value >= 4 && value <= 18
+  }, 'Age must be between 4 and 18.'),
+  phone: z.string().trim().min(1, 'Enter your phone number.'),
+  email: z.union([z.literal(''), z.string().email('Enter a valid email address.')]),
+  interest: z.string(),
+  message: z.string().trim().min(1, 'Enter a message.'),
+})
+
 /** Contact form that hands the parent's message off to WhatsApp. */
 export function ContactForm() {
-  const [form, setForm] = useState<ContactFormValues>(EMPTY_CONTACT_FORM)
+  const { register, handleSubmit, formState: { errors } } = useForm<ContactFormValues>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: { parentName: '', childAge: '', phone: '', email: '', interest: '', message: '' },
+  })
 
-  function handleChange(
-    event: ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
-  ) {
-    const { name, value } = event.target
-
-    setForm((current) => ({ ...current, [name]: value }))
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    window.open(buildContactWhatsAppUrl(form), '_blank', 'noopener,noreferrer')
+  function handleValidSubmit(values: ContactFormValues) {
+    window.open(buildContactWhatsAppUrl(values), '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -43,17 +48,18 @@ export function ContactForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-5 sm:grid-cols-2">
+      <form onSubmit={handleSubmit(handleValidSubmit)} noValidate className="grid gap-5 sm:grid-cols-2">
         <TextField
           id="parentName"
           name="parentName"
           label="Parent’s Name"
           type="text"
           required
-          value={form.parentName}
-          onChange={handleChange}
+          {...register('parentName')}
+          aria-invalid={Boolean(errors.parentName)}
           placeholder="Your name"
         />
+        {errors.parentName && <p role="alert" className="text-sm text-red-600">{errors.parentName.message}</p>}
 
         <TextField
           id="childAge"
@@ -63,10 +69,11 @@ export function ContactForm() {
           min="4"
           max="18"
           required
-          value={form.childAge}
-          onChange={handleChange}
+          {...register('childAge')}
+          aria-invalid={Boolean(errors.childAge)}
           placeholder="e.g. 8"
         />
+        {errors.childAge && <p role="alert" className="text-sm text-red-600">{errors.childAge.message}</p>}
 
         <TextField
           id="phone"
@@ -74,18 +81,19 @@ export function ContactForm() {
           label="Phone Number"
           type="tel"
           required
-          value={form.phone}
-          onChange={handleChange}
+          {...register('phone')}
+          aria-invalid={Boolean(errors.phone)}
           placeholder="07XX XXX XXX"
         />
+        {errors.phone && <p role="alert" className="text-sm text-red-600">{errors.phone.message}</p>}
 
         <TextField
           id="email"
           name="email"
           label="Email Address"
           type="email"
-          value={form.email}
-          onChange={handleChange}
+          {...register('email')}
+          aria-invalid={Boolean(errors.email)}
           placeholder="you@example.com"
         />
 
@@ -97,8 +105,7 @@ export function ContactForm() {
           <select
             id="interest"
             name="interest"
-            value={form.interest}
-            onChange={handleChange}
+            {...register('interest')}
             className={`h-12 text-slate-700 ${FORM_CONTROL_CLASS}`}
           >
             <option value="">Select a program</option>
@@ -117,12 +124,13 @@ export function ContactForm() {
             name="message"
             rows={4}
             required
-            value={form.message}
-            onChange={handleChange}
+            {...register('message')}
+            aria-invalid={Boolean(errors.message)}
             placeholder="How can we help you?"
             className={`resize-none py-3 text-slate-800 placeholder:text-slate-400 ${FORM_CONTROL_CLASS}`}
           />
         </FormField>
+        {errors.message && <p role="alert" className="text-sm text-red-600 sm:col-span-2">{errors.message.message}</p>}
 
         <button
           type="submit"

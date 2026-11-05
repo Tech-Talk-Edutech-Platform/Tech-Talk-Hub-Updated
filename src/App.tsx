@@ -1,28 +1,197 @@
-import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router-dom'
-import { useScrollToHash } from './hooks/useScrollToHash'
-import { HomePage } from './pages/HomePage'
+import React, { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import type { User } from "@supabase/supabase-js";
+import { isSupabaseConfigured, supabase } from "./supabase";
+import {
+  APP_ROLES,
+  isAppRole,
+  TUTOR_ADMIN_ROLES,
+  type AppRole,
+} from "./types/roles";
 
-const ClassroomRoutes = lazy(() =>
-  import('./pages/classroom/ClassroomRoutes').then((module) => ({
-    default: module.ClassroomRoutes,
-  })),
-)
+// Structural Layout Framework Components
+import Login from "./auth/login";
+import RoleGate from "./auth/RoleGate";
 
-export function App() {
-  useScrollToHash()
+import ExamInterface from "./features/exam/ExamInterface";
+import FullCalendarView from "./features/schedule/Calendar";
+import CreateExam from "./features/assessments/exams/CreateExam";
+import ExamPage from "./features/assessments/exams/ExamPage";
+import StudentDashboard from "./features/assessments/results/parentResult";
+import AdminEntryForm from "./features/assessments/results/AdminUpload";
+import StudentAssignmentManager from "./features/accounts/StudentAssignmentManager";
+import UserManagement from "./features/accounts/UserManagement";
+import ReferralDashboard from "./features/commerce/Sales/ReferralDashboard";
+import MarketerDashboard from "./features/commerce/Sales/MarketerDashboard";
+import LearningPage from "./components/pages/Learning";
+
+import UnifiedDashboard from "./dashboards/UnifiedDashboard";
+import AdminNotesManager from "./components/AdminNotesManager";
+import "./index.css";
+import AdminDashboard from "./dashboards/views/sendReceipt";
+import LandingOrDashboard from "./LandingOrDashboard";
+import ErrorBoundary from "./components/ErrorBoundary";
+
+// Newly Mounted Admin Views
+import MyHomework from "./features/assessments/assignment/MyHomework";
+import StudentAssignments from "./features/assessments/assignment/StudentAssignments";
+
+// --- HOISTED COMPONENTS ---
+const UserManagementPage = () => {
+  const { role } = useParams();
+  return <UserManagement viewerRole={role} />;
+};
+
+const MarketerView = () => {
+  const { marketerId } = useParams();
+  const [id, setId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setId(marketerId || data.user?.id || null);
+    };
+    getUser();
+  }, [marketerId]);
+
+  return <MarketerDashboard currentMarketerId={id} />;
+};
+
+function DashboardApp() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const allRoles: readonly AppRole[] = APP_ROLES;
+
+  useEffect(() => {
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error("Session identity authentication link failed:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="h-screen bg-gray-900 flex flex-col items-center justify-center text-white font-sans">
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-gray-400 font-bold tracking-widest uppercase text-xs">Initializing Session</p>
+      </div>
+    );
+  }
 
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route
-        path="/classroom/*"
-        element={
-          <Suspense fallback={null}>
-            <ClassroomRoutes />
-          </Suspense>
-        }
-      />
-    </Routes>
-  )
+    <BrowserRouter>
+      <Routes>
+          <Route
+            path="/"
+            element={
+              user
+                ? <Navigate to={`/${isAppRole(user.user_metadata?.role) ? user.user_metadata.role : "student"}`} replace />
+                : <Login />
+            }
+          />
+          <Route path="/landing" element={<LandingOrDashboard />} />
+
+          <Route path="/assign-homework" element={<StudentAssignments user={user}/>} />
+
+          {/* Public Routes */}
+          <Route path="/results/:slug" element={<StudentDashboard />} />
+
+          {/* Admin/Marketer Extension Routes */}
+          <Route path="/admin/referrals" element={<ReferralDashboard />} />
+          <Route path="/marketer" element={<MarketerView />} />
+          // <Route path="/exam1" element={<ExamInterface/>} />
+
+          {/* Protected Dashboard Matrix */}
+          <Route
+            path="/:role"
+            element={
+              <RoleGate allowedRoles={allRoles}>
+                <UnifiedDashboard />
+              </RoleGate>
+            }
+          />
+
+          <Route path="/receive-homework" element={<MyHomework studentId={user?.id} />} />
+          <Route path="/upload-notes" element={<AdminNotesManager />} />
+          <Route path="/users" element={<UserManagementPage />} />
+          <Route path="/student-assignment" element={<StudentAssignmentManager />} />
+          <Route path="/learning/:id" element={<LearningPage user={user} />} />
+          <Route path="/create-exam" element={<CreateExam />} />
+          <Route path="/exam" element={<ExamPage user={user} />} />
+
+          <Route
+            path="/calendar"
+            element={
+              <RoleGate allowedRoles={allRoles}>
+                <FullCalendarView />
+              </RoleGate>
+            }
+          />
+
+          <Route
+            path="/receipt"
+            element={
+              <RoleGate allowedRoles={TUTOR_ADMIN_ROLES}>
+                <AdminDashboard />
+              </RoleGate>
+            }
+          />
+
+          <Route
+            path="/upload-results"
+            element={
+              <RoleGate allowedRoles={TUTOR_ADMIN_ROLES}>
+                <AdminEntryForm />
+              </RoleGate>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+function SupabaseConfigurationError() {
+  const isDevelopment = import.meta.env.DEV;
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-12 text-slate-100">
+      <section className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-900 p-8 shadow-2xl sm:p-10">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Setup required</p>
+        <h1 className="mt-3 text-2xl font-black">Tech Talk Hub is not configured</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-300">
+          {isDevelopment
+            ? "Add the Supabase project settings to the project root .env.local file, then restart the Vite development server."
+            : "This application is not connected to its data service yet. Please contact the site administrator."}
+        </p>
+        {isDevelopment && (
+          <pre className="mt-6 overflow-auto rounded-xl border border-white/10 bg-black/30 p-4 text-sm leading-6 text-amber-100">{`VITE_SUPABASE_URL=https://your-project.supabase.co\nVITE_SUPABASE_ANON_KEY=your-anon-key`}</pre>
+        )}
+      </section>
+    </main>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      {isSupabaseConfigured ? <DashboardApp /> : <SupabaseConfigurationError />}
+    </ErrorBoundary>
+  );
 }
