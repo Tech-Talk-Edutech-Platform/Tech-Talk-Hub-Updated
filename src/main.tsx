@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 
 import './index.css'
+import './fullcalendar.css'
 import App from './App'
 import { CartProvider } from './context/CartProvider'
 import { queryClient } from './lib/queryClient'

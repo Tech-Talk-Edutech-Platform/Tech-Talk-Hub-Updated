@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { lazy, Suspense, useEffect, useState } from 'react'
 import {
   BrowserRouter,
   Routes,
@@ -36,8 +36,21 @@ import AdminNotesManager from './components/AdminNotesManager'
 import './index.css'
 import AdminDashboard from './dashboards/views/sendReceipt'
 import LandingOrDashboard from './LandingOrDashboard'
-import LandingPage from './Utils/LandingPage'
 import ErrorBoundary from './components/ErrorBoundary'
+import { HomePage } from './pages/HomePage'
+import { useScrollToHash } from './hooks/useScrollToHash'
+
+const ClassroomRoutes = lazy(() =>
+  import('./pages/classroom/ClassroomRoutes').then((module) => ({
+    default: module.ClassroomRoutes,
+  })),
+)
+
+/** Scrolls to `/#section` targets on the landing page; must render inside the router. */
+function ScrollToHash() {
+  useScrollToHash()
+  return null
+}
 
 // Newly Mounted Admin Views
 import MyHomework from './features/assessments/assignment/MyHomework'
@@ -108,6 +121,7 @@ function DashboardApp() {
 
   return (
     <BrowserRouter>
+      <ScrollToHash />
       <Routes>
         <Route
           path="/"
@@ -118,8 +132,16 @@ function DashboardApp() {
                 replace
               />
             ) : (
-              <LandingPage />
+              <HomePage />
             )
+          }
+        />
+        <Route
+          path="/classroom/*"
+          element={
+            <Suspense fallback={null}>
+              <ClassroomRoutes />
+            </Suspense>
           }
         />
         <Route path="/login" element={<Login />} />
