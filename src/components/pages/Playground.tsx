@@ -8,11 +8,51 @@ import { autocompletion } from '@codemirror/autocomplete'
 
 const CodeMirror = React.lazy(() => import('@uiw/react-codemirror'))
 
-let skInputQueue = []
-let skInputResolve = null
+interface SkulptConfig {
+  output: (text: string) => void
+  read: (x: string) => string
+  inputfun: (promptText: string) => Promise<string | undefined>
+}
 
-const loadSkulpt = (setShowInput, setInputPrompt) =>
-  new Promise((resolve, reject) => {
+interface Skulpt {
+  pre: string
+  configure: (config: SkulptConfig) => void
+  builtinFiles?: { files: Record<string, string> }
+  misceval: {
+    asyncToPromise: (fn: () => unknown) => Promise<unknown>
+  }
+  importMainWithBody: (
+    name: string,
+    dumpJS: boolean,
+    body: string,
+    canSuspend: boolean,
+  ) => unknown
+}
+
+declare global {
+  interface Window {
+    Sk: Skulpt
+  }
+}
+
+interface PlaygroundProps {
+  darkMode?: boolean
+}
+
+interface JsLogMessage {
+  type: string
+  message: string
+  isError: boolean
+}
+
+let skInputQueue: string[] = []
+let skInputResolve: ((value: void) => void) | null = null
+
+const loadSkulpt = (
+  setShowInput: (show: boolean) => void,
+  setInputPrompt: (prompt: string) => void,
+) =>
+  new Promise<void>((resolve, reject) => {
     if (window.Sk) return resolve()
     const core = document.createElement('script')
     core.src = '/skulpt/skulpt.min.js'
@@ -24,16 +64,16 @@ const loadSkulpt = (setShowInput, setInputPrompt) =>
       stdlib.onload = () => {
         window.Sk.pre = 'output'
         window.Sk.configure({
-          output: (text) => {
+          output: (text: string) => {
             const output = document.getElementById('output')
             if (output) output.innerHTML += text.replace(/\n/g, '<br/>')
           },
-          read: (x) => {
+          read: (x: string) => {
             if (!window.Sk.builtinFiles?.files[x])
               throw new Error('File not found: ' + x)
             return window.Sk.builtinFiles.files[x]
           },
-          inputfun: async (promptText) => {
+          inputfun: async (promptText: string) => {
             setShowInput(true)
             setInputPrompt(promptText)
 
@@ -61,7 +101,7 @@ const loadSkulpt = (setShowInput, setInputPrompt) =>
     document.body.appendChild(core)
   })
 
-export default function Playground({ darkMode }) {
+export default function Playground({ darkMode }: PlaygroundProps) {
   const [mode, setMode] = useState('web')
   const [pythonCode, setPythonCode] = useState(
     "print('Hello, Python!')\nchoice = input('Enter 1, 2 or 3: ')\nprint('You chose', choice)",
@@ -75,18 +115,18 @@ export default function Playground({ darkMode }) {
   const [showInput, setShowInput] = useState(false)
   const [inputPrompt, setInputPrompt] = useState('')
 
-  const iframeRef = useRef(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const runPython = async () => {
     try {
       await loadSkulpt(setShowInput, setInputPrompt)
-      document.getElementById('output').innerHTML = ''
+      document.getElementById('output')!.innerHTML = ''
       skInputQueue = []
       await window.Sk.misceval.asyncToPromise(() =>
         window.Sk.importMainWithBody('<stdin>', false, pythonCode, true),
       )
     } catch (err) {
-      document.getElementById('output').innerHTML =
+      document.getElementById('output')!.innerHTML =
         `<span style="color:red;">${err.toString()}</span>`
     }
   }
@@ -104,7 +144,7 @@ export default function Playground({ darkMode }) {
     const timer = setTimeout(() => {
       const iframe = iframeRef.current
       if (!iframe) return
-      const doc = iframe.contentDocument || iframe.contentWindow.document
+      const doc = iframe.contentDocument || iframe.contentWindow!.document
       doc.open()
       doc.write(`
         <html>
@@ -128,7 +168,7 @@ export default function Playground({ darkMode }) {
 
   // Capture JS console logs
   useEffect(() => {
-    const handleMessage = (event) => {
+    const handleMessage = (event: MessageEvent<JsLogMessage>) => {
       if (event.data.type === 'js-log') {
         const log = event.data.isError
           ? `<span style="color:red;">${event.data.message}</span>`

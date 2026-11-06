@@ -209,7 +209,7 @@ export function DashboardShell({
           aria-label={`${portalLabel} navigation`}
           aria-modal={mobileOpen ? true : undefined}
           aria-hidden={!mobileOpen}
-          {...({ inert: !mobileOpen } as { inert: boolean })}
+          {...{ inert: !mobileOpen }}
           className={`fixed inset-y-0 left-0 z-40 m-0 flex w-[min(18rem,calc(100vw-3rem))] max-w-none flex-col border-0 border-r border-slate-100 bg-white p-4 shadow-xl transition-transform dark:border-white/10 dark:bg-slate-900 lg:hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
           <div className="mb-6 flex min-h-12 items-center justify-between gap-2 px-2">

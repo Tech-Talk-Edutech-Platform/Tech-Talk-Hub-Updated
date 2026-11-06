@@ -169,8 +169,8 @@ export default function LandingPage() {
       <div className="flex w-full max-w-6xl flex-col items-center gap-12 md:flex-row">
         {/* LEFT IMAGE */}
         <div className="relative mb-10 flex w-full justify-center md:mb-0 md:w-1/2">
-          <div className="animate-rotate-slow absolute -left-24 -top-24 h-96 w-96 rounded-full bg-gradient-to-tr from-blue-400 via-purple-400 to-pink-400 opacity-60"></div>
-          <div className="animate-rotate-slow reverse absolute -bottom-16 -right-16 h-72 w-72 rounded-full bg-gradient-to-br from-purple-300 via-pink-300 to-yellow-200 opacity-50"></div>
+          <div className="animate-rotate-slow absolute -left-24 -top-24 h-96 w-96 rounded-full bg-gradient-to-tr from-blue-400 via-purple-400 to-pink-400 opacity-60" />
+          <div className="animate-rotate-slow reverse absolute -bottom-16 -right-16 h-72 w-72 rounded-full bg-gradient-to-br from-purple-300 via-pink-300 to-yellow-200 opacity-50" />
 
           <img
             src="/girl-code.png"
@@ -335,14 +335,14 @@ export default function LandingPage() {
               </span>
               <span className="text-sm text-gray-500">Active Students</span>
             </div>
-            <div className="hidden h-10 w-px bg-gray-300 md:block"></div>
+            <div className="hidden h-10 w-px bg-gray-300 md:block" />
             <div className="text-center">
               <span className="block text-3xl font-bold text-gray-800">
                 4.9/5
               </span>
               <span className="text-sm text-gray-500">Parent Rating</span>
             </div>
-            <div className="hidden h-10 w-px bg-gray-300 md:block"></div>
+            <div className="hidden h-10 w-px bg-gray-300 md:block" />
             <div className="text-center">
               <span className="block text-3xl font-bold text-gray-800">
                 12+

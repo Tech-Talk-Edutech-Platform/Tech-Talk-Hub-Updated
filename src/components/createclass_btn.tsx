@@ -16,6 +16,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
 import { supabase } from '../supabase'
+import type { Tables } from '../types/database'
+
+type UserOption = Pick<Tables<'users'>, 'id' | 'full_name'>
 
 const createClassSchema = z.object({
   student_id: z.string().min(1, 'Select a student.'),
@@ -27,8 +30,8 @@ const createClassSchema = z.object({
 type CreateClassValues = z.infer<typeof createClassSchema>
 
 export default function CreateClassForm() {
-  const [students, setStudents] = useState([])
-  const [tutors, setTutors] = useState([])
+  const [students, setStudents] = useState<UserOption[]>([])
+  const [tutors, setTutors] = useState<UserOption[]>([])
   const {
     register,
     handleSubmit,

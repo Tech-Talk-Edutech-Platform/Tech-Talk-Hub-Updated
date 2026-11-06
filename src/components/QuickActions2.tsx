@@ -1,55 +1,79 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Star,
   BookOpen,
-  MessageSquare,
   FileText,
   ShieldAlert,
-  AlertTriangle,
   CheckCircle,
   X,
 } from 'lucide-react'
 import { supabase } from '../supabase'
 import { toast } from 'react-hot-toast'
+import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import type { Tables } from '../types/database'
 
 // Component Imports
-import UserManagement from '../features/accounts/UserManagement'
-import StudentAssignmentManager from '../features/accounts/StudentAssignmentManager'
-import StudentAssignments from '../features/assessments/assignment/StudentAssignments'
-import AdminNotesManager from './AdminNotesManager'
 import Sales from './Sales'
 
+type UserRow = Tables<'users'>
+
+interface QuickActions2Props {
+  userId: string
+  role: string
+  courseId?: string | null
+}
+
+interface QuickAction {
+  label: string
+  icon: LucideIcon
+  color: string
+}
+
+interface StudentTask {
+  id: string
+  name: string
+  status: string | null
+}
+
+interface ModalProps {
+  title: string
+  children?: ReactNode
+  onClose: () => void
+}
+
 // ===== MAIN COMPONENT =====
-export default function QuickActions2({ userId, role, courseId }) {
+export default function QuickActions2({
+  userId,
+  role,
+  courseId,
+}: QuickActions2Props) {
   const navigate = useNavigate()
 
-  const [exams, setExams] = useState([])
-  const [showExamModal, setShowExamModal] = useState(false)
-  const [showStudentTutorAssignment, setShowStudentTutorAssignment] =
-    useState(false)
   const [showTrialMaterial, setShowTrialMaterial] = useState(false)
   const [showCourseMaterial, setShowCourseMaterial] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showInvoicesModal, setShowInvoicesModal] = useState(false)
-  const [showHomeworkModal, setShowHomeworkModal] = useState(false)
-  const [showAssignmentsModal, setShowAssignmentsModal] = useState(false)
-
   const [showTutorNotesModal, setShowTutorNotesModal] = useState(false)
-  const [studentsWithCourses, setStudentsWithCourses] = useState([])
+  const [studentsWithCourses, setStudentsWithCourses] = useState<
+    Pick<UserRow, 'id' | 'full_name' | 'assigned_course_id'>[]
+  >([])
   const [showExamForm, setShowExamForm] = useState(false)
 
   // Data States
-  const [students, setStudents] = useState([])
-  const [selectedStudent, setSelectedStudent] = useState(null)
-  const [studentTasks, setStudentTasks] = useState([])
+  const [students, setStudents] = useState<Pick<UserRow, 'id' | 'full_name'>[]>(
+    [],
+  )
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
+  const [studentTasks, setStudentTasks] = useState<StudentTask[]>([])
 
   const GOOGLE_DOC_URL =
     'https://docs.google.com/document/d/1DNIqIxd52u_8Qe8vcWZ0ANMNh35AR4FCWzoLfK_Dq5M/preview'
   const TUTOR_FEEDBACK_FORM =
     'https://docs.google.com/forms/d/e/1FAIpQLSeCEoH7LmNeU89c-WXKS4-Kc9H0uU4nYO4t2S8hAjb7btM__Q/viewform?embedded=true'
 
-  const actionConfigs = {
+  const actionConfigs: Record<string, QuickAction[]> = {
     student: [
       { label: 'My Homework', icon: Star, color: 'bg-amber-400' },
       { label: 'Class Notes', icon: BookOpen, color: 'bg-indigo-500' },
@@ -95,7 +119,7 @@ export default function QuickActions2({ userId, role, courseId }) {
     if (data) setStudentsWithCourses(data)
   }
 
-  const handleActionClick = async (label) => {
+  const handleActionClick = async (label: string) => {
     if (label === 'User Management') {
       return navigate('/users')
     }
@@ -146,7 +170,7 @@ export default function QuickActions2({ userId, role, courseId }) {
     }
   }
 
-  const handleSelectStudent = async (studentId) => {
+  const handleSelectStudent = async (studentId: string) => {
     setSelectedStudent(studentId)
     const { data: assignmentData } = await supabase
       .from('student_assignments')
@@ -173,10 +197,12 @@ export default function QuickActions2({ userId, role, courseId }) {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          {currentActions.map((action, index) => (
+          {currentActions.map((action) => (
             <button
-              key={index}
-              onClick={() => handleActionClick(action.label)}
+              key={action.label}
+              onClick={() => {
+                void handleActionClick(action.label)
+              }}
               className="group flex flex-col items-center justify-center rounded-2xl border border-slate-50 p-4 transition hover:shadow-lg active:scale-95"
             >
               <div className={`rounded-xl p-3 ${action.color} mb-3 text-white`}>
@@ -201,7 +227,9 @@ export default function QuickActions2({ userId, role, courseId }) {
               studentsWithCourses.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => navigate(`/learning/${s.assigned_course_id}`)}
+                  onClick={() => {
+                    void navigate(`/learning/${s.assigned_course_id}`)
+                  }}
                   className="group flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-all hover:bg-indigo-50"
                 >
                   <div className="text-left">
@@ -231,6 +259,7 @@ export default function QuickActions2({ userId, role, courseId }) {
             src="https://form.typeform.com/to/Tz2QEJqO"
             className="h-[1000px] w-full rounded-xl border-0"
             allow="camera; microphone; autoplay; encrypted-media;"
+            sandbox="allow-forms allow-popups allow-scripts"
             title="Exam Form"
           />
         </Modal>
@@ -244,6 +273,7 @@ export default function QuickActions2({ userId, role, courseId }) {
           <iframe
             src={GOOGLE_DOC_URL}
             className="h-[600px] w-full rounded-lg border"
+            sandbox="allow-forms allow-popups allow-scripts"
             title="Trial Material"
           />
         </Modal>
@@ -260,7 +290,9 @@ export default function QuickActions2({ userId, role, courseId }) {
               {students.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => handleSelectStudent(s.id)}
+                  onClick={() => {
+                    void handleSelectStudent(s.id)
+                  }}
                   className={`mb-2 w-full rounded-xl p-3 text-left transition ${selectedStudent === s.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'}`}
                 >
                   {s.full_name}
@@ -298,27 +330,6 @@ export default function QuickActions2({ userId, role, courseId }) {
         </Modal>
       )}
 
-      {showExamModal && (
-        <Modal title="Select Exam" onClose={() => setShowExamModal(false)}>
-          <div className="grid gap-3">
-            {exams.length > 0 ? (
-              exams.map((exam) => (
-                <button
-                  key={exam.id}
-                  onClick={() => navigate(`/exam/${exam.id}`)}
-                  className="rounded-xl bg-slate-50 p-4 text-left hover:bg-indigo-50"
-                >
-                  <p className="font-bold">{exam.title}</p>
-                  <p className="text-xs text-slate-500">Start Exam</p>
-                </button>
-              ))
-            ) : (
-              <p className="text-slate-400">No exams available</p>
-            )}
-          </div>
-        </Modal>
-      )}
-
       {showFeedbackModal && (
         <Modal
           title="Student Feedback"
@@ -327,6 +338,7 @@ export default function QuickActions2({ userId, role, courseId }) {
           <iframe
             src={TUTOR_FEEDBACK_FORM}
             className="h-[600px] w-full rounded-lg border"
+            sandbox="allow-forms allow-popups allow-scripts"
             title="Feedback Form"
           />
         </Modal>
@@ -335,7 +347,7 @@ export default function QuickActions2({ userId, role, courseId }) {
   )
 }
 
-const Modal = ({ title, children, onClose }) => (
+const Modal = ({ title, children, onClose }: ModalProps) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
     <div className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl">
       <button

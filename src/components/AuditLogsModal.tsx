@@ -2,8 +2,28 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { X, Search, FileText, CheckCircle2, Clock, User } from 'lucide-react'
 
-export default function AuditLogsModal({ isOpen, onClose }) {
-  const [logs, setLogs] = useState([])
+interface AuditLogsModalProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+interface AuditLog {
+  id: string
+  status: string | null
+  created_at: string
+  students: { full_name: string } | null
+  calendar_events: {
+    title: string
+    start_time: string
+    tutors: { full_name: string } | null
+  } | null
+}
+
+export default function AuditLogsModal({
+  isOpen,
+  onClose,
+}: AuditLogsModalProps) {
+  const [logs, setLogs] = useState<AuditLog[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 

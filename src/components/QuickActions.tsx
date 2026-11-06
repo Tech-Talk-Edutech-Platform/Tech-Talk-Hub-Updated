@@ -20,7 +20,7 @@
 //   END IF;
 // END;
 // $$ LANGUAGE plpgsql STABLE;
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useState } from 'react'
 import { supabase } from '../supabase'
 import { toast } from 'react-hot-toast'
 import { X, Send, FilePlus, ChevronRight, RotateCcw } from 'lucide-react'
@@ -41,24 +41,21 @@ export default function QuickActions({ tutorId, role, studentId }) {
   const [category, setCategory] = useState('') // Default empty to handle dynamic course
   const [taskUrl, setTaskUrl] = useState('')
 
-  // Effect to fetch tasks when a student is selected
-  useEffect(() => {
-    if (selectedStudent && modalType === 'assignment') {
-      fetchStudentTasks(selectedStudent.id)
-      // Auto-set category to the student's assigned course if available
-      if (selectedStudent.assigned_course_id) {
-        setCategory(selectedStudent.assigned_course_id)
-      }
-    }
-  }, [selectedStudent, modalType])
-
-  const fetchStudentTasks = async (sId) => {
+  const fetchStudentTasks = useCallback(async (sId) => {
     const { data, error } = await supabase
       .from('student_assignments')
       .select('*')
       .eq('student_id', sId)
       .order('created_at', { ascending: false })
     if (!error) setStudentTasks(data || [])
+  }, [])
+
+  const handleSelectStudent = (student) => {
+    setSelectedStudent(student)
+    setCategory(student.assigned_course_id || '')
+    if (modalType === 'assignment') {
+      void fetchStudentTasks(student.id)
+    }
   }
 
   const handleSendMessage = async () => {
@@ -103,6 +100,9 @@ export default function QuickActions({ tutorId, role, studentId }) {
         if (tutor) {
           setStudents([tutor])
           setSelectedStudent(tutor)
+          if (modalType === 'assignment') {
+            void fetchStudentTasks(tutor.id)
+          }
         }
       }
     } else if (role === 'tutor') {
@@ -169,7 +169,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
       }
 
       // Success redirect...
-      navigate(`/learning/${classData.event_id}`, { state: { classData } })
+      void navigate(`/learning/${classData.event_id}`, { state: { classData } })
     } catch (err) {
       toast.error('Connection failed. Check your console.')
       console.error(err)
@@ -180,7 +180,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
 
   const handleOpenModal = (type) => {
     setModalType(type)
-    fetchStudents()
+    void fetchStudents()
   }
 
   const closeModal = () => {
@@ -221,7 +221,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
   // };
   const handleAddAssignment = async () => {
     if (!tutorId || !selectedStudent || !taskName.trim()) {
-      console.log('Missing required fields')
+      toast.error('Select a student and enter a task name.')
       return
     }
 
@@ -241,14 +241,13 @@ export default function QuickActions({ tutorId, role, studentId }) {
     setLoading(false)
 
     if (error) {
-      console.log('INSERT ERROR:', error.message)
       toast.error('Failed to add assignment: ' + error.message)
       return
     }
 
     toast.success('Assignment added successfully!')
     // Refresh tasks for this student
-    fetchStudentTasks(selectedStudent.id)
+    void fetchStudentTasks(selectedStudent.id)
     // Clear inputs
     setTaskName('')
     setTaskUrl('')
@@ -372,7 +371,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
                 {students.map((s) => (
                   <button
                     key={s.id}
-                    onClick={() => setSelectedStudent(s)}
+                    onClick={() => handleSelectStudent(s)}
                     className="flex w-full items-center justify-between rounded-2xl border border-slate-100 p-4 text-left font-bold transition-all hover:border-blue-500 hover:bg-blue-50"
                   >
                     {s.full_name}{' '}
@@ -447,7 +446,9 @@ export default function QuickActions({ tutorId, role, studentId }) {
                     />
                     <button
                       disabled={loading || !message.trim()}
-                      onClick={handleSendMessage}
+                      onClick={() => {
+                        void handleSendMessage()
+                      }}
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 font-black text-white"
                     >
                       <Send size={18} />{' '}
@@ -485,7 +486,9 @@ export default function QuickActions({ tutorId, role, studentId }) {
                     />
                     <button
                       disabled={loading || !taskName.trim()}
-                      onClick={handleAddAssignment}
+                      onClick={() => {
+                        void handleAddAssignment()
+                      }}
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-4 font-black text-white shadow-lg"
                     >
                       <FilePlus size={18} />{' '}

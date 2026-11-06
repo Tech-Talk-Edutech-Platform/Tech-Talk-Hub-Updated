@@ -4,6 +4,12 @@ import { Link } from 'react-router-dom'
 import { LEARNING_PATHS } from '../../data/navigation'
 import { DASHBOARD_URL } from '../../data/site'
 
+declare module 'react' {
+  interface HTMLAttributes<T> {
+    inert?: boolean
+  }
+}
+
 type MobileMenuProps = {
   isOpen: boolean
   isCommercePage: boolean

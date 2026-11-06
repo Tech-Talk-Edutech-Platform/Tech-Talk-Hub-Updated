@@ -5,21 +5,21 @@ interface ScratchPlaygroundProps {
 }
 
 export default function ScratchPlayground({ code }: ScratchPlaygroundProps) {
-  const canvasRef = useRef(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [sprites, setSprites] = useState([
     { id: 1, name: 'Cat', x: 100, y: 100, angle: 0, vx: 0, vy: 0 },
     { id: 2, name: 'Ball', x: 300, y: 200, angle: 0, vx: 0, vy: 0 },
   ])
 
   const [activeSpriteId, setActiveSpriteId] = useState(1)
-  const animationRef = useRef()
+  const animationRef = useRef<number>()
 
   const activeSprite = sprites.find((s) => s.id === activeSpriteId)
 
   // 🎬 Animation loop
   useEffect(() => {
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
+    const canvas = canvasRef.current!
+    const ctx = canvas.getContext('2d')!
 
     function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -45,26 +45,26 @@ export default function ScratchPlayground({ code }: ScratchPlaygroundProps) {
     }
 
     loop()
-    return () => cancelAnimationFrame(animationRef.current)
+    return () => cancelAnimationFrame(animationRef.current!)
   }, [sprites, activeSpriteId])
 
   // 🎮 API exposed to Blockly
   const getAPI = () => ({
-    move: (steps) => {
+    move: (steps: number) => {
       setSprites((prev) =>
         prev.map((s) =>
           s.id === activeSpriteId ? { ...s, vx: steps / 10 } : s,
         ),
       )
     },
-    turn: (deg) => {
+    turn: (deg: number) => {
       setSprites((prev) =>
         prev.map((s) =>
           s.id === activeSpriteId ? { ...s, angle: s.angle + deg } : s,
         ),
       )
     },
-    goTo: (x, y) => {
+    goTo: (x: number, y: number) => {
       setSprites((prev) =>
         prev.map((s) => (s.id === activeSpriteId ? { ...s, x, y } : s)),
       )
@@ -90,7 +90,7 @@ export default function ScratchPlayground({ code }: ScratchPlaygroundProps) {
 
   // 🎹 Key events
   useEffect(() => {
-    const handleKey = (e) => {
+    const handleKey = (e: KeyboardEvent) => {
       if (!code.includes('whenKey')) return
 
       if (e.key === 'ArrowRight') {
@@ -104,10 +104,10 @@ export default function ScratchPlayground({ code }: ScratchPlaygroundProps) {
 
   // 🖱️ Drag sprites
   useEffect(() => {
-    const canvas = canvasRef.current
-    let dragging = null
+    const canvas = canvasRef.current!
+    let dragging: number | null = null
 
-    const onDown = (e) => {
+    const onDown = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
@@ -122,7 +122,7 @@ export default function ScratchPlayground({ code }: ScratchPlaygroundProps) {
       }
     }
 
-    const onMove = (e) => {
+    const onMove = (e: MouseEvent) => {
       if (!dragging) return
 
       const rect = canvas.getBoundingClientRect()

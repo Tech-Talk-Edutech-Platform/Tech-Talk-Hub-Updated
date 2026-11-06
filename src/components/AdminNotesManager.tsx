@@ -1,10 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { supabase } from '../supabase'
+import { useEffect, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Plus,
   Trash2,
-  BookOpen,
-  Layers,
   FileText,
   CheckCircle,
   AlertCircle,
@@ -12,27 +11,51 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
-export default function AdminNotesManager() {
-  const [courses, setCourses] = useState([])
-  const [topics, setTopics] = useState([])
-  const [notes, setNotes] = useState([])
+import {
+  useCourses,
+  useCreateCourse,
+  useCreateNote,
+  useCreateTopic,
+  useDeleteNote,
+  useNotes,
+  useTopics,
+} from '../features/notes/hooks'
+import { noteFormSchema, type NoteFormValues } from '../features/notes/schema'
+import { getErrorMessage } from '../lib/getErrorMessage'
 
+type StatusType = 'success' | 'error' | ''
+
+export default function AdminNotesManager() {
   const [selectedCourse, setSelectedCourse] = useState('')
   const [selectedTopic, setSelectedTopic] = useState('')
 
   const [newCourse, setNewCourse] = useState('')
   const [newTopic, setNewTopic] = useState('')
-  const [noteTitle, setNoteTitle] = useState('')
-  const [noteContent, setNoteContent] = useState('')
 
-  const [status, setStatus] = useState({ type: '', msg: '' })
-  const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState<{ type: StatusType; msg: string }>({
+    type: '',
+    msg: '',
+  })
   const navigate = useNavigate()
   const statusTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    fetchCourses()
-  }, [])
+  const coursesQuery = useCourses()
+  const topicsQuery = useTopics(selectedCourse)
+  const notesQuery = useNotes(selectedTopic)
+  const courses = coursesQuery.data ?? []
+  const topics = selectedCourse ? (topicsQuery.data ?? []) : []
+  const notes = selectedTopic ? (notesQuery.data ?? []) : []
+  const loadError = coursesQuery.error ?? topicsQuery.error ?? notesQuery.error
+
+  const createCourseMutation = useCreateCourse()
+  const createTopicMutation = useCreateTopic()
+  const createNoteMutation = useCreateNote()
+  const deleteNoteMutation = useDeleteNote(selectedTopic)
+
+  const noteForm = useForm<NoteFormValues>({
+    resolver: zodResolver(noteFormSchema),
+    defaultValues: { title: '', content: '' },
+  })
 
   useEffect(
     () => () => {
@@ -41,7 +64,7 @@ export default function AdminNotesManager() {
     [],
   )
 
-  const showStatus = (type, msg) => {
+  const showStatus = (type: StatusType, msg: string) => {
     if (statusTimeout.current) clearTimeout(statusTimeout.current)
     setStatus({ type, msg })
     statusTimeout.current = setTimeout(() => {
@@ -50,93 +73,71 @@ export default function AdminNotesManager() {
     }, 4000)
   }
 
-  const fetchCourses = async () => {
-    const { data } = await supabase.from('courses').select('*').order('title')
-    setCourses(data || [])
-  }
-
-  const fetchTopics = async (courseId) => {
-    if (!courseId) return
-    const { data } = await supabase
-      .from('topics')
-      .select('*')
-      .eq('course_id', courseId)
-      .order('title')
-    setTopics(data || [])
-  }
-
-  const fetchNotes = async (topicId) => {
-    if (!topicId) return
-    const { data } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('topic_id', topicId)
-      .order('created_at')
-    setNotes(data || [])
-  }
-
-  const handleCreateCourse = async () => {
-    if (!newCourse) return
-    const { error } = await supabase
-      .from('courses')
-      .insert([{ title: newCourse }])
-    if (error) return showStatus('error', 'Failed to create course.')
-    setNewCourse('')
-    fetchCourses()
-    showStatus('success', 'Course created!')
-  }
-
-  const handleCreateTopic = async () => {
-    if (!newTopic || !selectedCourse) return
-    const { error } = await supabase
-      .from('topics')
-      .insert([{ title: newTopic, course_id: selectedCourse }])
-    if (error) return showStatus('error', 'Failed to create topic.')
-    setNewTopic('')
-    fetchTopics(selectedCourse)
-    showStatus('success', 'Topic created!')
-  }
-
-  const handleUploadNote = async () => {
-    if (!noteTitle || !noteContent || !selectedTopic) {
-      return showStatus('error', 'Fill all note fields.')
-    }
-
-    setLoading(true)
-    // Explicitly mapping to your DB columns
-    const { error } = await supabase.from('notes').insert([
-      {
-        title: noteTitle,
-        content: noteContent,
-        topic_id: selectedTopic,
-        course_id: selectedCourse, // Ensure you ran the SQL ALTER TABLE command above
+  const handleCreateCourse = () => {
+    if (!newCourse || createCourseMutation.isPending) return
+    createCourseMutation.mutate(newCourse, {
+      onSuccess: () => {
+        setNewCourse('')
+        showStatus('success', 'Course created!')
       },
-    ])
-
-    if (error) {
-      console.error('Supabase Upload Error:', error)
-      showStatus('error', `Error: ${error.message}`)
-    } else {
-      setNoteTitle('')
-      setNoteContent('')
-      fetchNotes(selectedTopic)
-      showStatus('success', 'Note published!')
-    }
-    setLoading(false)
+      onError: () => showStatus('error', 'Failed to create course.'),
+    })
   }
 
-  const deleteNote = async (id) => {
+  const handleCreateTopic = () => {
+    if (!newTopic || !selectedCourse || createTopicMutation.isPending) return
+    createTopicMutation.mutate(
+      { title: newTopic, courseId: selectedCourse },
+      {
+        onSuccess: () => {
+          setNewTopic('')
+          showStatus('success', 'Topic created!')
+        },
+        onError: () => showStatus('error', 'Failed to create topic.'),
+      },
+    )
+  }
+
+  const handleUploadNote = () => {
+    void noteForm.handleSubmit(
+      (values) => {
+        if (!selectedTopic) return showStatus('error', 'Fill all note fields.')
+        createNoteMutation.mutate(
+          { ...values, topic_id: selectedTopic, course_id: selectedCourse },
+          {
+            onSuccess: () => {
+              noteForm.reset()
+              showStatus('success', 'Note published!')
+            },
+            onError: (error) => {
+              console.error('Supabase Upload Error:', error)
+              showStatus(
+                'error',
+                `Error: ${getErrorMessage(error, 'Upload failed')}`,
+              )
+            },
+          },
+        )
+      },
+      () => showStatus('error', 'Fill all note fields.'),
+    )()
+  }
+
+  const deleteNote = (id: string) => {
     if (!window.confirm('Delete this note?')) return
-    const { error } = await supabase.from('notes').delete().eq('id', id)
-    if (!error) fetchNotes(selectedTopic)
+    deleteNoteMutation.mutate(id, {
+      onError: () => showStatus('error', 'Failed to delete note.'),
+    })
   }
+
+  const publishing = createNoteMutation.isPending
 
   return (
     <div className="max-w mx-auto min-h-screen bg-gray-900 p-4 text-gray-100 md:p-8">
       <header className="mb-10 border-b border-gray-800 pb-6">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate(`/:role`)}
+            onClick={() => void navigate(`/:role`)}
             className="bg--200 rounded-xl px-3 py-2 text-sm font-bold hover:bg-indigo-400"
           >
             ← Back
@@ -149,6 +150,15 @@ export default function AdminNotesManager() {
           Create courses, add topics, and publish markdown notes.
         </p>
       </header>
+
+      {loadError && (
+        <div className="mb-8 flex items-center gap-3 rounded-2xl border border-red-500/50 bg-red-500/10 p-4 text-red-400">
+          <AlertCircle size={20} />
+          <span className="font-bold">
+            Failed to load data: {getErrorMessage(loadError, 'Unknown error')}
+          </span>
+        </div>
+      )}
 
       {status.msg && (
         <div
@@ -183,6 +193,7 @@ export default function AdminNotesManager() {
               />
               <button
                 onClick={handleCreateCourse}
+                disabled={createCourseMutation.isPending}
                 className="rounded-xl bg-indigo-600 p-3 shadow-lg shadow-indigo-900/20 transition hover:bg-indigo-500"
               >
                 <Plus size={20} />
@@ -192,9 +203,7 @@ export default function AdminNotesManager() {
               value={selectedCourse}
               onChange={(e) => {
                 setSelectedCourse(e.target.value)
-                fetchTopics(e.target.value)
                 setSelectedTopic('')
-                setNotes([])
               }}
               className="w-full cursor-pointer rounded-xl border border-gray-700 bg-gray-950 p-3 text-gray-200 outline-none transition hover:border-gray-600"
             >
@@ -222,6 +231,7 @@ export default function AdminNotesManager() {
               />
               <button
                 onClick={handleCreateTopic}
+                disabled={createTopicMutation.isPending}
                 className="rounded-xl bg-emerald-600 p-3 shadow-lg shadow-emerald-900/20 transition hover:bg-emerald-500"
               >
                 <Plus size={20} />
@@ -229,10 +239,7 @@ export default function AdminNotesManager() {
             </div>
             <select
               value={selectedTopic}
-              onChange={(e) => {
-                setSelectedTopic(e.target.value)
-                fetchNotes(e.target.value)
-              }}
+              onChange={(e) => setSelectedTopic(e.target.value)}
               className="w-full cursor-pointer rounded-xl border border-gray-700 bg-gray-950 p-3 text-gray-200 outline-none transition hover:border-gray-600"
             >
               <option value="">-- Choose Topic --</option>
@@ -255,25 +262,28 @@ export default function AdminNotesManager() {
             </h2>
             <div className="space-y-4">
               <input
-                value={noteTitle}
-                onChange={(e) => setNoteTitle(e.target.value)}
+                {...noteForm.register('title')}
                 placeholder="Lesson Title (e.g. Introduction to Hooks)"
                 className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 text-xl font-bold outline-none ring-purple-500 transition-all focus:ring-2"
               />
               <textarea
-                value={noteContent}
-                onChange={(e) => setNoteContent(e.target.value)}
+                {...noteForm.register('content')}
                 placeholder="# Use Markdown! &#10;## Headers &#10;```javascript &#10; const code = 'blocks'; &#10;```"
                 rows={12}
                 className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 font-mono text-sm leading-relaxed outline-none ring-purple-500 focus:ring-2"
               />
               <button
-                disabled={loading}
+                type="button"
+                disabled={publishing}
                 onClick={handleUploadNote}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 py-4 text-lg font-black shadow-xl shadow-indigo-900/20 transition hover:from-purple-500 hover:to-indigo-500"
               >
-                {loading ? <Loader2 className="animate-spin" /> : <FileText />}
-                {loading ? 'Publishing...' : 'Publish Lesson'}
+                {publishing ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <FileText />
+                )}
+                {publishing ? 'Publishing...' : 'Publish Lesson'}
               </button>
             </div>
           </div>
@@ -287,11 +297,12 @@ export default function AdminNotesManager() {
                   className="group flex items-center justify-between rounded-2xl border border-gray-700 bg-gray-800/80 p-4 transition-all hover:border-indigo-500/50"
                 >
                   <div className="flex items-center gap-3 truncate">
-                    <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
+                    <div className="h-2 w-2 rounded-full bg-indigo-500" />
                     <span className="truncate font-bold">{note.title}</span>
                   </div>
                   <button
                     onClick={() => deleteNote(note.id)}
+                    disabled={deleteNoteMutation.isPending}
                     className="p-2 text-gray-500 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
                   >
                     <Trash2 size={18} />

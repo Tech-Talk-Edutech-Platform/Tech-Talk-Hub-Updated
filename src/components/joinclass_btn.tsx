@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase' // Adjust your import
+import type { Tables } from '../types/database'
 
-export default function JoinClassButton({ studentId }) {
-  const [classInfo, setClassInfo] = useState(null)
+interface JoinClassButtonProps {
+  studentId: string
+}
+
+export default function JoinClassButton({ studentId }: JoinClassButtonProps) {
+  const [classInfo, setClassInfo] =
+    useState<Tables<'v_upcoming_student_classes'> | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

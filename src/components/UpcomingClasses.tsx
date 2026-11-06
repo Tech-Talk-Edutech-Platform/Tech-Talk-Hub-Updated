@@ -12,17 +12,33 @@ import {
 } from 'lucide-react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import type { ComponentProps } from 'react'
+
+interface UpcomingClass {
+  id: string
+  start_time: string
+  title?: string | null
+  student_name?: string | null
+  grade?: string | null
+  meet_link?: string | null
+}
+
+interface UpcomingClassesProps {
+  classes?: UpcomingClass[]
+  loading: boolean
+  allEvents?: ComponentProps<typeof FullCalendar>['events']
+}
 
 export default function UpcomingClasses({
   classes = [],
   loading,
   allEvents = [],
-}) {
+}: UpcomingClassesProps) {
   const [view, setView] = useState('list')
-  const [selectedClass, setSelectedClass] = useState(null)
+  const [selectedClass, setSelectedClass] = useState<UpcomingClass | null>(null)
 
   if (loading)
-    return <div className="h-48 animate-pulse rounded-2xl bg-white p-5"></div>
+    return <div className="h-48 animate-pulse rounded-2xl bg-white p-5" />
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-300">

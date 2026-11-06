@@ -1,6 +1,6 @@
 // src/components/UploadNote.js
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../supabase'
+import { supabase } from '../../supabase'
 export default function UploadNote() {
   const [courses, setCourses] = useState([])
   const [topics, setTopics] = useState([])

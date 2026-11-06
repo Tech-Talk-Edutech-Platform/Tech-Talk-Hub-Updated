@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { startTransition, useCallback, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import {
@@ -13,21 +14,34 @@ import {
   ExternalLink,
 } from 'lucide-react'
 
+interface StudentResult {
+  id: string
+  overall_score: number | null
+  theory_score: number | null
+  practical_score: number | null
+  problem_solving_score: number | null
+  creativity_score: number | null
+  performance_label: string | null
+  avatar_url: string | null
+  student_name: string
+  grade_level: string | number | null
+  course_name: string | null
+  project_url: string | null
+  created_at: string | null
+  exam_title: string | null
+  tutor_feedback: string | null
+}
+
 const StudentDashboard = () => {
   const { slug } = useParams()
-  const [data, setData] = useState([])
+  const [data, setData] = useState<StudentResult[]>([])
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchData()
-  }, [slug])
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     if (!slug) return
 
-    const { data, error } = await supabase
+    const { data: resultData, error } = await supabase
       .from('student_results')
       .select('*')
       .eq('slug', slug)
@@ -35,15 +49,20 @@ const StudentDashboard = () => {
 
     if (error) console.error('Fetch Error:', error.message)
 
-    if (data?.length) {
-      setData(data)
-      setSelectedId(data[0].id)
-    }
+    const results = resultData ?? []
+    startTransition(() => {
+      setData(results)
+      setSelectedId(results[0]?.id ?? null)
+      setLoading(false)
+    })
+  }, [slug])
 
-    setLoading(false)
-  }
+  useEffect(() => {
+    void fetchData()
+  }, [fetchData])
 
   const latest = data.find((d) => d.id === selectedId) || data[0]
+  const isLoading = loading && Boolean(slug)
 
   // AVERAGES
   const avg = data.length
@@ -62,7 +81,7 @@ const StudentDashboard = () => {
       }
     : null
 
-  if (loading)
+  if (isLoading)
     return (
       <div className="animate-pulse p-10 text-center font-sans">
         Fetching Report Card...
@@ -81,6 +100,7 @@ const StudentDashboard = () => {
             {latest.avatar_url ? (
               <img
                 src={latest.avatar_url}
+                alt={`${latest.student_name}'s profile`}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -155,10 +175,13 @@ const StudentDashboard = () => {
       {/* EXAMS LIST */}
       <div className="mb-2 px-4">
         {data.map((item) => (
-          <div
+          <button
+            type="button"
             key={item.id}
+            aria-pressed={selectedId === item.id}
+            aria-label={`View results for ${item.exam_title}`}
             onClick={() => setSelectedId(item.id)}
-            className={`mb-3 cursor-pointer rounded-2xl border-l-[6px] border-indigo-500 bg-white p-4 shadow-sm ${
+            className={`mb-3 block w-full cursor-pointer rounded-2xl border-l-[6px] border-indigo-500 bg-white p-4 text-left shadow-sm ${
               selectedId === item.id ? 'ring-2 ring-indigo-400' : ''
             }`}
           >
@@ -188,7 +211,7 @@ const StudentDashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -286,7 +309,17 @@ const StudentDashboard = () => {
   )
 }
 
-const StatRow = ({ label, score, icon, color }) => (
+const StatRow = ({
+  label,
+  score,
+  icon,
+  color,
+}: {
+  label: string
+  score: number | null
+  icon: ReactNode
+  color: string
+}) => (
   <div>
     <div className="mb-1 flex items-center justify-between">
       <div className="flex items-center gap-2">

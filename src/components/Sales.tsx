@@ -40,12 +40,12 @@ export default function Receipt() {
       <p>Date: {receipt.created_at.toLocaleDateString()}</p>
       <p>Time: {receipt.created_at.toLocaleTimeString()}</p>
 
-      <div className="my-2 border-b"></div>
+      <div className="my-2 border-b" />
 
       <p>Customer: {receipt.customer_name}</p>
       <p>Phone: {receipt.phone}</p>
 
-      <div className="my-2 border-b"></div>
+      <div className="my-2 border-b" />
 
       <div className="grid grid-cols-3 border-b pb-1 font-bold">
         <span>DESCRIPTION</span>
@@ -61,7 +61,7 @@ export default function Receipt() {
         </div>
       ))}
 
-      <div className="my-2 border-b"></div>
+      <div className="my-2 border-b" />
 
       <div className="flex justify-between">
         <span>Subtotal</span>
@@ -76,21 +76,21 @@ export default function Receipt() {
         <span>{receipt.total_paid.toLocaleString()}</span>
       </div>
 
-      <div className="my-2 border-b"></div>
+      <div className="my-2 border-b" />
 
       <p>Payment Method: {receipt.payment_method}</p>
       <p>Transaction Code: {receipt.transaction_code}</p>
       <p>Status: {receipt.status}</p>
       <p>Served By: {receipt.served_by}</p>
 
-      <div className="my-2 border-b"></div>
+      <div className="my-2 border-b" />
 
       <div className="mt-6 flex flex-col items-center">
         <QRCodeSVG value={qrLink} size={120} />
         <p className="mt-2 text-sm text-gray-500">Scan to verify receipt</p>
       </div>
 
-      <div className="my-2 border-b"></div>
+      <div className="my-2 border-b" />
 
       <p className="text-center text-sm">
         Thank you for choosing Tech Talk Hub
