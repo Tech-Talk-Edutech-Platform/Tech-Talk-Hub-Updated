@@ -40,6 +40,8 @@ import LandingOrDashboard from './LandingOrDashboard'
 import ErrorBoundary from './components/ErrorBoundary'
 import LandingPage from './Utils/LandingPage'
 import { HomePage } from './pages/HomePage'
+import { ComingSoonPage } from './pages/ComingSoonPage'
+import { UPCOMING_PAGES } from './data/navigation'
 import { useScrollToHash } from './hooks/useScrollToHash'
 
 const ClassroomRoutes = lazy(() =>
@@ -52,6 +54,24 @@ const ClassroomRoutes = lazy(() =>
 function ScrollToHash() {
   useScrollToHash()
   return null
+}
+
+/**
+ * `/:role` matches every one-segment URL, so without this check a public link
+ * like `/blog` would land on the role gate's "access denied" screen.
+ */
+function RoleDashboardRoute() {
+  const { role } = useParams()
+
+  if (!isAppRole(role)) {
+    return <Navigate to="/" replace />
+  }
+
+  return (
+    <RoleGate allowedRoles={APP_ROLES}>
+      <UnifiedDashboard />
+    </RoleGate>
+  )
 }
 
 /** Old site's booking URL; keeps the query string (e.g. `?ref=`) on shared links. */
@@ -165,14 +185,14 @@ function DashboardApp() {
         <Route path="/admin/referrals" element={<ReferralDashboard />} />
         <Route path="/marketer" element={<MarketerView />} />
         // <Route path="/exam1" element={<ExamInterface />} />
-        <Route
-          path="/:role"
-          element={
-            <RoleGate allowedRoles={allRoles}>
-              <UnifiedDashboard />
-            </RoleGate>
-          }
-        />
+        {UPCOMING_PAGES.map(({ path, title }) => (
+          <Route
+            key={path}
+            path={path}
+            element={<ComingSoonPage title={title} />}
+          />
+        ))}
+        <Route path="/:role" element={<RoleDashboardRoute />} />
         <Route
           path="/receive-homework"
           element={<MyHomework studentId={user?.id} />}
