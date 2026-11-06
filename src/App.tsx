@@ -36,6 +36,7 @@ import AdminNotesManager from './components/AdminNotesManager'
 import './index.css'
 import AdminDashboard from './dashboards/views/sendReceipt'
 import LandingOrDashboard from './LandingOrDashboard'
+import LandingPage from './Utils/LandingPage'
 import ErrorBoundary from './components/ErrorBoundary'
 
 // Newly Mounted Admin Views
@@ -117,10 +118,11 @@ function DashboardApp() {
                 replace
               />
             ) : (
-              <Login />
+              <LandingPage />
             )
           }
         />
+        <Route path="/login" element={<Login />} />
         <Route path="/landing" element={<LandingOrDashboard />} />
         <Route
           path="/assign-homework"
@@ -128,11 +130,9 @@ function DashboardApp() {
         />
         {/* Public Routes */}
         <Route path="/results/:slug" element={<StudentDashboard />} />
-        {/* Admin/Marketer Extension Routes */}
         <Route path="/admin/referrals" element={<ReferralDashboard />} />
         <Route path="/marketer" element={<MarketerView />} />
         // <Route path="/exam1" element={<ExamInterface />} />
-        {/* Protected Dashboard Matrix */}
         <Route
           path="/:role"
           element={
