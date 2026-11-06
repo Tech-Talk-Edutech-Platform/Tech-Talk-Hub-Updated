@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 
 import {
   ArrowLeft,
@@ -27,6 +28,7 @@ import {
 } from 'lucide-react'
 import BlogArticlePreview from './BlogArticlePreview'
 import { supabase } from '../../../supabase'
+import type { TablesInsert } from '../../../types/database'
 import { isAdminRole } from '../../../types/roles'
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -52,6 +54,42 @@ const emptyForm = {
   published_at: null,
 }
 
+interface BlogPost {
+  id: string
+  title: string
+  slug: string
+  excerpt: string | null
+  category: string | null
+  content: string
+  cover_image_url: string | null
+  status: string
+  published_at: string | null
+  created_at?: string | null
+  updated_at?: string | null
+  author_id?: string | null
+}
+
+interface BlogForm {
+  id: string | null
+  title: string
+  slug: string
+  excerpt: string
+  category: string
+  content: string
+  cover_image_url: string
+  status: string
+  published_at: string | null
+}
+
+interface AlertMessage {
+  type: 'error' | 'success'
+  text: string
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
 function createSlug(value = '') {
   return String(value)
     .toLowerCase()
@@ -61,7 +99,7 @@ function createSlug(value = '') {
     .replace(/^-+|-+$/g, '')
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined) {
   if (!value) {
     return 'Not published'
   }
@@ -81,7 +119,17 @@ function getReadingTime(value = '') {
   return Math.max(1, Math.ceil(countWords(value) / 220))
 }
 
-function ToolbarButton({ title, onClick, children, disabled = false }) {
+function ToolbarButton({
+  title,
+  onClick,
+  children,
+  disabled = false,
+}: {
+  title: string
+  onClick: () => void
+  children: ReactNode
+  disabled?: boolean
+}) {
   return (
     <button
       type="button"
@@ -97,7 +145,7 @@ function ToolbarButton({ title, onClick, children, disabled = false }) {
   )
 }
 
-function MessageAlert({ message }) {
+function MessageAlert({ message }: { message: AlertMessage | null }) {
   if (!message) {
     return null
   }
@@ -115,12 +163,18 @@ function MessageAlert({ message }) {
   )
 }
 
-export default function AdminBlogPage({ userId, role }) {
-  const contentRef = useRef(null)
+export default function AdminBlogPage({
+  userId,
+  role,
+}: {
+  userId: string | null
+  role: string
+}) {
+  const contentRef = useRef<HTMLTextAreaElement | null>(null)
 
-  const [posts, setPosts] = useState([])
+  const [posts, setPosts] = useState<BlogPost[]>([])
 
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState<BlogForm>(emptyForm)
 
   const [view, setView] = useState('list')
 
@@ -134,9 +188,9 @@ export default function AdminBlogPage({ userId, role }) {
 
   const [uploadingArticleImage, setUploadingArticleImage] = useState(false)
 
-  const [deletingId, setDeletingId] = useState(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const [message, setMessage] = useState(null)
+  const [message, setMessage] = useState<AlertMessage | null>(null)
 
   const [showPreview, setShowPreview] = useState(false)
 
@@ -166,7 +220,7 @@ export default function AdminBlogPage({ userId, role }) {
       setMessage({
         type: 'error',
 
-        text: error.message || 'Unable to load articles.',
+        text: getErrorMessage(error) || 'Unable to load articles.',
       })
 
       return false
@@ -183,7 +237,7 @@ export default function AdminBlogPage({ userId, role }) {
     }
   }, [isAdmin, loadPosts])
 
-  function updateField(name, value) {
+  function updateField(name: keyof BlogForm, value: string) {
     setForm((current) => ({
       ...current,
 
@@ -191,7 +245,7 @@ export default function AdminBlogPage({ userId, role }) {
     }))
   }
 
-  function handleTitleChange(value) {
+  function handleTitleChange(value: string) {
     setForm((current) => {
       const previousAutomaticSlug = createSlug(current.title)
 
@@ -218,7 +272,7 @@ export default function AdminBlogPage({ userId, role }) {
     setView('editor')
   }
 
-  function startEditing(post) {
+  function startEditing(post: BlogPost) {
     setForm({
       ...emptyForm,
 
@@ -252,7 +306,7 @@ export default function AdminBlogPage({ userId, role }) {
     setView('list')
   }
 
-  function validateImage(file) {
+  function validateImage(file: File | null) {
     if (!file) {
       return 'Please choose an image.'
     }
@@ -272,7 +326,7 @@ export default function AdminBlogPage({ userId, role }) {
     return null
   }
 
-  async function uploadImageToStorage(file, folder) {
+  async function uploadImageToStorage(file: File, folder: string) {
     const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
 
     const fileName =
@@ -302,7 +356,7 @@ export default function AdminBlogPage({ userId, role }) {
     return data.publicUrl
   }
 
-  async function uploadCoverImage(event) {
+  async function uploadCoverImage(event: ChangeEvent<HTMLInputElement>) {
     const input = event.target
 
     const file = input.files?.[0]
@@ -343,7 +397,7 @@ export default function AdminBlogPage({ userId, role }) {
       setMessage({
         type: 'error',
 
-        text: error.message || 'Unable to upload the cover image.',
+        text: getErrorMessage(error) || 'Unable to upload the cover image.',
       })
     } finally {
       setUploadingCover(false)
@@ -362,7 +416,7 @@ export default function AdminBlogPage({ userId, role }) {
     })
   }
 
-  function insertMarkdown(before, after = '', placeholder = '') {
+  function insertMarkdown(before: string, after = '', placeholder = '') {
     const textarea = contentRef.current
 
     if (!textarea) {
@@ -395,7 +449,7 @@ export default function AdminBlogPage({ userId, role }) {
     })
   }
 
-  function insertBlock(prefix, placeholder = '') {
+  function insertBlock(prefix: string, placeholder = '') {
     const textarea = contentRef.current
 
     if (!textarea) {
@@ -449,7 +503,7 @@ export default function AdminBlogPage({ userId, role }) {
     })
   }
 
-  async function uploadArticleImage(event) {
+  async function uploadArticleImage(event: ChangeEvent<HTMLInputElement>) {
     const input = event.target
 
     const file = input.files?.[0]
@@ -486,7 +540,7 @@ export default function AdminBlogPage({ userId, role }) {
       const imageDescription = file.name
         .replace(/\.[^.]+$/, '')
         .replace(/[-_]+/g, ' ')
-        .replace(/[\[\]]/g, '')
+        .replace(/[[\]]/g, '')
         .trim()
 
       const imageMarkdown = `\n\n![${imageDescription}]` + `(${publicUrl})\n\n`
@@ -521,7 +575,7 @@ export default function AdminBlogPage({ userId, role }) {
       setMessage({
         type: 'error',
 
-        text: error.message || 'Unable to upload the article image.',
+        text: getErrorMessage(error) || 'Unable to upload the article image.',
       })
     } finally {
       setUploadingArticleImage(false)
@@ -536,7 +590,7 @@ export default function AdminBlogPage({ userId, role }) {
     setShowPreview(false)
   }
 
-  async function savePost(status) {
+  async function savePost(status: string) {
     const title = form.title.trim()
 
     const slug = createSlug(form.slug || form.title)
@@ -582,7 +636,7 @@ export default function AdminBlogPage({ userId, role }) {
         ? form.published_at || new Date().toISOString()
         : null
 
-    const payload = {
+    const payload: TablesInsert<'blog_posts'> = {
       title,
 
       slug,
@@ -651,16 +705,19 @@ export default function AdminBlogPage({ userId, role }) {
         type: 'error',
 
         text:
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
           error.code === '23505'
             ? 'That slug is already being used.'
-            : error.message || 'Unable to save the article.',
+            : getErrorMessage(error) || 'Unable to save the article.',
       })
     } finally {
       setSaving(false)
     }
   }
 
-  async function deletePost(post) {
+  async function deletePost(post: BlogPost) {
     const confirmed = window.confirm(
       `Delete “${post.title}”? This cannot be undone.`,
     )
@@ -694,7 +751,7 @@ export default function AdminBlogPage({ userId, role }) {
       setMessage({
         type: 'error',
 
-        text: error.message || 'Unable to delete the article.',
+        text: getErrorMessage(error) || 'Unable to delete the article.',
       })
     } finally {
       setDeletingId(null)

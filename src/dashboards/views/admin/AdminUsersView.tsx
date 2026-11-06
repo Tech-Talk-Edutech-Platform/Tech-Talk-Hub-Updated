@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import {
   Users2,
   Plus,
@@ -19,8 +20,32 @@ import { supabase } from '../../../supabase'
 import AddUserModal from '../../../features/accounts/AddUserModal'
 import { toast } from 'react-hot-toast'
 
+interface AdminUser {
+  id: string
+  full_name: string
+  email: string | null
+  role: string | null
+  is_active?: boolean | null
+  assigned_tutor_id?: string | null
+  assigned_course_id?: string | null
+  subscription_tier?: string | null
+  classes_per_week?: number | string | null
+  classes_remaining?: number | string | null
+  created_at?: string | null
+}
+
+interface TutorOption {
+  id: string
+  full_name: string | null
+}
+
+interface CourseOption {
+  id: string
+  title: string
+}
+
 export default function AdminUsersView() {
-  const [users, setUsers] = useState([])
+  const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   // Default filter is student as requested
@@ -29,9 +54,9 @@ export default function AdminUsersView() {
   const [showAddModal, setShowAddModal] = useState(false)
 
   // Edit & Relations Modal State
-  const [editingUser, setEditingUser] = useState(null)
-  const [tutorsList, setTutorsList] = useState([])
-  const [coursesList, setCoursesList] = useState([])
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [tutorsList, setTutorsList] = useState<TutorOption[]>([])
+  const [coursesList, setCoursesList] = useState<CourseOption[]>([])
   const [saving, setSaving] = useState(false)
 
   const fetchUsers = async () => {
@@ -61,7 +86,7 @@ export default function AdminUsersView() {
     fetchTutorsAndCourses()
   }, [])
 
-  const handleDeleteUser = async (id) => {
+  const handleDeleteUser = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return
     const { error } = await supabase.from('users').delete().eq('id', id)
     if (error) toast.error('Failed to delete user')
@@ -71,7 +96,7 @@ export default function AdminUsersView() {
     }
   }
 
-  const handleUpdateUser = async (e) => {
+  const handleUpdateUser = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!editingUser) return
     setSaving(true)
@@ -116,12 +141,12 @@ export default function AdminUsersView() {
   })
 
   // Helper to get name of assigned tutor or course
-  const getTutorName = (tutorId) => {
+  const getTutorName = (tutorId: string | null | undefined) => {
     const t = tutorsList.find((item) => item.id === tutorId)
     return t ? t.full_name : 'None assigned'
   }
 
-  const getCourseName = (courseId) => {
+  const getCourseName = (courseId: string | null | undefined) => {
     const c = coursesList.find((item) => item.id === courseId)
     return c ? c.title : 'None assigned'
   }

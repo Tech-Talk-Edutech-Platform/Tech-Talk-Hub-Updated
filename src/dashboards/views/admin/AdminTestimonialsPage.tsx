@@ -1,11 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 
 import { Loader2, Mail, MessageCircle, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../../supabase'
+import type { Tables } from '../../../types/database'
 
-const initialForm = {
+type Testimonial = Tables<'testimonials'>
+
+interface TestimonialForm {
+  parent_name: string
+  feedback: string
+  source: string
+  display_order: number | string
+  is_featured: boolean
+  is_published: boolean
+}
+
+const initialForm: TestimonialForm = {
   parent_name: '',
   feedback: '',
   source: 'whatsapp',
@@ -15,9 +28,9 @@ const initialForm = {
 }
 
 export default function AdminTestimonialsPage() {
-  const [testimonials, setTestimonials] = useState([])
-  const [form, setForm] = useState(initialForm)
-  const [screenshot, setScreenshot] = useState(null)
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  const [form, setForm] = useState<TestimonialForm>(initialForm)
+  const [screenshot, setScreenshot] = useState<File | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -49,7 +62,7 @@ export default function AdminTestimonialsPage() {
     setLoading(false)
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     if (!screenshot) {
@@ -113,7 +126,7 @@ export default function AdminTestimonialsPage() {
     }
   }
 
-  async function togglePublished(testimonial) {
+  async function togglePublished(testimonial: Testimonial) {
     setError('')
 
     const { error: updateError } = await supabase
@@ -131,7 +144,7 @@ export default function AdminTestimonialsPage() {
     await loadTestimonials()
   }
 
-  async function deleteTestimonial(testimonial) {
+  async function deleteTestimonial(testimonial: Testimonial) {
     const confirmed = window.confirm('Delete this testimonial permanently?')
 
     if (!confirmed) {

@@ -13,14 +13,39 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import type { Tables } from '../../../types/database'
 
-const LiveClassMonitor = ({ notifyTutor }) => {
-  const [classes, setClasses] = useState([])
-  const [tutors, setTutors] = useState([])
+type MonitorTutor = Pick<Tables<'users'>, 'id' | 'full_name' | 'email' | 'role'>
+
+type MonitorEvent = Pick<
+  Tables<'calendar_events'>,
+  | 'id'
+  | 'title'
+  | 'meet_link'
+  | 'start_time'
+  | 'end_time'
+  | 'tutor_id'
+  | 'class_id'
+  | 'class_type'
+  | 'booking_status'
+  | 'session_status'
+>
+
+type MonitorClass = Tables<'classes'> & {
+  calendar_event: MonitorEvent | null
+}
+
+interface LiveClassMonitorProps {
+  notifyTutor?: (tutorId: string, message: string) => unknown
+}
+
+const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
+  const [classes, setClasses] = useState<MonitorClass[]>([])
+  const [tutors, setTutors] = useState<MonitorTutor[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
-  const [pingingTutorId, setPingingTutorId] = useState(null)
+  const [pingingTutorId, setPingingTutorId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [today] = useState(() => {
     const now = new Date()
@@ -53,8 +78,8 @@ const LiveClassMonitor = ({ notifyTutor }) => {
             (classData || []).map((item) => item.tutor_id).filter(Boolean),
           ),
         ]
-        let tutorData = []
-        let eventData = []
+        let tutorData: MonitorTutor[] = []
+        let eventData: MonitorEvent[] = []
 
         if (tutorIds.length) {
           const { data, error: tutorError } = await supabase
@@ -78,7 +103,7 @@ const LiveClassMonitor = ({ notifyTutor }) => {
           eventData = data || []
         }
 
-        const eventMap = new Map()
+        const eventMap = new Map<string, MonitorEvent>()
         for (const event of eventData) {
           const key = String(event.class_id)
           const previous = eventMap.get(key)
@@ -111,35 +136,36 @@ const LiveClassMonitor = ({ notifyTutor }) => {
     fetchClasses()
   }, [fetchClasses])
 
-  const getTutor = (id) => tutors.find((t) => String(t.id) === String(id))
-  const getTutorName = (id) => {
+  const getTutor = (id: string | null) =>
+    tutors.find((t) => String(t.id) === String(id))
+  const getTutorName = (id: string | null) => {
     if (!id) return 'Unassigned Tutor'
     const tutor = getTutor(id)
     return tutor?.full_name || tutor?.name || tutor?.email || 'Assigned Tutor'
   }
-  const getClassTitle = (item) =>
+  const getClassTitle = (item: MonitorClass) =>
     item.title ||
     item.class_name ||
     item.name ||
     item.calendar_event?.title ||
     `${item.class_type || 'Scheduled'} Class`
-  const getScheduledDate = (item) => {
+  const getScheduledDate = (item: MonitorClass) => {
     const value = item.scheduled_at || item.calendar_event?.start_time
     if (!value) return null
     const date = new Date(value)
     return Number.isNaN(date.getTime()) ? null : date
   }
-  const getClassTime = (item) => {
+  const getClassTime = (item: MonitorClass) => {
     const date = getScheduledDate(item)
     return date
       ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
       : 'Time not specified'
   }
-  const getMeetLink = (item) => {
+  const getMeetLink = (item: MonitorClass) => {
     const value = item.calendar_event?.meet_link || item.meet_link || ''
     return typeof value === 'string' ? value.trim() : ''
   }
-  const hasValidMeetLink = (value) => {
+  const hasValidMeetLink = (value: string) => {
     try {
       const url = new URL(value)
       return url.protocol === 'https:' || url.protocol === 'http:'
@@ -148,7 +174,7 @@ const LiveClassMonitor = ({ notifyTutor }) => {
     }
   }
 
-  const handleJoinClass = (item) => {
+  const handleJoinClass = (item: MonitorClass) => {
     const link = getMeetLink(item)
     if (!hasValidMeetLink(link)) {
       toast.error('No valid meeting link is saved for this class yet.')
@@ -158,7 +184,7 @@ const LiveClassMonitor = ({ notifyTutor }) => {
     window.open(link, '_blank', 'noopener,noreferrer')
   }
 
-  const handlePingTutor = async (item) => {
+  const handlePingTutor = async (item: MonitorClass) => {
     if (!item.tutor_id)
       return toast.error('Assign a tutor to this class first.')
     if (typeof notifyTutor !== 'function')

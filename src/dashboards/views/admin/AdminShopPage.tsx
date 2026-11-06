@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 
 import {
   Plus,
@@ -15,6 +16,27 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import { isAdminRole } from '../../../types/roles'
+import type { Tables } from '../../../types/database'
+
+type ShopProduct = Tables<'shop_products'>
+
+interface ShopProductForm {
+  name: string
+  slug: string
+  category: string
+  program: string
+  short_description: string
+  description: string
+  price: number | string
+  compare_at_price: number | string
+  currency: string
+  badge: string
+  stock_quantity: number | string
+  is_featured: boolean
+  is_active: boolean
+  display_order: number | string
+  image_url: string
+}
 
 const productCategories = [
   'Books',
@@ -24,7 +46,7 @@ const productCategories = [
   'Merchandise',
 ]
 
-const emptyForm = {
+const emptyForm: ShopProductForm = {
   name: '',
   slug: '',
   category: '',
@@ -43,10 +65,10 @@ const emptyForm = {
 }
 
 export default function AdminShopPage() {
-  const [products, setProducts] = useState([])
-  const [form, setForm] = useState(emptyForm)
+  const [products, setProducts] = useState<ShopProduct[]>([])
+  const [form, setForm] = useState<ShopProductForm>(emptyForm)
 
-  const [editingId, setEditingId] = useState(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
   const [loading, setLoading] = useState(true)
@@ -98,7 +120,7 @@ export default function AdminShopPage() {
     setLoading(false)
   }
 
-  function generateSlug(name) {
+  function generateSlug(name: string) {
     return name
       .toLowerCase()
       .trim()
@@ -106,7 +128,7 @@ export default function AdminShopPage() {
       .replace(/^-+|-+$/g, '')
   }
 
-  function handleNameChange(value) {
+  function handleNameChange(value: string) {
     setForm((previous) => ({
       ...previous,
       name: value,
@@ -120,7 +142,7 @@ export default function AdminShopPage() {
     setModalOpen(true)
   }
 
-  function openEdit(product) {
+  function openEdit(product: ShopProduct) {
     setEditingId(product.id)
 
     setForm({
@@ -144,7 +166,7 @@ export default function AdminShopPage() {
     setModalOpen(true)
   }
 
-  async function uploadImage(file) {
+  async function uploadImage(file: File | undefined) {
     if (!file) return
 
     try {
@@ -196,7 +218,7 @@ export default function AdminShopPage() {
     }
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     if (!form.name || !form.category || !form.price) {
@@ -265,7 +287,7 @@ export default function AdminShopPage() {
     await fetchProducts()
   }
 
-  async function toggleActive(product) {
+  async function toggleActive(product: ShopProduct) {
     const { error } = await supabase
       .from('shop_products')
       .update({
@@ -281,7 +303,7 @@ export default function AdminShopPage() {
     fetchProducts()
   }
 
-  async function deleteProduct(product) {
+  async function deleteProduct(product: ShopProduct) {
     const confirmed = window.confirm(`Delete "${product.name}"?`)
 
     if (!confirmed) return
@@ -299,7 +321,7 @@ export default function AdminShopPage() {
     fetchProducts()
   }
 
-  function formatPrice(product) {
+  function formatPrice(product: ShopProduct) {
     return new Intl.NumberFormat('en-KE', {
       style: 'currency',
       currency: product.currency || 'KES',
@@ -307,7 +329,7 @@ export default function AdminShopPage() {
     }).format(Number(product.price))
   }
 
-  function formatProgram(program) {
+  function formatProgram(program: string | null) {
     switch (program) {
       case 'junior-coders':
         return 'Junior Coders'
@@ -818,7 +840,7 @@ export default function AdminShopPage() {
 const inputClass =
   'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10'
 
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -830,7 +852,7 @@ function Field({ label, children }) {
   )
 }
 
-function StatCard({ title, value }) {
+function StatCard({ title, value }: { title: string; value: number }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-sm text-slate-500">{title}</p>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import type { ChangeEvent } from 'react'
 import {
   BookOpen,
   Search,
@@ -18,32 +19,89 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
+import type { Tables } from '../../../types/database'
 
-export default function TutorStudentsView({ userId }) {
-  const [students, setStudents] = useState([])
-  const [selectedStudent, setSelectedStudent] = useState(null)
+interface Student {
+  id: string
+  full_name: string | null
+  email?: string | null
+  assigned_course_id?: string | null
+  avatar_url?: string | null
+  name?: string | null
+  picture?: string | null
+  user_metadata?: Record<string, unknown>
+}
+
+interface Course {
+  id: string
+  title: string
+  thumbnail_url?: string | null
+}
+
+interface Lesson {
+  id: string
+  title: string
+  position?: number | null
+  quiz?: { id: string; title: string; passing_score?: number | null } | null
+}
+
+interface Phase {
+  id: string
+  phase_number: number | null
+  title: string
+  course_lessons: Lesson[]
+}
+
+interface StudentAttempt {
+  id: string
+  quiz_id: string | null
+  score: number
+  passed: boolean
+}
+
+interface LessonDetails {
+  notes: {
+    title?: string | null
+    content?: string | null
+    video_url?: string | null
+  } | null
+  quiz: { id: string; title: string; passing_score?: number | null } | null
+  questions: Tables<'quiz_questions'>[]
+}
+
+export default function TutorStudentsView({ userId }: { userId: string }) {
+  const [students, setStudents] = useState<Student[]>([])
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
   // Multi-course support state
-  const [studentCourses, setStudentCourses] = useState([])
+  const [studentCourses, setStudentCourses] = useState<Course[]>([])
   const [selectedCourseId, setSelectedCourseId] = useState('')
 
-  const [studentPhases, setStudentPhases] = useState([])
-  const [studentAttempts, setStudentAttempts] = useState([])
-  const [completedLessonIds, setCompletedLessonIds] = useState(new Set())
+  const [studentPhases, setStudentPhases] = useState<Phase[]>([])
+  const [studentAttempts, setStudentAttempts] = useState<StudentAttempt[]>([])
+  const [completedLessonIds, setCompletedLessonIds] = useState<
+    Set<string | null>
+  >(new Set())
   const [loadingStudents, setLoadingStudents] = useState(true)
   const [loadingData, setLoadingData] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [unlockingLessonId, setUnlockingLessonId] = useState(null)
+  const [unlockingLessonId, setUnlockingLessonId] = useState<string | null>(
+    null,
+  )
 
   // Sidebar collapsed state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   // Track collapsed state per phase (auto-collapsed if complete)
-  const [collapsedPhases, setCollapsedPhases] = useState({})
+  const [collapsedPhases, setCollapsedPhases] = useState<
+    Record<string, boolean>
+  >({})
 
   // Track expanded lesson details inline view for notes & quizzes
-  const [expandedLessonId, setExpandedLessonId] = useState(null)
-  const [lessonContentMap, setLessonContentMap] = useState({})
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null)
+  const [lessonContentMap, setLessonContentMap] = useState<
+    Record<string, LessonDetails>
+  >({})
 
   useEffect(() => {
     const fetchAssignedStudents = async () => {
@@ -89,9 +147,9 @@ export default function TutorStudentsView({ userId }) {
 
         if (error) throw error
 
-        let enrolledCourses = (enrollments || [])
-          .map((e) => e.courses)
-          .filter(Boolean)
+        let enrolledCourses: Course[] = (enrollments || []).flatMap(
+          (enrollment) => enrollment.courses ?? [],
+        )
 
         // 2. Fallback to assigned_course_id if enrollments are empty
         if (
@@ -183,7 +241,7 @@ export default function TutorStudentsView({ userId }) {
 
         setStudentPhases(enrichedPhases)
 
-        const initialCollapseState = {}
+        const initialCollapseState: Record<string, boolean> = {}
         enrichedPhases.forEach((phase) => {
           const lessons = phase.course_lessons || []
           const allComplete =
@@ -209,7 +267,10 @@ export default function TutorStudentsView({ userId }) {
     fetchStudentAcademicData()
   }, [selectedStudent, selectedCourseId])
 
-  const handleLessonClick = async (lessonId, isUnlocked) => {
+  const handleLessonClick = async (
+    lessonId: string,
+    isUnlocked: boolean | null,
+  ) => {
     if (!isUnlocked) {
       toast.error('Lesson is locked. Unlock it first to inspect content.')
       return
@@ -237,7 +298,7 @@ export default function TutorStudentsView({ userId }) {
         .eq('lesson_id', lessonId)
         .maybeSingle()
 
-      let questions = []
+      let questions: LessonDetails['questions'] = []
       if (quizData?.id) {
         const { data: qData } = await supabase
           .from('quiz_questions')
@@ -262,10 +323,10 @@ export default function TutorStudentsView({ userId }) {
   }
 
   const handleToggleLock = async (
-    lessonId,
-    isCurrentlyCompleted,
-    phaseId,
-    lessonsInPhase,
+    lessonId: string,
+    isCurrentlyCompleted: boolean,
+    phaseId: string,
+    lessonsInPhase: Lesson[],
   ) => {
     setUnlockingLessonId(lessonId)
     try {
@@ -273,7 +334,7 @@ export default function TutorStudentsView({ userId }) {
 
       const { error } = await supabase.from('student_lesson_progress').upsert(
         {
-          student_id: selectedStudent.id,
+          student_id: selectedStudent!.id,
           lesson_id: lessonId,
           status: newStatus,
           completed_at: isCurrentlyCompleted ? null : new Date().toISOString(),
@@ -305,13 +366,16 @@ export default function TutorStudentsView({ userId }) {
       )
     } catch (err) {
       console.error('Toggle lock error:', err)
-      toast.error('Failed to update lesson status: ' + err.message)
+      toast.error(
+        'Failed to update lesson status: ' +
+          (err instanceof Error ? err.message : 'Unknown error'),
+      )
     } finally {
       setUnlockingLessonId(null)
     }
   }
 
-  const togglePhaseCollapse = (phaseId) => {
+  const togglePhaseCollapse = (phaseId: string) => {
     setCollapsedPhases((prev) => ({
       ...prev,
       [phaseId]: !prev[phaseId],
@@ -388,7 +452,9 @@ export default function TutorStudentsView({ userId }) {
                   student.full_name || student.name || 'Student'
                 const avatarImg =
                   student.avatar_url ||
-                  student.user_metadata?.avatar_url ||
+                  (typeof student.user_metadata?.avatar_url === 'string'
+                    ? student.user_metadata.avatar_url
+                    : undefined) ||
                   student.picture
 
                 return (

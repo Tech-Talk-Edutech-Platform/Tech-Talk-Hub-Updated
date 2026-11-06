@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../supabase' // Verified from your tree structure
+import type { Tables } from '../../types/database'
 
 export default function AdminDashboard() {
   // Form State Layout
@@ -16,7 +17,7 @@ export default function AdminDashboard() {
   })
 
   // Ledger Table & Control States
-  const [receipts, setReceipts] = useState([])
+  const [receipts, setReceipts] = useState<Tables<'receipts'>[]>([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' })
@@ -40,12 +41,14 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
   // Process transaction: Update Supabase Secure Vault -> Blast Resend Dispatch Engine
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setStatusMessage({ type: '', text: '' })

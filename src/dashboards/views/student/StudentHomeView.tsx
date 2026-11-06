@@ -14,11 +14,19 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import type { Tables } from '../../../types/database'
 
-export default function StudentHomeView({ userId }) {
-  const [student, setStudent] = useState(null)
-  const [latestResult, setLatestResult] = useState(null)
-  const [latestRecordings, setLatestRecordings] = useState([])
+type RecordingWithTutor = Tables<'class_recordings'> & {
+  tutor: Pick<Tables<'users'>, 'full_name'> | null
+}
+
+export default function StudentHomeView({ userId }: { userId: string }) {
+  const [student, setStudent] = useState<Tables<'users'> | null>(null)
+  const [latestResult, setLatestResult] =
+    useState<Tables<'student_results'> | null>(null)
+  const [latestRecordings, setLatestRecordings] = useState<
+    RecordingWithTutor[]
+  >([])
 
   useEffect(() => {
     if (!userId) return
@@ -89,7 +97,7 @@ export default function StudentHomeView({ userId }) {
       <div className="animate-fade-in relative z-10 mx-auto max-w-7xl space-y-8 p-4 md:p-6 lg:p-8">
         {/* WELCOME BANNER HEADER */}
         <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-[25px] border border-purple-700/30 bg-gradient-to-r from-purple-900 via-purple-800 to-indigo-900 p-6 text-white shadow-2xl sm:rounded-[30px] sm:p-8 md:rounded-[35px] lg:flex-row lg:items-center">
-          <div className="pointer-events-none absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-pink-500/10 blur-3xl"></div>
+          <div className="pointer-events-none absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-pink-500/10 blur-3xl" />
 
           <div className="relative z-10 space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest text-purple-200 backdrop-blur-md">
@@ -301,7 +309,7 @@ export default function StudentHomeView({ userId }) {
 
         {/* MAIN FEATURED HERO CARD */}
         <div className="relative overflow-hidden rounded-[32px] border border-purple-200/60 bg-white/90 p-6 shadow-2xl backdrop-blur-2xl dark:border-purple-500/25 dark:bg-white/5 md:p-10">
-          <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl"></div>
+          <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
 
           <div className="relative z-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
             <div className="flex flex-col items-center justify-center rounded-3xl border border-purple-200/60 bg-purple-50/60 p-6 shadow-inner dark:border-purple-500/30 dark:bg-purple-950/30 lg:col-span-3">

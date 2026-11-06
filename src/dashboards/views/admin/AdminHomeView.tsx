@@ -118,7 +118,7 @@ export default function AdminHomeView({ userId, role }) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 p-28 text-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500/20 border-t-purple-600"></div>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500/20 border-t-purple-600" />
         <p className="animate-pulse text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
           Initializing Operations Center...
         </p>
@@ -230,7 +230,7 @@ export default function AdminHomeView({ userId, role }) {
         <div className="col-span-12 flex flex-col gap-6 xl:col-span-4">
           {/* QUICK LINKS PANEL */}
           <div className="relative overflow-hidden rounded-[32px] border border-gray-800 bg-gray-900 p-6 text-white shadow-xl dark:border-white/10 dark:bg-white/5 md:p-8">
-            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-purple-500/10 blur-2xl"></div>
+            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-purple-500/10 blur-2xl" />
 
             <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-purple-400">
               <Settings size={16} className="text-purple-500" /> Administrative

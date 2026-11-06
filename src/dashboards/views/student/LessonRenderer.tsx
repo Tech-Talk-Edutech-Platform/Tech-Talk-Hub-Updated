@@ -1,12 +1,14 @@
-function LessonRenderer({ content }) {
+function LessonRenderer({ content }: { content: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
         // Keep normal h2 and h3 standard, and selectively handle custom styles
-        h2: ({ children }) => renderByteHeading(children, 'h2'),
-        h3: ({ children }) => renderByteHeading(children, 'h3'),
-        p: ({ children }) => (
+        h2: ({ children }: { children?: React.ReactNode }) =>
+          renderByteHeading(children, 'h2'),
+        h3: ({ children }: { children?: React.ReactNode }) =>
+          renderByteHeading(children, 'h3'),
+        p: ({ children }: { children?: React.ReactNode }) => (
           <p className="mb-4 text-base leading-7 text-gray-700 dark:text-gray-300">
             {children}
           </p>
@@ -18,14 +20,14 @@ function LessonRenderer({ content }) {
   )
 }
 
-function renderByteHeading(children, level) {
+function renderByteHeading(children: unknown, level: 'h2' | 'h3') {
   const rawTitle = String(children)
   const normalizedTitle = rawTitle
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '')
     .trim()
 
-  const styles = {
+  const styles: Record<string, string> = {
     'byte explains': 'bg-rose-500 border-rose-200 bg-rose-50/50 text-rose-500',
     'byte shows you how':
       'bg-blue-500 border-blue-200 bg-blue-50/50 text-blue-500',

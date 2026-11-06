@@ -10,11 +10,23 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { supabase } from '../../../supabase'
+import type { Tables } from '../../../types/database'
 
-export default function StudentHomeworkView({ userId, courseId }) {
+type Assignment = Tables<'student_assignments'>
+
+interface StudentHomeworkViewProps {
+  userId: string
+  courseId?: string
+}
+
+export default function StudentHomeworkView({
+  userId,
+  courseId,
+}: StudentHomeworkViewProps) {
   const [loading, setLoading] = useState(true)
-  const [assignments, setAssignments] = useState([])
-  const [selectedAssignment, setSelectedAssignment] = useState(null)
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [selectedAssignment, setSelectedAssignment] =
+    useState<Assignment | null>(null)
   const [submissionText, setSubmissionText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -60,11 +72,11 @@ export default function StudentHomeworkView({ userId, courseId }) {
     }
   }
 
-  const handleSelectAssignment = (assignment) => {
+  const handleSelectAssignment = (assignment: Assignment) => {
     setSelectedAssignment(assignment)
   }
 
-  const handleSubmitHomework = async (e) => {
+  const handleSubmitHomework = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedAssignment) return
 

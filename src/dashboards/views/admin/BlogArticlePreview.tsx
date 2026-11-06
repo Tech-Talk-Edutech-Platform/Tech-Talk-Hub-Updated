@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { ReactNode } from 'react'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -14,6 +15,22 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
+
+interface PreviewArticle {
+  title: string
+  excerpt: string | null
+  category: string | null
+  content: string
+  cover_image_url: string | null
+  published_at: string | null
+}
+
+interface BlogArticlePreviewProps {
+  article: PreviewArticle
+  onClose: () => void
+  onPublish?: () => unknown
+  publishing?: boolean
+}
 
 function countWords(content = '') {
   const text = content
@@ -38,7 +55,7 @@ function createHeadingId(value = '') {
     .replace(/^-+|-+$/g, '')
 }
 
-function getText(value) {
+function getText(value: ReactNode): string {
   if (typeof value === 'string') {
     return value
   }
@@ -79,7 +96,7 @@ function extractHeadings(content = '') {
     .filter(Boolean)
 }
 
-function formatDate(value) {
+function formatDate(value: string | null) {
   return new Intl.DateTimeFormat('en-KE', {
     day: 'numeric',
 
@@ -89,7 +106,7 @@ function formatDate(value) {
   }).format(value ? new Date(value) : new Date())
 }
 
-function PreviewArticleImage({ src, alt }) {
+function PreviewArticleImage({ src, alt }: { src?: string; alt?: string }) {
   if (!src) {
     return null
   }
@@ -114,7 +131,7 @@ function PreviewArticleImage({ src, alt }) {
   )
 }
 
-function PreviewArticleContent({ content }) {
+function PreviewArticleContent({ content }: { content: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -168,7 +185,7 @@ function PreviewArticleContent({ content }) {
 
         p({ children, node }) {
           const containsImage = node?.children?.some(
-            (child) => child.tagName === 'img',
+            (child: { tagName?: string }) => child.tagName === 'img',
           )
 
           if (containsImage) {
@@ -315,7 +332,7 @@ export default function BlogArticlePreview({
   onClose,
   onPublish,
   publishing = false,
-}) {
+}: BlogArticlePreviewProps) {
   const headings = useMemo(
     () => extractHeadings(article?.content || ''),
 

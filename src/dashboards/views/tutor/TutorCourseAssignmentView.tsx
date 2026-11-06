@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
 import {
@@ -13,20 +14,59 @@ import {
   ExternalLink,
 } from 'lucide-react'
 
-export default function TutorCourseAssignmentView({ userId }) {
-  const [students, setStudents] = useState([])
+interface Student {
+  id: string
+  full_name: string | null
+  assigned_course_id?: string | null
+}
+
+interface Course {
+  id: string
+  title: string
+}
+
+interface Lesson {
+  id: string
+  title: string
+  position?: number | null
+  phase_number: number | null
+}
+
+interface StudentAssignment {
+  id: string
+  task_name: string
+  status: string | null
+  description?: string | null
+  submission_link?: string | null
+  submitted_at?: string | null
+  tutor_feedback?: string | null
+  grade?: string | null
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export default function TutorCourseAssignmentView({
+  userId,
+}: {
+  userId: string
+}) {
+  const [students, setStudents] = useState<Student[]>([])
   const [selectedStudent, setSelectedStudent] = useState('')
-  const [studentCourses, setStudentCourses] = useState([])
+  const [studentCourses, setStudentCourses] = useState<Course[]>([])
   const [selectedCourse, setSelectedCourse] = useState('')
-  const [courseLessons, setCourseLessons] = useState([])
+  const [courseLessons, setCourseLessons] = useState<Lesson[]>([])
   const [selectedLessonId, setSelectedLessonId] = useState('')
   const [taskName, setTaskName] = useState('')
   const [taskDescription, setTaskDescription] = useState('')
-  const [studentAssignments, setStudentAssignments] = useState([])
+  const [studentAssignments, setStudentAssignments] = useState<
+    StudentAssignment[]
+  >([])
   const [loading, setLoading] = useState(false)
 
   // Track currently active expanded task for bottom review panel
-  const [selectedTaskId, setSelectedTaskId] = useState(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTutorStudents()
@@ -46,7 +86,7 @@ export default function TutorCourseAssignmentView({ userId }) {
     }
   }
 
-  const fetchStudentCourses = async (studentId) => {
+  const fetchStudentCourses = async (studentId: string) => {
     try {
       const { data: enrollments, error } = await supabase
         .from('student_enrollments')
@@ -55,9 +95,11 @@ export default function TutorCourseAssignmentView({ userId }) {
 
       if (error) throw error
 
-      let enrolledCourses = (enrollments || [])
-        .map((e) => e.courses)
-        .filter(Boolean)
+      let enrolledCourses = (enrollments || []).flatMap((enrollment) => {
+        const relation = enrollment.courses as Course | Course[] | null
+        if (!relation) return []
+        return Array.isArray(relation) ? relation : [relation]
+      })
 
       if (enrolledCourses.length === 0) {
         const student = students.find((s) => s.id === studentId)
@@ -84,12 +126,12 @@ export default function TutorCourseAssignmentView({ userId }) {
         setCourseLessons([])
       }
     } catch (err) {
-      console.error('Error loading student courses:', err.message)
+      console.error('Error loading student courses:', getErrorMessage(err))
       setStudentCourses([])
     }
   }
 
-  const fetchCourseLessons = async (courseId, studentId) => {
+  const fetchCourseLessons = async (courseId: string, studentId: string) => {
     try {
       const { data: phaseData, error: phaseError } = await supabase
         .from('course_phases')
@@ -120,7 +162,7 @@ export default function TutorCourseAssignmentView({ userId }) {
 
       const completedIds = new Set((progressData || []).map((p) => p.lesson_id))
 
-      let allLessons = []
+      const allLessons: Lesson[] = []
       ;(phaseData || []).forEach((phase) => {
         const sortedLessons = (phase.course_lessons || []).sort(
           (a, b) => (a.position || 0) - (b.position || 0),
@@ -146,12 +188,12 @@ export default function TutorCourseAssignmentView({ userId }) {
 
       setCourseLessons(eligibleLessons)
     } catch (err) {
-      console.error('Error loading eligible lessons:', err.message)
+      console.error('Error loading eligible lessons:', getErrorMessage(err))
       setCourseLessons([])
     }
   }
 
-  const handleStudentChange = async (studentId) => {
+  const handleStudentChange = async (studentId: string) => {
     setSelectedStudent(studentId)
     setSelectedLessonId('')
     setSelectedTaskId(null)
@@ -167,7 +209,7 @@ export default function TutorCourseAssignmentView({ userId }) {
     }
   }
 
-  const handleCourseChange = async (courseId) => {
+  const handleCourseChange = async (courseId: string) => {
     setSelectedCourse(courseId)
     setSelectedLessonId('')
     if (selectedStudent && courseId) {
@@ -177,7 +219,7 @@ export default function TutorCourseAssignmentView({ userId }) {
     }
   }
 
-  const fetchStudentAssignments = async (studentId) => {
+  const fetchStudentAssignments = async (studentId: string) => {
     const { data, error } = await supabase
       .from('student_assignments')
       .select('*')
@@ -193,7 +235,7 @@ export default function TutorCourseAssignmentView({ userId }) {
     }
   }
 
-  const handleReviewTask = async (taskId, newStatus = 'completed') => {
+  const handleReviewTask = async (taskId: string, newStatus = 'completed') => {
     const task = studentAssignments.find((a) => a.id === taskId)
     if (!task) return
 
@@ -224,7 +266,7 @@ export default function TutorCourseAssignmentView({ userId }) {
     fetchStudentAssignments(selectedStudent)
   }
 
-  const handleCreateTask = async (e) => {
+  const handleCreateTask = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (
       !selectedStudent ||

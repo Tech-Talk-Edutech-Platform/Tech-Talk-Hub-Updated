@@ -1,7 +1,55 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { supabase } from '../../../supabase'
+import { useNow } from '../../../hooks/useNow'
+import type {
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+} from '../../../types/database'
 
-const LEAD_STATUSES = [
+type LeadStatus =
+  | 'New'
+  | 'Contacted'
+  | 'Trial Scheduled'
+  | 'Trial Completed'
+  | 'Converted'
+  | 'Lost'
+
+type Lead = Tables<'leads'> & { lost_reason?: string | null }
+
+interface Tutor {
+  id: string
+  full_name: string | null
+  name: string | null
+  email: string | null
+  role: string
+}
+
+interface LeadFormData {
+  parent_name: string
+  student_name: string
+  phone: string
+  email: string
+  country: string
+  grade: string
+  status: string
+  class_date: string
+  class_time: string
+  next_follow_up_at: string
+  lead_source: string
+  assigned_tutor_id: string
+  lost_reason: string
+}
+
+const LEAD_STATUSES: LeadStatus[] = [
   'New',
   'Contacted',
   'Trial Scheduled',
@@ -10,7 +58,7 @@ const LEAD_STATUSES = [
   'Lost',
 ]
 
-const STATUS_STYLES = {
+const STATUS_STYLES: Record<string, string> = {
   New: 'bg-blue-50 text-blue-700 ring-blue-600/20',
   Contacted: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
   'Trial Scheduled': 'bg-amber-50 text-amber-700 ring-amber-600/20',
@@ -21,7 +69,7 @@ const STATUS_STYLES = {
 
 const PAGE_SIZE = 10
 
-const EMPTY_FORM = {
+const EMPTY_FORM: LeadFormData = {
   parent_name: '',
   student_name: '',
   phone: '',
@@ -42,7 +90,7 @@ const inputClass =
 
 const labelClass = 'block text-sm font-medium text-slate-700'
 
-function formatDate(value) {
+function formatDate(value: string | number | null | undefined) {
   if (!value) return '—'
 
   const date = new Date(value)
@@ -56,7 +104,7 @@ function formatDate(value) {
   })
 }
 
-function formatDateTime(value) {
+function formatDateTime(value: string | number | null | undefined) {
   if (!value) return '—'
 
   const date = new Date(value)
@@ -72,7 +120,7 @@ function formatDateTime(value) {
   })
 }
 
-function toDateTimeLocal(value) {
+function toDateTimeLocal(value: string | number | null | undefined) {
   if (!value) return ''
 
   const date = new Date(value)
@@ -84,7 +132,7 @@ function toDateTimeLocal(value) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }
 
-function getInitials(name) {
+function getInitials(name: string | null | undefined) {
   if (!name) return 'L'
 
   return name
@@ -96,39 +144,91 @@ function getInitials(name) {
     .toUpperCase()
 }
 
-function getLeadName(lead) {
+function getLeadName(lead: Lead | null | undefined) {
   return lead?.parent_name || lead?.student_name || 'Unnamed lead'
 }
 
-function getStatusStyle(status) {
+function getStatusStyle(status: string) {
   return (
     STATUS_STYLES[status] || 'bg-slate-100 text-slate-700 ring-slate-600/20'
   )
 }
 
-function isFollowUpOverdue(lead) {
+function isFollowUpOverdue(lead: Lead | null | undefined, now: number) {
   if (!lead?.next_follow_up_at) return false
 
-  if (['Converted', 'Lost'].includes(lead.status)) return false
+  if ((['Converted', 'Lost'] as (string | null)[]).includes(lead.status))
+    return false
 
-  return new Date(lead.next_follow_up_at).getTime() < Date.now()
+  return new Date(lead.next_follow_up_at).getTime() < now
 }
 
-function getErrorMessage(error) {
-  return error?.message || 'Something went wrong. Please try again.'
+function getDayBounds(now: number) {
+  const start = new Date(now)
+  start.setHours(0, 0, 0, 0)
+
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+
+  return { start, end }
 }
 
-function getWhatsAppLink(phone, message = '') {
+function getErrorMessage(error: unknown) {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String(error.message)
+  }
+
+  return 'Something went wrong. Please try again.'
+}
+
+function getWhatsAppLink(phone: string | null | undefined, message = '') {
   if (!phone) return null
 
-  const cleanedPhone = String(phone).replace(/[^\d]/g, '')
+  const cleanedPhone = phone.replace(/[^\d]/g, '')
 
   if (!cleanedPhone) return null
 
   return `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`
 }
 
-function StatCard({ label, value, description, icon, iconClass }) {
+async function loadLeads() {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  return Array.isArray(data) ? data : []
+}
+
+async function loadTutors() {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, full_name, name, email, role')
+    .in('role', ['tutor', 'operations_admin', 'admin'])
+
+  if (error) {
+    console.warn('Unable to load tutors:', error.message)
+    return []
+  }
+
+  return Array.isArray(data) ? data : []
+}
+
+function StatCard({
+  label,
+  value,
+  description,
+  icon,
+  iconClass,
+}: {
+  label: string
+  value: string | number
+  description: string
+  icon: ReactNode
+  iconClass: string
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
@@ -150,7 +250,7 @@ function StatCard({ label, value, description, icon, iconClass }) {
   )
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${getStatusStyle(
@@ -162,61 +262,116 @@ function StatusBadge({ status }) {
   )
 }
 
-function Modal({ title, description, onClose, children, footer }) {
+/** Opens a native <dialog> as modal on mount (focus trap, Escape, top layer). */
+function useModalDialog() {
+  const ref = useRef<HTMLDialogElement>(null)
+
   useEffect(() => {
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') onClose()
+    const dialog = ref.current
+    if (dialog && !dialog.open) dialog.showModal()
+    return () => {
+      if (dialog?.open) dialog.close()
     }
+  }, [])
 
-    window.addEventListener('keydown', handleEscape)
+  return ref
+}
 
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [onClose])
+function LeadDrawer({
+  onClose,
+  children,
+}: {
+  onClose: () => void
+  children: ReactNode
+}) {
+  const dialogRef = useModalDialog()
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 backdrop-blur-sm sm:p-6"
-      onMouseDown={(event) => {
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop click to close; Escape (onCancel) is the keyboard equivalent
+    <dialog
+      ref={dialogRef}
+      aria-label="Lead details"
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+      onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
+      className="my-0 ml-auto mr-0 h-full max-h-none w-full max-w-xl flex-col border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/40 backdrop:backdrop-blur-sm open:flex"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="my-auto flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-            {description && (
-              <p className="mt-1 text-sm text-slate-500">{description}</p>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-2xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="overflow-y-auto">{children}</div>
-
-        {footer && (
-          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:px-7">
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>
+      {children}
+    </dialog>
   )
 }
 
-function EmptyState({ title, description, action }) {
+function Modal({
+  title,
+  description,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string
+  description?: string
+  onClose: () => void
+  children: ReactNode
+  footer?: ReactNode
+}) {
+  const dialogRef = useModalDialog()
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop click to close; Escape (onCancel) is the keyboard equivalent
+    <dialog
+      ref={dialogRef}
+      aria-label={title}
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+      className="m-auto max-h-[92vh] w-[calc(100%-1.5rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/50 backdrop:backdrop-blur-sm open:flex"
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          {description && (
+            <p className="mt-1 text-sm text-slate-500">{description}</p>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-2xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="overflow-y-auto">{children}</div>
+
+      {footer && (
+        <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:px-7">
+          {footer}
+        </div>
+      )}
+    </dialog>
+  )
+}
+
+function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string
+  description: string
+  action?: ReactNode
+}) {
   return (
     <div className="px-5 py-16 text-center">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-3xl">
@@ -232,36 +387,50 @@ function EmptyState({ title, description, action }) {
 }
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState([])
-  const [tutors, setTutors] = useState([])
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [tutors, setTutors] = useState<Tutor[]>([])
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [statusUpdatingId, setStatusUpdatingId] = useState(null)
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null)
 
   const [pageError, setPageError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
-  const [sourceFilter, setSourceFilter] = useState('All')
-  const [followUpFilter, setFollowUpFilter] = useState('All')
-  const [sortBy, setSortBy] = useState('newest')
+  const [searchTerm, setSearchTermValue] = useState('')
+  const [statusFilter, setStatusFilterValue] = useState('All')
+  const [sourceFilter, setSourceFilterValue] = useState('All')
+  const [followUpFilter, setFollowUpFilterValue] = useState('All')
+  const [sortBy, setSortByValue] = useState('newest')
   const [currentPage, setCurrentPage] = useState(1)
 
-  const [selectedLead, setSelectedLead] = useState(null)
-  const [editingLead, setEditingLead] = useState(null)
+  // Changing any filter or sort order returns to the first page.
+  const withPageReset =
+    (setValue: (value: string) => void) => (value: string) => {
+      setValue(value)
+      setCurrentPage(1)
+    }
+  const setSearchTerm = withPageReset(setSearchTermValue)
+  const setStatusFilter = withPageReset(setStatusFilterValue)
+  const setSourceFilter = withPageReset(setSourceFilterValue)
+  const setFollowUpFilter = withPageReset(setFollowUpFilterValue)
+  const setSortBy = withPageReset(setSortByValue)
+
+  const now = useNow(60_000)
+
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [showLeadForm, setShowLeadForm] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
 
-  const [formData, setFormData] = useState({ ...EMPTY_FORM })
+  const [formData, setFormData] = useState<LeadFormData>({ ...EMPTY_FORM })
   const [detailsFollowUp, setDetailsFollowUp] = useState('')
 
   // --------------------------------------------------
   // NOTIFICATIONS
   // --------------------------------------------------
 
-  const showSuccess = useCallback((message) => {
+  const showSuccess = useCallback((message: string) => {
     setSuccessMessage(message)
 
     window.setTimeout(() => {
@@ -273,73 +442,61 @@ export default function LeadsPage() {
   // LOAD LEADS
   // --------------------------------------------------
 
-  const fetchLeads = useCallback(async () => {
-    setLoading(true)
-    setPageError('')
-
-    try {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      setLeads(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Error loading leads:', error)
-      setPageError(`Unable to load leads. ${getErrorMessage(error)}`)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const fetchLeads = useCallback(
+    () =>
+      loadLeads()
+        .then(
+          (data) => setLeads(data),
+          (error: unknown) => {
+            console.error('Error loading leads:', error)
+            setPageError(`Unable to load leads. ${getErrorMessage(error)}`)
+          },
+        )
+        .finally(() => setLoading(false)),
+    [],
+  )
 
   // --------------------------------------------------
   // LOAD TUTORS
   // --------------------------------------------------
 
-  const fetchTutors = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, full_name, name, email, role')
-        .in('role', ['tutor', 'operations_admin', 'admin'])
-
-      if (error) {
-        console.warn('Unable to load tutors:', error.message)
-        setTutors([])
-        return
-      }
-
-      setTutors(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Error loading tutors:', error)
-      setTutors([])
-    }
-  }, [])
+  const fetchTutors = useCallback(
+    () =>
+      loadTutors().then(
+        (data) => setTutors(data),
+        (error: unknown) => {
+          console.error('Error loading tutors:', error)
+          setTutors([])
+        },
+      ),
+    [],
+  )
 
   useEffect(() => {
-    fetchLeads()
-    fetchTutors()
+    void fetchLeads()
+    void fetchTutors()
   }, [fetchLeads, fetchTutors])
+
+  const refreshLeads = () => {
+    setLoading(true)
+    setPageError('')
+    void fetchLeads()
+  }
 
   // --------------------------------------------------
   // STATISTICS
   // --------------------------------------------------
 
   const statistics = useMemo(() => {
-    const countByStatus = (status) =>
+    const countByStatus = (status: string) =>
       leads.filter((lead) => lead.status === status).length
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    const { start: today, end: tomorrow } = getDayBounds(now)
 
     const followUpsToday = leads.filter((lead) => {
       if (!lead.next_follow_up_at) return false
-      if (['Converted', 'Lost'].includes(lead.status)) return false
+      if ((['Converted', 'Lost'] as (string | null)[]).includes(lead.status))
+        return false
 
       const date = new Date(lead.next_follow_up_at)
 
@@ -357,11 +514,12 @@ export default function LeadsPage() {
       trialsCompleted: countByStatus('Trial Completed'),
       converted,
       lost: countByStatus('Lost'),
-      overdueFollowUps: leads.filter(isFollowUpOverdue).length,
+      overdueFollowUps: leads.filter((lead) => isFollowUpOverdue(lead, now))
+        .length,
       followUpsToday,
       conversionRate: total > 0 ? Math.round((converted / total) * 100) : 0,
     }
-  }, [leads])
+  }, [leads, now])
 
   // --------------------------------------------------
   // FILTERS AND SEARCH
@@ -369,8 +527,12 @@ export default function LeadsPage() {
 
   const sourceOptions = useMemo(() => {
     return [
-      ...new Set(leads.map((lead) => lead.lead_source).filter(Boolean)),
-    ].sort((a, b) => String(a).localeCompare(String(b)))
+      ...new Set(
+        leads
+          .map((lead) => lead.lead_source)
+          .filter((source): source is string => Boolean(source)),
+      ),
+    ].toSorted((a, b) => a.localeCompare(b))
   }, [leads])
 
   const filteredLeads = useMemo(() => {
@@ -391,9 +553,7 @@ export default function LeadsPage() {
         ]
 
         return fields.some((field) =>
-          String(field || '')
-            .toLowerCase()
-            .includes(search),
+          (field ?? '').toLowerCase().includes(search),
         )
       })
     }
@@ -407,19 +567,16 @@ export default function LeadsPage() {
     }
 
     if (followUpFilter === 'Overdue') {
-      result = result.filter(isFollowUpOverdue)
+      result = result.filter((lead) => isFollowUpOverdue(lead, now))
     }
 
     if (followUpFilter === 'Today') {
-      const start = new Date()
-      start.setHours(0, 0, 0, 0)
-
-      const end = new Date(start)
-      end.setDate(end.getDate() + 1)
+      const { start, end } = getDayBounds(now)
 
       result = result.filter((lead) => {
         if (!lead.next_follow_up_at) return false
-        if (['Converted', 'Lost'].includes(lead.status)) return false
+        if ((['Converted', 'Lost'] as (string | null)[]).includes(lead.status))
+          return false
 
         const date = new Date(lead.next_follow_up_at)
         return date >= start && date < end
@@ -427,11 +584,10 @@ export default function LeadsPage() {
     }
 
     if (followUpFilter === 'Upcoming') {
-      const now = Date.now()
-
       result = result.filter((lead) => {
         if (!lead.next_follow_up_at) return false
-        if (['Converted', 'Lost'].includes(lead.status)) return false
+        if ((['Converted', 'Lost'] as (string | null)[]).includes(lead.status))
+          return false
 
         return new Date(lead.next_follow_up_at).getTime() >= now
       })
@@ -443,7 +599,10 @@ export default function LeadsPage() {
 
     result.sort((a, b) => {
       if (sortBy === 'oldest') {
-        return new Date(a.created_at || 0) - new Date(b.created_at || 0)
+        return (
+          new Date(a.created_at || 0).getTime() -
+          new Date(b.created_at || 0).getTime()
+        )
       }
 
       if (sortBy === 'name') {
@@ -462,11 +621,22 @@ export default function LeadsPage() {
         return dateA - dateB
       }
 
-      return new Date(b.created_at || 0) - new Date(a.created_at || 0)
+      return (
+        new Date(b.created_at || 0).getTime() -
+        new Date(a.created_at || 0).getTime()
+      )
     })
 
     return result
-  }, [leads, searchTerm, statusFilter, sourceFilter, followUpFilter, sortBy])
+  }, [
+    leads,
+    searchTerm,
+    statusFilter,
+    sourceFilter,
+    followUpFilter,
+    sortBy,
+    now,
+  ])
 
   // --------------------------------------------------
   // PAGINATION
@@ -481,15 +651,15 @@ export default function LeadsPage() {
     return filteredLeads.slice(start, start + PAGE_SIZE)
   }, [filteredLeads, safeCurrentPage])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, statusFilter, sourceFilter, followUpFilter, sortBy])
-
   // --------------------------------------------------
   // FORM HANDLING
   // --------------------------------------------------
 
-  const handleFormChange = (event) => {
+  const handleFormChange = (
+    event: ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value } = event.target
 
     setFormData((previous) => ({
@@ -505,12 +675,19 @@ export default function LeadsPage() {
     setPageError('')
   }
 
-  const openEditForm = (lead) => {
+  const openEditForm = (lead: Lead) => {
     setEditingLead(lead)
 
     setFormData({
       ...EMPTY_FORM,
-      ...lead,
+      parent_name: lead.parent_name || '',
+      student_name: lead.student_name || '',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      country: lead.country || '',
+      grade: lead.grade || '',
+      status: lead.status || 'New',
+      lead_source: lead.lead_source || '',
       next_follow_up_at: toDateTimeLocal(lead.next_follow_up_at),
       class_date: lead.class_date || '',
       class_time: lead.class_time || '',
@@ -534,7 +711,7 @@ export default function LeadsPage() {
   // CREATE OR UPDATE LEAD
   // --------------------------------------------------
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (!formData.parent_name.trim() && !formData.student_name.trim()) {
@@ -551,7 +728,7 @@ export default function LeadsPage() {
     setPageError('')
 
     try {
-      const payload = {
+      const payload: TablesInsert<'leads'> = {
         parent_name: formData.parent_name.trim() || null,
         student_name: formData.student_name.trim() || null,
         phone: formData.phone.trim(),
@@ -618,7 +795,7 @@ export default function LeadsPage() {
   // CHANGE STATUS
   // --------------------------------------------------
 
-  const handleStatusChange = async (lead, newStatus) => {
+  const handleStatusChange = async (lead: Lead, newStatus: string) => {
     if (!lead || lead.status === newStatus) return
 
     setStatusUpdatingId(lead.id)
@@ -655,14 +832,14 @@ export default function LeadsPage() {
   // UPDATE FOLLOW-UP
   // --------------------------------------------------
 
-  const handleFollowUpUpdate = async (lead, dateValue) => {
+  const handleFollowUpUpdate = async (lead: Lead, dateValue: string) => {
     if (!lead) return
 
     setSaving(true)
     setPageError('')
 
     try {
-      const payload = {
+      const payload: TablesUpdate<'leads'> = {
         next_follow_up_at: dateValue ? new Date(dateValue).toISOString() : null,
       }
 
@@ -694,7 +871,7 @@ export default function LeadsPage() {
     }
   }
 
-  const handleMarkFollowUpMissed = async (lead) => {
+  const handleMarkFollowUpMissed = async (lead: Lead) => {
     if (!lead) return
 
     try {
@@ -723,7 +900,7 @@ export default function LeadsPage() {
   // CONTACT / WHATSAPP
   // --------------------------------------------------
 
-  const handleRecordContact = async (lead) => {
+  const handleRecordContact = async (lead: Lead) => {
     if (!lead) return
 
     try {
@@ -749,7 +926,7 @@ export default function LeadsPage() {
     }
   }
 
-  const handleWhatsApp = (lead) => {
+  const handleWhatsApp = (lead: Lead) => {
     const message = `Hello ${
       lead?.parent_name || 'there'
     }, this is Tech Talk Hub. I'm following up about ${
@@ -764,14 +941,14 @@ export default function LeadsPage() {
     }
 
     window.open(link, '_blank', 'noopener,noreferrer')
-    handleRecordContact(lead)
+    void handleRecordContact(lead)
   }
 
   // --------------------------------------------------
   // DETAILS
   // --------------------------------------------------
 
-  const openDetails = (lead) => {
+  const openDetails = (lead: Lead) => {
     setSelectedLead(lead)
     setDetailsFollowUp(toDateTimeLocal(lead.next_follow_up_at))
     setShowDetails(true)
@@ -825,7 +1002,7 @@ export default function LeadsPage() {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={fetchLeads}
+              onClick={refreshLeads}
               disabled={loading}
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -868,10 +1045,7 @@ export default function LeadsPage() {
         )}
 
         {successMessage && (
-          <div
-            role="status"
-            className="flex items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
-          >
+          <output className="flex items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
             <span>✓ {successMessage}</span>
 
             <button
@@ -882,7 +1056,7 @@ export default function LeadsPage() {
             >
               ×
             </button>
-          </div>
+          </output>
         )}
 
         {/* STATISTICS */}
@@ -1164,6 +1338,7 @@ export default function LeadsPage() {
                         key={lead.id}
                         className="transition hover:bg-slate-50/80"
                       >
+                        {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- the cell's button is labelled by the lead name it renders */}
                         <td className="px-5 py-4">
                           <button
                             type="button"
@@ -1216,7 +1391,7 @@ export default function LeadsPage() {
                             value={lead.status || 'New'}
                             disabled={statusUpdatingId === lead.id}
                             onChange={(event) =>
-                              handleStatusChange(lead, event.target.value)
+                              void handleStatusChange(lead, event.target.value)
                             }
                             aria-label={`Change status for ${getLeadName(
                               lead,
@@ -1236,7 +1411,7 @@ export default function LeadsPage() {
                         <td className="px-5 py-4">
                           <span
                             className={`block whitespace-nowrap text-sm ${
-                              isFollowUpOverdue(lead)
+                              isFollowUpOverdue(lead, now)
                                 ? 'font-semibold text-red-600'
                                 : 'text-slate-600'
                             }`}
@@ -1244,7 +1419,7 @@ export default function LeadsPage() {
                             {formatDate(lead.next_follow_up_at)}
                           </span>
 
-                          {isFollowUpOverdue(lead) && (
+                          {isFollowUpOverdue(lead, now) && (
                             <span className="mt-1 block text-xs font-medium text-red-500">
                               Overdue
                             </span>
@@ -1350,7 +1525,7 @@ export default function LeadsPage() {
                         Math.abs(page - safeCurrentPage) <= 1,
                     )
                     .map((page, index, pages) => (
-                      <React.Fragment key={page}>
+                      <Fragment key={page}>
                         {index > 0 && page - pages[index - 1] > 1 && (
                           <span className="px-1 text-slate-400">…</span>
                         )}
@@ -1369,7 +1544,7 @@ export default function LeadsPage() {
                         >
                           {page}
                         </button>
-                      </React.Fragment>
+                      </Fragment>
                     ))}
 
                   <button
@@ -1426,7 +1601,11 @@ export default function LeadsPage() {
             </>
           }
         >
-          <form id="leads-form" onSubmit={handleSubmit} className="p-5 sm:p-7">
+          <form
+            id="leads-form"
+            onSubmit={(event) => void handleSubmit(event)}
+            className="p-5 sm:p-7"
+          >
             <div className="space-y-7">
               <section>
                 <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">
@@ -1543,7 +1722,9 @@ export default function LeadsPage() {
                     />
                     <datalist id="leads-source-options">
                       {sourceOptions.map((source) => (
-                        <option key={source} value={source} />
+                        <option key={source} value={source}>
+                          {source}
+                        </option>
                       ))}
                     </datalist>
                   </label>
@@ -1624,264 +1805,250 @@ export default function LeadsPage() {
       {/* LEAD DETAILS DRAWER */}
 
       {showDetails && selectedLead && (
-        <div
-          className="fixed inset-0 z-50 flex justify-end bg-slate-950/40 backdrop-blur-sm"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeDetails()
-          }}
-        >
-          <aside
-            role="dialog"
-            aria-modal="true"
-            aria-label="Lead details"
-            className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl"
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
-                  Lead details
-                </p>
-                <h2 className="mt-2 text-xl font-bold text-slate-900">
-                  {getLeadName(selectedLead)}
-                </h2>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeDetails}
-                aria-label="Close details"
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-2xl text-slate-400 hover:bg-slate-100"
-              >
-                ×
-              </button>
+        <LeadDrawer onClose={closeDetails}>
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
+                Lead details
+              </p>
+              <h2 className="mt-2 text-xl font-bold text-slate-900">
+                {getLeadName(selectedLead)}
+              </h2>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:p-7">
-              {/* PROFILE */}
+            <button
+              type="button"
+              onClick={closeDetails}
+              aria-label="Close details"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-2xl text-slate-400 hover:bg-slate-100"
+            >
+              ×
+            </button>
+          </div>
 
-              <div className="flex items-center gap-4 rounded-2xl border border-slate-200 p-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-lg font-bold text-indigo-700">
-                  {getInitials(getLeadName(selectedLead))}
-                </div>
+          <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:p-7">
+            {/* PROFILE */}
 
-                <div className="min-w-0">
-                  <h3 className="font-bold text-slate-900">
-                    {getLeadName(selectedLead)}
-                  </h3>
-
-                  {selectedLead.student_name && selectedLead.parent_name && (
-                    <p className="mt-1 text-sm text-slate-500">
-                      Student: {selectedLead.student_name}
-                    </p>
-                  )}
-
-                  <div className="mt-2">
-                    <StatusBadge status={selectedLead.status || 'New'} />
-                  </div>
-                </div>
+            <div className="flex items-center gap-4 rounded-2xl border border-slate-200 p-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-lg font-bold text-indigo-700">
+                {getInitials(getLeadName(selectedLead))}
               </div>
 
-              {/* CONTACT */}
-
-              <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
-                  Contact information
+              <div className="min-w-0">
+                <h3 className="font-bold text-slate-900">
+                  {getLeadName(selectedLead)}
                 </h3>
 
-                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">
-                  {[
-                    ['Phone', selectedLead.phone],
-                    ['Email', selectedLead.email],
-                    ['Country', selectedLead.country],
-                    ['Grade', selectedLead.grade],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                    >
-                      <span className="text-sm text-slate-500">{label}</span>
-                      <span className="break-all text-sm font-medium text-slate-800 sm:text-right">
-                        {value || '—'}
-                      </span>
-                    </div>
-                  ))}
+                {selectedLead.student_name && selectedLead.parent_name && (
+                  <p className="mt-1 text-sm text-slate-500">
+                    Student: {selectedLead.student_name}
+                  </p>
+                )}
+
+                <div className="mt-2">
+                  <StatusBadge status={selectedLead.status || 'New'} />
                 </div>
-              </section>
+              </div>
+            </div>
 
-              {/* LEAD INFORMATION */}
+            {/* CONTACT */}
 
-              <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
-                  Lead information
-                </h3>
+            <section>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+                Contact information
+              </h3>
 
-                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">
-                  {[
-                    ['Source', selectedLead.lead_source],
-                    ['Date added', formatDate(selectedLead.created_at)],
-                    [
-                      'Last contacted',
-                      formatDateTime(selectedLead.last_contacted_at),
-                    ],
-                    [
-                      'Assigned tutor',
-                      assignedTutor?.full_name ||
-                        assignedTutor?.name ||
-                        assignedTutor?.email ||
-                        'Unassigned',
-                    ],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                    >
-                      <span className="text-sm text-slate-500">{label}</span>
-                      <span className="break-words text-sm font-medium text-slate-800 sm:text-right">
-                        {value || '—'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* TRIAL CLASS */}
-
-              <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
-                  Trial class
-                </h3>
-
-                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">
-                  {[
-                    ['Date', formatDate(selectedLead.class_date)],
-                    ['Time', selectedLead.class_time || '—'],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between gap-4 py-3"
-                    >
-                      <span className="text-sm text-slate-500">{label}</span>
-                      <span className="text-sm font-medium text-slate-800">
-                        {value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* FOLLOW-UP */}
-
-              <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
-                  Follow-up
-                </h3>
-
-                <div className="space-y-4 rounded-xl border border-slate-200 p-4">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">
-                      Current follow-up
-                    </p>
-                    <p
-                      className={`mt-1 text-sm font-semibold ${
-                        isFollowUpOverdue(selectedLead)
-                          ? 'text-red-600'
-                          : 'text-slate-800'
-                      }`}
-                    >
-                      {formatDateTime(selectedLead.next_follow_up_at)}
-                    </p>
+              <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">
+                {[
+                  ['Phone', selectedLead.phone],
+                  ['Email', selectedLead.email],
+                  ['Country', selectedLead.country],
+                  ['Grade', selectedLead.grade],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  >
+                    <span className="text-sm text-slate-500">{label}</span>
+                    <span className="break-all text-sm font-medium text-slate-800 sm:text-right">
+                      {value || '—'}
+                    </span>
                   </div>
+                ))}
+              </div>
+            </section>
 
-                  {isFollowUpOverdue(selectedLead) && (
-                    <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                      This follow-up is overdue.
-                    </div>
-                  )}
+            {/* LEAD INFORMATION */}
 
-                  <label className={labelClass}>
-                    Schedule / Update Follow-up
-                    <input
-                      type="datetime-local"
-                      value={detailsFollowUp}
-                      onChange={(event) =>
-                        setDetailsFollowUp(event.target.value)
-                      }
-                      className={inputClass}
-                    />
-                  </label>
+            <section>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+                Lead information
+              </h3>
 
+              <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">
+                {[
+                  ['Source', selectedLead.lead_source],
+                  ['Date added', formatDate(selectedLead.created_at)],
+                  [
+                    'Last contacted',
+                    formatDateTime(selectedLead.last_contacted_at),
+                  ],
+                  [
+                    'Assigned tutor',
+                    assignedTutor?.full_name ||
+                      assignedTutor?.name ||
+                      assignedTutor?.email ||
+                      'Unassigned',
+                  ],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  >
+                    <span className="text-sm text-slate-500">{label}</span>
+                    <span className="break-words text-sm font-medium text-slate-800 sm:text-right">
+                      {value || '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* TRIAL CLASS */}
+
+            <section>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+                Trial class
+              </h3>
+
+              <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">
+                {[
+                  ['Date', formatDate(selectedLead.class_date)],
+                  ['Time', selectedLead.class_time || '—'],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between gap-4 py-3"
+                  >
+                    <span className="text-sm text-slate-500">{label}</span>
+                    <span className="text-sm font-medium text-slate-800">
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* FOLLOW-UP */}
+
+            <section>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+                Follow-up
+              </h3>
+
+              <div className="space-y-4 rounded-xl border border-slate-200 p-4">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">
+                    Current follow-up
+                  </p>
+                  <p
+                    className={`mt-1 text-sm font-semibold ${
+                      isFollowUpOverdue(selectedLead, now)
+                        ? 'text-red-600'
+                        : 'text-slate-800'
+                    }`}
+                  >
+                    {formatDateTime(selectedLead.next_follow_up_at)}
+                  </p>
+                </div>
+
+                {isFollowUpOverdue(selectedLead, now) && (
+                  <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                    This follow-up is overdue.
+                  </div>
+                )}
+
+                <label className={labelClass}>
+                  Schedule / Update Follow-up
+                  <input
+                    type="datetime-local"
+                    value={detailsFollowUp}
+                    onChange={(event) => setDetailsFollowUp(event.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() =>
+                    void handleFollowUpUpdate(selectedLead, detailsFollowUp)
+                  }
+                  className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save Follow-up'}
+                </button>
+
+                {selectedLead.next_follow_up_at && (
                   <button
                     type="button"
-                    disabled={saving}
-                    onClick={() =>
-                      handleFollowUpUpdate(selectedLead, detailsFollowUp)
-                    }
-                    className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                    onClick={() => void handleMarkFollowUpMissed(selectedLead)}
+                    className="w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
                   >
-                    {saving ? 'Saving...' : 'Save Follow-up'}
+                    Mark Follow-up as Missed
                   </button>
+                )}
+              </div>
+            </section>
 
-                  {selectedLead.next_follow_up_at && (
-                    <button
-                      type="button"
-                      onClick={() => handleMarkFollowUpMissed(selectedLead)}
-                      className="w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                    >
-                      Mark Follow-up as Missed
-                    </button>
-                  )}
-                </div>
+            {/* LOST REASON */}
+
+            {selectedLead.status === 'Lost' && selectedLead.lost_reason && (
+              <section>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+                  Reason for lost lead
+                </h3>
+
+                <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                  {selectedLead.lost_reason}
+                </p>
               </section>
+            )}
+          </div>
 
-              {/* LOST REASON */}
+          {/* DRAWER FOOTER */}
 
-              {selectedLead.status === 'Lost' && selectedLead.lost_reason && (
-                <section>
-                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
-                    Reason for lost lead
-                  </h3>
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-white p-4 sm:p-5">
+            <button
+              type="button"
+              onClick={closeDetails}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Close
+            </button>
 
-                  <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-                    {selectedLead.lost_reason}
-                  </p>
-                </section>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const lead = selectedLead
+                closeDetails()
+                openEditForm(lead)
+              }}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Edit Lead
+            </button>
 
-            {/* DRAWER FOOTER */}
-
-            <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-white p-4 sm:p-5">
-              <button
-                type="button"
-                onClick={closeDetails}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Close
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const lead = selectedLead
-                  closeDetails()
-                  openEditForm(lead)
-                }}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Edit Lead
-              </button>
-
-              <button
-                type="button"
-                disabled={!selectedLead.phone}
-                onClick={() => handleWhatsApp(selectedLead)}
-                className="ml-auto rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Contact on WhatsApp
-              </button>
-            </div>
-          </aside>
-        </div>
+            <button
+              type="button"
+              disabled={!selectedLead.phone}
+              onClick={() => handleWhatsApp(selectedLead)}
+              className="ml-auto rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Contact on WhatsApp
+            </button>
+          </div>
+        </LeadDrawer>
       )}
     </div>
   )

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import {
   X,
   Plus,
@@ -11,11 +12,33 @@ import {
 import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
 
+interface QuizBuilderLesson {
+  id: string
+  title: string
+}
+
+interface QuizBuilderCourse {
+  id: string
+}
+
+interface QuizQuestionDraft {
+  id?: string
+  question_text: string
+  options: string[]
+  correct_option_index: number
+}
+
+interface QuizBuilderModalProps {
+  selectedLesson: QuizBuilderLesson
+  selectedCourse: QuizBuilderCourse
+  onClose: () => void
+}
+
 export default function QuizBuilderModal({
   selectedLesson,
   selectedCourse,
   onClose,
-}) {
+}: QuizBuilderModalProps) {
   const [lessonContentType, setLessonContentType] = useState('notes')
 
   // Notes State
@@ -28,14 +51,14 @@ export default function QuizBuilderModal({
   const [savedQuizzesCount, setSavedQuizzesCount] = useState(0)
   const [selectedQuizId, setSelectedQuizId] = useState('')
   const [quizTitle, setQuizTitle] = useState('')
-  const [passingScore, setPassingScore] = useState(70)
-  const [questions, setQuestions] = useState([
+  const [passingScore, setPassingScore] = useState<number | string>(70)
+  const [questions, setQuestions] = useState<QuizQuestionDraft[]>([
     { question_text: '', options: ['', '', '', ''], correct_option_index: 0 },
   ])
   const [savingQuiz, setSavingQuiz] = useState(false)
 
   // Accordion state - Default to null (collapsed)
-  const [expandedQuestion, setExpandedQuestion] = useState(null)
+  const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null)
 
   useEffect(() => {
     if (selectedLesson && selectedCourse) {
@@ -175,7 +198,7 @@ export default function QuizBuilderModal({
   //   }
   // };*/
   }
-  const handleSaveNotes = async (e) => {
+  const handleSaveNotes = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedCourse?.id || !selectedLesson?.id) {
       toast.error('Missing course or lesson ID.')
@@ -260,7 +283,7 @@ export default function QuizBuilderModal({
   //    }
   //  };
 
-  const handleSaveQuiz = async (e) => {
+  const handleSaveQuiz = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setSavingQuiz(true)
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { supabase } from '../../../supabase'
 import {
   BookOpen,
@@ -13,19 +14,52 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import type { Tables } from '../../../types/database'
+
+type Course = Tables<'courses'>
+
+type ProgramCourseCourse = Pick<
+  Course,
+  | 'id'
+  | 'title'
+  | 'description'
+  | 'thumbnail_url'
+  | 'duration_lessons'
+  | 'is_active'
+>
+
+type ProgramCourse = Pick<
+  Tables<'program_courses'>,
+  'id' | 'course_id' | 'display_order'
+> & {
+  courses: ProgramCourseCourse | null
+}
+
+type Program = Tables<'programs'> & {
+  program_courses: ProgramCourse[]
+}
+
+interface ProgramForm {
+  name: string
+  slug: string
+  age_range: string
+  description: string
+  display_order: number | string
+  is_active: boolean
+}
 
 export default function AdminProgramsPage() {
   const supabase = createClient()
 
-  const [programs, setPrograms] = useState([])
-  const [courses, setCourses] = useState([])
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const [expandedProgram, setExpandedProgram] = useState(null)
+  const [expandedProgram, setExpandedProgram] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ProgramForm>({
     name: '',
     slug: '',
     age_range: '',
@@ -78,10 +112,11 @@ export default function AdminProgramsPage() {
       console.error('Courses error:', coursesError)
     }
 
-    const cleanedPrograms = (programsData || []).map((program) => ({
+    const cleanedPrograms = (programsData || []).map((program: Program) => ({
       ...program,
       program_courses: [...(program.program_courses || [])].sort(
-        (a, b) => (a.display_order || 0) - (b.display_order || 0),
+        (a: ProgramCourse, b: ProgramCourse) =>
+          (a.display_order || 0) - (b.display_order || 0),
       ),
     }))
 
@@ -90,14 +125,14 @@ export default function AdminProgramsPage() {
     setLoading(false)
   }
 
-  const generateSlug = (value) =>
+  const generateSlug = (value: string) =>
     value
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
 
-  const handleNameChange = (value) => {
+  const handleNameChange = (value: string) => {
     setForm((prev) => ({
       ...prev,
       name: value,
@@ -105,7 +140,7 @@ export default function AdminProgramsPage() {
     }))
   }
 
-  const createProgram = async (e) => {
+  const createProgram = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!form.name.trim()) return
@@ -142,7 +177,7 @@ export default function AdminProgramsPage() {
     fetchData()
   }
 
-  const deleteProgram = async (programId) => {
+  const deleteProgram = async (programId: string) => {
     const confirmed = window.confirm(
       'Delete this program? The courses themselves will NOT be deleted.',
     )
@@ -162,7 +197,7 @@ export default function AdminProgramsPage() {
     fetchData()
   }
 
-  const assignCourse = async (programId, courseId) => {
+  const assignCourse = async (programId: string, courseId: string) => {
     if (!courseId) return
 
     const program = programs.find((item) => item.id === programId)
@@ -192,7 +227,7 @@ export default function AdminProgramsPage() {
     fetchData()
   }
 
-  const removeCourse = async (programCourseId) => {
+  const removeCourse = async (programCourseId: string) => {
     const { error } = await supabase
       .from('program_courses')
       .delete()
@@ -206,7 +241,11 @@ export default function AdminProgramsPage() {
     fetchData()
   }
 
-  const moveCourse = async (program, index, direction) => {
+  const moveCourse = async (
+    program: Program,
+    index: number,
+    direction: number,
+  ) => {
     const items = [...program.program_courses]
     const targetIndex = index + direction
 

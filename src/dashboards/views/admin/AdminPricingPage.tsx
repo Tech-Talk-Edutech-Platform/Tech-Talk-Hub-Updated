@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 
 import {
   CheckCircle2,
@@ -38,7 +39,37 @@ const initialForm = {
   display_order: 0,
 }
 
-function formatPrice(value, currency = 'KES') {
+interface PricingPlan {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  classes_per_week: number
+  session_duration_minutes: number
+  monthly_kes: number | string
+  monthly_usd: number | string
+  quarterly_kes: number | string
+  quarterly_usd: number | string
+  quarterly_discount: number
+  yearly_kes: number | string
+  yearly_usd: number | string
+  yearly_discount: number
+  features: string[]
+  is_popular: boolean
+  is_active: boolean
+  display_order: number
+}
+
+type PricingForm = typeof initialForm
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function formatPrice(
+  value: number | string | null | undefined,
+  currency = 'KES',
+) {
   const amount = Number(value || 0)
 
   return new Intl.NumberFormat('en-KE', {
@@ -48,7 +79,7 @@ function formatPrice(value, currency = 'KES') {
   }).format(amount)
 }
 
-function createSlug(value) {
+function createSlug(value: string) {
   return value
     .toLowerCase()
     .trim()
@@ -56,20 +87,20 @@ function createSlug(value) {
     .replace(/^-+|-+$/g, '')
 }
 
-function planToForm(plan) {
+function planToForm(plan: PricingPlan): PricingForm {
   return {
     name: plan.name || '',
     slug: plan.slug || '',
     description: plan.description || '',
     classes_per_week: plan.classes_per_week || 1,
     session_duration_minutes: plan.session_duration_minutes || 45,
-    monthly_kes: plan.monthly_kes ?? '',
-    monthly_usd: plan.monthly_usd ?? '',
-    quarterly_kes: plan.quarterly_kes ?? '',
-    quarterly_usd: plan.quarterly_usd ?? '',
+    monthly_kes: String(plan.monthly_kes ?? ''),
+    monthly_usd: String(plan.monthly_usd ?? ''),
+    quarterly_kes: String(plan.quarterly_kes ?? ''),
+    quarterly_usd: String(plan.quarterly_usd ?? ''),
     quarterly_discount: plan.quarterly_discount ?? 5,
-    yearly_kes: plan.yearly_kes ?? '',
-    yearly_usd: plan.yearly_usd ?? '',
+    yearly_kes: String(plan.yearly_kes ?? ''),
+    yearly_usd: String(plan.yearly_usd ?? ''),
     yearly_discount: plan.yearly_discount ?? 10,
     features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
     is_popular: Boolean(plan.is_popular),
@@ -78,7 +109,7 @@ function planToForm(plan) {
   }
 }
 
-function buildPayload(form) {
+function buildPayload(form: PricingForm) {
   return {
     name: form.name.trim(),
     slug: createSlug(form.slug || form.name),
@@ -95,7 +126,7 @@ function buildPayload(form) {
     yearly_discount: Number(form.yearly_discount),
     features: form.features
       .split('\n')
-      .map((feature) => feature.trim())
+      .map((feature: string) => feature.trim())
       .filter(Boolean),
     is_popular: Boolean(form.is_popular),
     is_active: Boolean(form.is_active),
@@ -113,6 +144,16 @@ function InputField({
   required = false,
   min,
   max,
+}: {
+  label: string
+  name: string
+  value: string | number
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void
+  type?: string
+  placeholder?: string
+  required?: boolean
+  min?: number
+  max?: number
 }) {
   return (
     <div>
@@ -140,19 +181,19 @@ function InputField({
 }
 
 export default function AdminPricingPage() {
-  const [plans, setPlans] = useState([])
+  const [plans, setPlans] = useState<PricingPlan[]>([])
 
   const [loading, setLoading] = useState(true)
 
   const [saving, setSaving] = useState(false)
 
-  const [busyPlanId, setBusyPlanId] = useState(null)
+  const [busyPlanId, setBusyPlanId] = useState<PricingPlan['id'] | null>(null)
 
   const [showForm, setShowForm] = useState(false)
 
-  const [editingPlan, setEditingPlan] = useState(null)
+  const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null)
 
-  const [form, setForm] = useState(initialForm)
+  const [form, setForm] = useState<PricingForm>(initialForm)
 
   const [error, setError] = useState('')
 
@@ -182,7 +223,7 @@ export default function AdminPricingPage() {
 
       setPlans(data || [])
     } catch (fetchError) {
-      setError(fetchError.message || 'Unable to load pricing plans.')
+      setError(getErrorMessage(fetchError) || 'Unable to load pricing plans.')
     } finally {
       setLoading(false)
     }
@@ -201,7 +242,7 @@ export default function AdminPricingPage() {
     setShowForm(true)
   }
 
-  function openEditForm(plan) {
+  function openEditForm(plan: PricingPlan) {
     setEditingPlan(plan)
     setForm(planToForm(plan))
     setError('')
@@ -219,14 +260,20 @@ export default function AdminPricingPage() {
     setShowForm(false)
   }
 
-  function handleChange(event) {
-    const { name, value, type, checked } = event.target
+  function handleChange(
+    event: ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) {
+    const { name, value, type } = event.target
+    const checked = 'checked' in event.target ? event.target.checked : false
 
     setForm((current) => {
-      const next = {
+      const next: PricingForm = {
         ...current,
-        [name]: type === 'checkbox' ? checked : value,
-      }
+        [name]:
+          type === 'checkbox' && 'checked' in event.target ? checked : value,
+      } as PricingForm
 
       if (name === 'name' && !editingPlan) {
         next.slug = createSlug(value)
@@ -269,19 +316,27 @@ export default function AdminPricingPage() {
     setForm((current) => ({
       ...current,
 
-      quarterly_kes: Math.round(monthlyKes * 3 * (1 - quarterlyDiscount / 100)),
+      quarterly_kes: String(
+        Math.round(monthlyKes * 3 * (1 - quarterlyDiscount / 100)),
+      ),
 
-      quarterly_usd: Math.round(monthlyUsd * 3 * (1 - quarterlyDiscount / 100)),
+      quarterly_usd: String(
+        Math.round(monthlyUsd * 3 * (1 - quarterlyDiscount / 100)),
+      ),
 
-      yearly_kes: Math.round(monthlyKes * 12 * (1 - yearlyDiscount / 100)),
+      yearly_kes: String(
+        Math.round(monthlyKes * 12 * (1 - yearlyDiscount / 100)),
+      ),
 
-      yearly_usd: Math.round(monthlyUsd * 12 * (1 - yearlyDiscount / 100)),
+      yearly_usd: String(
+        Math.round(monthlyUsd * 12 * (1 - yearlyDiscount / 100)),
+      ),
     }))
 
     setError('')
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     setSaving(true)
@@ -341,13 +396,13 @@ export default function AdminPricingPage() {
 
       await loadPlans()
     } catch (submitError) {
-      setError(submitError.message || 'Unable to save pricing plan.')
+      setError(getErrorMessage(submitError) || 'Unable to save pricing plan.')
     } finally {
       setSaving(false)
     }
   }
 
-  async function toggleActive(plan) {
+  async function toggleActive(plan: PricingPlan) {
     setBusyPlanId(plan.id)
     setError('')
     setSuccess('')
@@ -386,13 +441,15 @@ export default function AdminPricingPage() {
 
       await loadPlans()
     } catch (updateError) {
-      setError(updateError.message || 'Unable to update plan visibility.')
+      setError(
+        getErrorMessage(updateError) || 'Unable to update plan visibility.',
+      )
     } finally {
       setBusyPlanId(null)
     }
   }
 
-  async function deletePlan(plan) {
+  async function deletePlan(plan: PricingPlan) {
     const confirmed = window.confirm(
       `Delete the ${plan.name} plan permanently? This cannot be undone.`,
     )
@@ -419,7 +476,7 @@ export default function AdminPricingPage() {
 
       await loadPlans()
     } catch (deleteError) {
-      setError(deleteError.message || 'Unable to delete pricing plan.')
+      setError(getErrorMessage(deleteError) || 'Unable to delete pricing plan.')
     } finally {
       setBusyPlanId(null)
     }

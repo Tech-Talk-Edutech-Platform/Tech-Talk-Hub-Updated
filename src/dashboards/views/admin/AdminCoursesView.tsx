@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import {
   BookOpen,
   Plus,
@@ -20,8 +21,66 @@ import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
 import QuizBuilderModal from './QuizBuilderModal'
 
+interface CourseLesson {
+  id: string
+  title: string
+  phase_id: string | null
+  position?: number | null
+}
+
+interface CoursePhase {
+  id: string
+  title: string
+  phase_number: number
+  course_lessons?: CourseLesson[]
+}
+
+interface StudentProgress {
+  lesson_id: string
+  status: string
+}
+
+interface CourseStudent {
+  id: string
+  full_name: string | null
+  email: string | null
+  role: string
+  student_lesson_progress?: StudentProgress[]
+}
+
+interface Course {
+  id: string
+  title: string
+  description?: string | null
+  thumbnail_url?: string | null
+  is_active?: boolean | null
+  student_count?: number
+  tutor_count?: number
+  course_phases?: CoursePhase[]
+  enrolled_users?: CourseStudent[]
+}
+
+interface CourseSummaryPhase {
+  id: string
+  course_lessons?: { id: string }[]
+}
+
+interface CourseSummary extends Omit<Course, 'course_phases'> {
+  course_phases?: CourseSummaryPhase[]
+}
+
+interface QuizQuestionDraft {
+  question_text: string
+  options: string[]
+  correct_option_index: number
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
 export default function AdminCoursesView() {
-  const [courses, setCourses] = useState([])
+  const [courses, setCourses] = useState<CourseSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -32,22 +91,27 @@ export default function AdminCoursesView() {
   const [newThumbnailUrl, setNewThumbnailUrl] = useState('')
 
   // Edit Course Cover Modal State
-  const [editingCourseCover, setEditingCourseCover] = useState(null)
+  const [editingCourseCover, setEditingCourseCover] =
+    useState<CourseSummary | null>(null)
   const [editThumbnailUrl, setEditThumbnailUrl] = useState('')
   const [updatingCover, setUpdatingCover] = useState(false)
 
   // Deep Dive Course Details State
-  const [selectedCourse, setSelectedCourse] = useState(null)
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('curriculum') // 'curriculum' or 'students'
 
   // Creation States inside Modal
   const [newPhaseTitle, setNewPhaseTitle] = useState('')
-  const [newLessonTitles, setNewLessonTitles] = useState({}) // { phaseId: 'title' }
+  const [newLessonTitles, setNewLessonTitles] = useState<
+    Record<string, string>
+  >({})
   const [creatingPhase, setCreatingPhase] = useState(false)
 
   // Lesson Detail / Content Modal State (Notes & Quiz Builder)
-  const [selectedLesson, setSelectedLesson] = useState(null)
+  const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(
+    null,
+  )
   const [lessonContentType, setLessonContentType] = useState('notes') // 'notes' or 'quiz'
 
   // Lesson Notes Form State
@@ -59,7 +123,7 @@ export default function AdminCoursesView() {
   // Lesson Quiz Form State
   const [quizTitle, setQuizTitle] = useState('')
   const [passingScore, setPassingScore] = useState(70)
-  const [questions, setQuestions] = useState([
+  const [questions, setQuestions] = useState<QuizQuestionDraft[]>([
     { question_text: '', options: ['', '', '', ''], correct_option_index: 0 },
   ])
   const [savingQuiz, setSavingQuiz] = useState(false)
@@ -106,13 +170,13 @@ export default function AdminCoursesView() {
 
       setCourses(enrichedCourses)
     } catch (err) {
-      toast.error('Failed to load courses: ' + err.message)
+      toast.error('Failed to load courses: ' + getErrorMessage(err))
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchCourseDetails = async (courseId) => {
+  const fetchCourseDetails = async (courseId: string) => {
     try {
       setDetailsLoading(true)
 
@@ -164,8 +228,15 @@ export default function AdminCoursesView() {
       // Merge and deduplicate students from both tables
       const enrolledStudentsMap = new Map()
 
-      ;(enrollmentsData || []).forEach((e) => {
-        if (e.users) enrolledStudentsMap.set(e.users.id, e.users)
+      ;(enrollmentsData || []).forEach((enrollment) => {
+        const users = enrollment.users as CourseStudent | CourseStudent[] | null
+        if (Array.isArray(users)) {
+          users.forEach((student) =>
+            enrolledStudentsMap.set(student.id, student),
+          )
+        } else if (users) {
+          enrolledStudentsMap.set(users.id, users)
+        }
       })
 
       ;(directUsersData || []).forEach((u) => {
@@ -177,12 +248,13 @@ export default function AdminCoursesView() {
         enrolled_users: Array.from(enrolledStudentsMap.values()),
       })
     } catch (err) {
-      toast.error('Failed to load course details: ' + err.message)
+      toast.error('Failed to load course details: ' + getErrorMessage(err))
     } finally {
       setDetailsLoading(false)
     }
   }
-  const fetchLessonExtras = async (lesson) => {
+  const fetchLessonExtras = async (lesson: CourseLesson) => {
+    if (!selectedCourse) return
     setSelectedLesson(lesson)
     setLessonContentType('notes')
 
@@ -217,7 +289,7 @@ export default function AdminCoursesView() {
         setPassingScore(quizData.passing_score || 70)
         if (quizData.quiz_questions && quizData.quiz_questions.length > 0) {
           setQuestions(
-            quizData.quiz_questions.map((q) => ({
+            (quizData.quiz_questions as QuizQuestionDraft[]).map((q) => ({
               question_text: q.question_text,
               options: q.options,
               correct_option_index: q.correct_option_index,
@@ -248,7 +320,8 @@ export default function AdminCoursesView() {
     }
   }
 
-  const handleDeletePhase = async (phaseId) => {
+  const handleDeletePhase = async (phaseId: string) => {
+    if (!selectedCourse) return
     if (
       !window.confirm(
         'Are you sure? This action will remove this phase and all its dependent lessons, notes, and quizzes.',
@@ -265,11 +338,11 @@ export default function AdminCoursesView() {
       await fetchCourseDetails(selectedCourse.id)
       fetchCourses()
     } catch (err) {
-      toast.error('Failed to delete phase: ' + err.message)
+      toast.error('Failed to delete phase: ' + getErrorMessage(err))
     }
   }
 
-  const handleSaveNotes = async (e) => {
+  const handleSaveNotes = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedLesson || !selectedCourse) return
     setSavingNotes(true)
@@ -311,13 +384,13 @@ export default function AdminCoursesView() {
       toast.success('Lesson notes & materials saved!')
     } catch (err) {
       console.error('Notes save error:', err)
-      toast.error('Failed to save notes: ' + err.message)
+      toast.error('Failed to save notes: ' + getErrorMessage(err))
     } finally {
       setSavingNotes(false)
     }
   }
 
-  const handleSaveQuiz = async (e) => {
+  const handleSaveQuiz = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedLesson || !selectedCourse) return
     setSavingQuiz(true)
@@ -337,7 +410,7 @@ export default function AdminCoursesView() {
           .from('quizzes')
           .update({
             title: quizTitle.trim() || `${selectedLesson.title} Quiz`,
-            passing_score: parseInt(passingScore, 10) || 70,
+            passing_score: Number(passingScore) || 70,
           })
           .eq('id', quizId)
         if (updateErr) throw updateErr
@@ -350,7 +423,7 @@ export default function AdminCoursesView() {
               phase_id: selectedLesson.phase_id,
               title: quizTitle.trim() || `${selectedLesson.title} Quiz`,
               type: 'phase_quiz',
-              passing_score: parseInt(passingScore, 10) || 70,
+              passing_score: Number(passingScore) || 70,
             },
           ])
           .select()
@@ -379,13 +452,13 @@ export default function AdminCoursesView() {
       toast.success('Quiz assessment published successfully!')
     } catch (err) {
       console.error('Quiz save error:', err)
-      toast.error('Failed to save quiz: ' + err.message)
+      toast.error('Failed to save quiz: ' + getErrorMessage(err))
     } finally {
       setSavingQuiz(false)
     }
   }
 
-  const handleCreateCourse = async (e) => {
+  const handleCreateCourse = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!newTitle.trim()) return toast.error('Course title is required')
 
@@ -396,7 +469,7 @@ export default function AdminCoursesView() {
           {
             title: newTitle,
             description: newDescription,
-            duration_lessons: parseInt(newDuration, 10) || 0,
+            duration_lessons: Number(newDuration) || 0,
             thumbnail_url: newThumbnailUrl.trim() || null,
           },
         ])
@@ -413,11 +486,11 @@ export default function AdminCoursesView() {
       setNewThumbnailUrl('')
       setIsCreating(false)
     } catch (err) {
-      toast.error('Error creating course: ' + err.message)
+      toast.error('Error creating course: ' + getErrorMessage(err))
     }
   }
 
-  const handleUpdateCourseCover = async (e) => {
+  const handleUpdateCourseCover = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!editingCourseCover) return
     setUpdatingCover(true)
@@ -440,13 +513,13 @@ export default function AdminCoursesView() {
         })
       }
     } catch (err) {
-      toast.error('Failed to update cover image: ' + err.message)
+      toast.error('Failed to update cover image: ' + getErrorMessage(err))
     } finally {
       setUpdatingCover(false)
     }
   }
 
-  const handleDeleteCourse = async (id) => {
+  const handleDeleteCourse = async (id: string) => {
     if (
       !window.confirm(
         'Are you sure? This action will remove all linked phases, lessons, and assignments.',
@@ -460,11 +533,11 @@ export default function AdminCoursesView() {
       if (selectedCourse?.id === id) setSelectedCourse(null)
       toast.success('Course deleted!')
     } catch (err) {
-      toast.error('Delete failed: ' + err.message)
+      toast.error('Delete failed: ' + getErrorMessage(err))
     }
   }
 
-  const handleCreatePhase = async (e) => {
+  const handleCreatePhase = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!newPhaseTitle.trim() || !selectedCourse) return
     setCreatingPhase(true)
@@ -487,19 +560,23 @@ export default function AdminCoursesView() {
       await fetchCourseDetails(selectedCourse.id)
       fetchCourses()
     } catch (err) {
-      toast.error('Failed to add phase: ' + err.message)
+      toast.error('Failed to add phase: ' + getErrorMessage(err))
     } finally {
       setCreatingPhase(false)
     }
   }
 
-  const handleCreateLesson = async (e, phaseId) => {
+  const handleCreateLesson = async (
+    e: FormEvent<HTMLFormElement>,
+    phaseId: string,
+  ) => {
     e.preventDefault()
+    if (!selectedCourse) return
     const title = newLessonTitles[phaseId]
     if (!title?.trim()) return
 
     try {
-      const phase = selectedCourse.course_phases.find((p) => p.id === phaseId)
+      const phase = selectedCourse.course_phases?.find((p) => p.id === phaseId)
       const position = (phase?.course_lessons?.length || 0) + 1
 
       const { error } = await supabase
@@ -512,11 +589,11 @@ export default function AdminCoursesView() {
       fetchCourseDetails(selectedCourse.id)
       fetchCourses()
     } catch (err) {
-      toast.error('Failed to add lesson: ' + err.message)
+      toast.error('Failed to add lesson: ' + getErrorMessage(err))
     }
   }
 
-  const calculateStudentProgress = (student) => {
+  const calculateStudentProgress = (student: CourseStudent) => {
     if (!selectedCourse?.course_phases) return 0
     const totalLessons = selectedCourse.course_phases.reduce(
       (acc, phase) => acc + (phase.course_lessons?.length || 0),
@@ -578,7 +655,7 @@ export default function AdminCoursesView() {
               type="number"
               placeholder="Total Lessons Estimate"
               value={newDuration}
-              onChange={(e) => setNewDuration(e.target.value)}
+              onChange={(e) => setNewDuration(Number(e.target.value) || 0)}
               className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold transition-all focus:outline-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
             />
             <input
@@ -780,7 +857,7 @@ export default function AdminCoursesView() {
                     alt="Preview"
                     className="h-full w-full object-cover"
                     onError={(e) => {
-                      e.target.style.display = 'none'
+                      e.currentTarget.style.display = 'none'
                     }}
                   />
                 </div>
@@ -862,7 +939,7 @@ export default function AdminCoursesView() {
             <div className="flex-1 overflow-y-auto bg-slate-50/30 p-6 dark:bg-transparent md:p-8">
               {detailsLoading ? (
                 <div className="flex items-center justify-center gap-3 py-12 text-center text-sm font-bold text-slate-400">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></span>
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
                   Loading course ecosystem...
                 </div>
               ) : (
@@ -932,7 +1009,10 @@ export default function AdminCoursesView() {
 
                               <div className="space-y-2 p-4">
                                 {phase.course_lessons
-                                  ?.sort((a, b) => a.position - b.position)
+                                  ?.toSorted(
+                                    (a, b) =>
+                                      (a.position ?? 0) - (b.position ?? 0),
+                                  )
                                   .map((lesson, idx) => (
                                     <div
                                       key={lesson.id}
@@ -1048,7 +1128,7 @@ export default function AdminCoursesView() {
                                     <div
                                       className={`h-full rounded-full transition-all duration-1000 ${progress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
                                       style={{ width: `${progress}%` }}
-                                    ></div>
+                                    />
                                   </div>
                                 </div>
                               </div>

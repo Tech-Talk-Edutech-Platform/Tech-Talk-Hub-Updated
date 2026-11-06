@@ -12,11 +12,21 @@ import {
   Search,
   Sparkles,
 } from 'lucide-react'
+import type { Tables } from '../../types/database'
+
+type UserName = Pick<Tables<'users'>, 'full_name'>
+
+type Recording = Tables<'class_recordings'> & {
+  tutor: UserName | null
+  student: UserName | null
+}
+
+type UserOption = Pick<Tables<'users'>, 'id' | 'full_name'>
 
 export default function ClassRecordingsManager() {
-  const [recordings, setRecordings] = useState([])
-  const [students, setStudents] = useState([])
-  const [tutors, setTutors] = useState([])
+  const [recordings, setRecordings] = useState<Recording[]>([])
+  const [students, setStudents] = useState<UserOption[]>([])
+  const [tutors, setTutors] = useState<UserOption[]>([])
   const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -62,7 +72,7 @@ export default function ClassRecordingsManager() {
     fetchData()
   }, [])
 
-  const handleUpload = async (e) => {
+  const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!title || !recordingUrl) {
       alert('Please provide at least a title and recording URL.')
@@ -94,7 +104,7 @@ export default function ClassRecordingsManager() {
     }
   }
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this recording?'))
       return
     const { error } = await supabase

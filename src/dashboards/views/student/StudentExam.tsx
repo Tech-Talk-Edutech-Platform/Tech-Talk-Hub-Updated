@@ -41,7 +41,7 @@ export default function ExamPage({ user }) {
       return
     }
 
-    let isMounted = true
+    const isMounted = true
     try {
       setLoading(true)
       setTimedOut(false)

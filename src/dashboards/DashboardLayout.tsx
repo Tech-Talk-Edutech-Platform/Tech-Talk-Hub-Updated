@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import type { AppRole } from '../types/roles'
 import { isAdminRole } from '../types/roles'
@@ -59,6 +60,21 @@ import AdminShopPage from './views/admin/AdminShopPage'
 import AdminBlogPage from './views/admin/AdminBlogPage'
 import AdminTestimonialsPage from './views/admin/AdminTestimonialsPage'
 
+interface SidebarButtonProps {
+  icon: LucideIcon
+  label: string
+  view: string
+  activeView: string
+  setActiveView: (view: string) => void
+  isCollapsed: boolean
+}
+
+interface SidebarGroupProps {
+  title: string
+  children: ReactNode
+  isCollapsed: boolean
+}
+
 function SidebarButton({
   icon: Icon,
   label,
@@ -66,7 +82,7 @@ function SidebarButton({
   activeView,
   setActiveView,
   isCollapsed,
-}) {
+}: SidebarButtonProps) {
   const isActive = activeView === view
 
   return (
@@ -87,7 +103,7 @@ function SidebarButton({
   )
 }
 
-function SidebarGroup({ title, children, isCollapsed }) {
+function SidebarGroup({ title, children, isCollapsed }: SidebarGroupProps) {
   return (
     <div>
       {!isCollapsed && (
