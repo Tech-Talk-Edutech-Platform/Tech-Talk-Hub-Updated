@@ -1,7 +1,17 @@
 import React, { useEffect } from 'react'
 import { CheckCircle, AlertCircle, X } from 'lucide-react'
 
-export default function Notification({ message, type = 'error', onClose }) {
+type NotificationProps = {
+  message: string
+  type?: 'error' | 'success'
+  onClose: () => void
+}
+
+export default function Notification({
+  message,
+  type = 'error',
+  onClose,
+}: NotificationProps) {
   useEffect(() => {
     const timer = setTimeout(() => onClose(), 5000) // Auto-hide after 5s
     return () => clearTimeout(timer)

@@ -18,11 +18,12 @@ const examData = {
 
 export default function EnhancedExamInterface() {
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [answers, setAnswers] = useState({}) // { 1: "Option A" }
-  const [flags, setFlags] = useState({}) // { 1: true }
+  const [answers, setAnswers] = useState<Record<number, string>>({}) // { 1: "Option A" }
+  const [flags, setFlags] = useState<Record<number, boolean>>({}) // { 1: true }
 
-  const toggleFlag = (id) => setFlags((prev) => ({ ...prev, [id]: !prev[id] }))
-  const handleSelect = (qId, option) =>
+  const toggleFlag = (id: number) =>
+    setFlags((prev) => ({ ...prev, [id]: !prev[id] }))
+  const handleSelect = (qId: number, option: string) =>
     setAnswers((prev) => ({ ...prev, [qId]: option }))
 
   return (

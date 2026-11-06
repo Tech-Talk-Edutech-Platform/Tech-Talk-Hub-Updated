@@ -11,14 +11,49 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import type { Tables } from '../../types/database'
+
+type EditingUser = Pick<
+  Tables<'users'>,
+  | 'id'
+  | 'email'
+  | 'full_name'
+  | 'role'
+  | 'personal_meet_link'
+  | 'subscription_tier'
+  | 'total_classes'
+  | 'classes_remaining'
+>
+
+interface UserManagementModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onRefresh: () => unknown
+  editingUser?: EditingUser | null
+}
+
+interface UserFormData {
+  email: string
+  fullName: string
+  role: string
+  meetLink: string
+  subscriptionTier: string
+  totalClasses: number | string
+  classesRemaining: number | string
+}
+
+interface AttendanceHistoryRow {
+  created_at: string | null
+  calendar_events: { title: string; start_time: string } | null
+}
 
 export default function UserManagementModal({
   isOpen,
   onClose,
   onRefresh,
   editingUser = null,
-}) {
-  const [formData, setFormData] = useState({
+}: UserManagementModalProps) {
+  const [formData, setFormData] = useState<UserFormData>({
     email: '',
     fullName: '',
     role: 'student',
@@ -28,7 +63,7 @@ export default function UserManagementModal({
     classesRemaining: 4,
   })
 
-  const [history, setHistory] = useState([])
+  const [history, setHistory] = useState<AttendanceHistoryRow[]>([])
   const [loading, setLoading] = useState(false)
 
   // 1. Handle Modal Open / Load User Data
@@ -62,7 +97,7 @@ export default function UserManagementModal({
   }, [editingUser, isOpen])
 
   // 2. Fetch Attendance History
-  const fetchHistory = async (uid) => {
+  const fetchHistory = async (uid: string) => {
     try {
       const { data, error } = await supabase
         .from('event_attendance')
@@ -83,7 +118,7 @@ export default function UserManagementModal({
   }
 
   // 3. Increment Classes (Top-Up)
-  const handleTopUp = (amount) => {
+  const handleTopUp = (amount: number) => {
     setFormData((prev) => ({
       ...prev,
       totalClasses: parseInt(prev.totalClasses || 0) + amount,
@@ -93,7 +128,7 @@ export default function UserManagementModal({
   }
 
   // 4. Save Logic (Create or Update)
-  const handleSave = async (e) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
 

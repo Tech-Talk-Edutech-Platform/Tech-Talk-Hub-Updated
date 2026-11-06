@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../../supabase'
 import {
@@ -27,19 +28,71 @@ import {
   Trophy,
 } from 'lucide-react'
 
+interface StudentResult {
+  id: string
+  student_name: string
+  avatar_url?: string | null
+  course_name?: string | null
+  grade_level?: string | number | null
+  total_classes_allocated?: number | null
+  classes_attended?: number | null
+  overall_score?: number | null
+  theory_score?: number | null
+  practical_score?: number | null
+  problem_solving_score?: number | null
+  creativity_score?: number | null
+  performance_label?: string | null
+  project_url?: string | null
+  exam_title?: string | null
+  tutor_feedback?: string | null
+  today_summary?: string | null
+}
+
+interface StudentExam {
+  id: string
+  exam_title: string
+  exam_date: string
+  overall_score: number
+  theory_score?: number | null
+  practical_score?: number | null
+  problem_solving_score?: number | null
+  creativity_score?: number | null
+  tutor_feedback?: string | null
+  questions_and_answers?: Array<{
+    question: string
+    student_answer?: string | null
+    correct_answer?: string | null
+  }> | null
+}
+
+interface StudentProject {
+  id: string
+  project_title: string
+  project_url: string
+}
+
+interface StudentBadge {
+  id: string
+  badge_icon?: string | null
+  badge_title: string
+  badge_criteria?: string | null
+}
+
 const StudentDashboard = () => {
   const { slug } = useParams()
-  const [data, setData] = useState(null)
-  const [exams, setExams] = useState([])
-  const [projects, setProjects] = useState([])
-  const [badges, setBadges] = useState([])
+  const [data, setData] = useState<StudentResult | null>(null)
+  const [exams, setExams] = useState<StudentExam[]>([])
+  const [projects, setProjects] = useState<StudentProject[]>([])
+  const [badges, setBadges] = useState<StudentBadge[]>([])
 
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [showAllProjects, setShowAllProjects] = useState(false)
 
-  const [selectedExamForPrompt, setSelectedExamForPrompt] = useState(null)
-  const [activeDetailedExam, setActiveDetailedExam] = useState(null)
+  const [selectedExamForPrompt, setSelectedExamForPrompt] =
+    useState<StudentExam | null>(null)
+  const [activeDetailedExam, setActiveDetailedExam] =
+    useState<StudentExam | null>(null)
 
   useEffect(() => {
     fetchCompleteStudentMatrix()
@@ -83,23 +136,26 @@ const StudentDashboard = () => {
         setBadges(badgeData || [])
       }
     } catch (err) {
-      console.error('Data Matrix load failure:', err.message)
+      console.error(
+        'Data Matrix load failure:',
+        err instanceof Error ? err.message : String(err),
+      )
     } finally {
       setLoading(false)
     }
   }
 
-  const handleAvatarChange = async (e) => {
+  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true)
-      const file = e.target.files[0]
+      const file = e.currentTarget.files?.[0]
       if (!file || !data?.id) return
 
       const fileExt = file.name.split('.').pop()
       const fileName = `${data.id}-${Math.random().toString(36).substring(7)}.${fileExt}`
       const filePath = `avatars/${fileName}`
 
-      let { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('student-assets')
         .upload(filePath, file)
 
@@ -119,13 +175,17 @@ const StudentDashboard = () => {
       setData({ ...data, avatar_url: publicUrl })
       alert('Profile picture updated!')
     } catch (err) {
-      alert('Upload error: ' + err.message)
+      alert(
+        'Upload error: ' + (err instanceof Error ? err.message : String(err)),
+      )
     } finally {
       setUploading(false)
     }
   }
 
   const handleShareDashboard = async () => {
+    if (!data) return
+
     const shareData = {
       title: `${data.student_name}'s Coding Dashboard`,
       text: `Check out ${data.student_name}'s latest projects and coding milestones at Tech Talk Hub!`,
@@ -180,7 +240,7 @@ const StudentDashboard = () => {
         )
       : data.overall_score || 0
 
-  const triggerExamPrompt = (exam) => {
+  const triggerExamPrompt = (exam: StudentExam) => {
     setSelectedExamForPrompt(exam)
   }
 
@@ -323,7 +383,7 @@ const StudentDashboard = () => {
                   alt="Profile"
                   className="h-full w-full object-cover"
                   onError={(e) => {
-                    e.target.src = ''
+                    e.currentTarget.src = ''
                   }}
                 />
               ) : (
@@ -371,7 +431,7 @@ const StudentDashboard = () => {
             <div
               className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-700"
               style={{ width: `${rawProgressPercent}%` }}
-            ></div>
+            />
           </div>
           <p className="text-[11px] font-medium text-slate-500">
             {remainingClasses > 0
@@ -772,7 +832,17 @@ const StudentDashboard = () => {
   )
 }
 
-const StatRow = ({ label, score, icon, color }) => (
+const StatRow = ({
+  label,
+  score,
+  icon,
+  color,
+}: {
+  label: string
+  score: number | null | undefined
+  icon: ReactNode
+  color: string
+}) => (
   <div>
     <div className="mb-1 flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -787,7 +857,7 @@ const StatRow = ({ label, score, icon, color }) => (
       <div
         className="h-full rounded-full bg-green-500"
         style={{ width: `${score || 0}%` }}
-      ></div>
+      />
     </div>
   </div>
 )

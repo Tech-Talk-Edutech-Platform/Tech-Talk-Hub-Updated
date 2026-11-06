@@ -49,11 +49,9 @@ export default function ReferralDashboard() {
       setMarketers(mRes.data || [])
       setAttributions(aRes.data || [])
       // setAllUsers(uRes.data || []);
-      const marketerIds = (mRes.data || []).map((m) => m.id)
+      const marketerIds = new Set((mRes.data || []).map((m) => m.id))
 
-      setAllUsers(
-        (uRes.data || []).filter((user) => !marketerIds.includes(user.id)),
-      )
+      setAllUsers((uRes.data || []).filter((user) => !marketerIds.has(user.id)))
 
       const totalRevenue = (aRes.data || []).reduce(
         (acc, curr) => acc + Number(curr.sale_amount),

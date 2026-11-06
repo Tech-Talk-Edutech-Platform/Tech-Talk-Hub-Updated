@@ -9,7 +9,25 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import CallCost from './CallCost'
+import type { Tables } from '../../types/database'
+
+interface LoadingProps {
+  label: string
+}
+
+interface ModalShellProps {
+  title: string
+  icon?: LucideIcon
+  children: React.ReactNode
+  onClose: () => void
+}
+
+interface SalesPipelineModalProps {
+  isOpen: boolean
+  onClose: () => void
+}
 
 const TAB_TYPES = {
   ALL: 'all',
@@ -18,13 +36,18 @@ const TAB_TYPES = {
   UPCOMING: 'upcoming',
 }
 
-const Loading = ({ label }) => (
+const Loading = ({ label }: LoadingProps) => (
   <div className="animate-pulse p-20 text-center font-black text-slate-400">
     {label}
   </div>
 )
 
-const ModalShell = ({ title, icon: Icon, children, onClose }) => (
+const ModalShell = ({
+  title,
+  icon: Icon,
+  children,
+  onClose,
+}: ModalShellProps) => (
   <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
     <div className="flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-[40px] bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b p-8">
@@ -44,8 +67,11 @@ const ModalShell = ({ title, icon: Icon, children, onClose }) => (
   </div>
 )
 
-export default function SalesPipelineModal({ isOpen, onClose }) {
-  const [leads, setLeads] = useState([])
+export default function SalesPipelineModal({
+  isOpen,
+  onClose,
+}: SalesPipelineModalProps) {
+  const [leads, setLeads] = useState<Tables<'leads'>[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(TAB_TYPES.ALL)
   const [viewMode, setViewMode] = useState('grid') // "grid" | "list"
@@ -77,7 +103,7 @@ export default function SalesPipelineModal({ isOpen, onClose }) {
     fetchLeads()
   }, [isOpen])
 
-  const getFollowUpBadge = (next_follow_up_at) => {
+  const getFollowUpBadge = (next_follow_up_at: string | null) => {
     if (!next_follow_up_at) return null
     const now = new Date()
     const date = new Date(next_follow_up_at)
@@ -93,7 +119,7 @@ export default function SalesPipelineModal({ isOpen, onClose }) {
     start.setHours(0, 0, 0, 0)
     const end = new Date()
     end.setHours(23, 59, 59, 999)
-    let filtered = leads.filter((l) => {
+    const filtered = leads.filter((l) => {
       if (activeTab === TAB_TYPES.ALL) return true
       if (!l.next_follow_up_at) return false
       const d = new Date(l.next_follow_up_at)
@@ -105,8 +131,9 @@ export default function SalesPipelineModal({ isOpen, onClose }) {
     return filtered
   }, [leads, activeTab])
 
-  const whatsappLink = (phone) => `https://wa.me/${phone.replace(/\D/g, '')}`
-  const updateStatus = async (id, status) => {
+  const whatsappLink = (phone: string) =>
+    `https://wa.me/${phone.replace(/\D/g, '')}`
+  const updateStatus = async (id: string, status: string) => {
     const { data } = await supabase
       .from('leads')
       .update({

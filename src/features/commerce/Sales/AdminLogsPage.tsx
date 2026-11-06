@@ -10,7 +10,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../../supabase'
+import { supabase } from '../../../supabase'
 import { toast, Toaster } from 'react-hot-toast'
 
 export default function AdminLogsPage() {

@@ -256,7 +256,11 @@ export default function StudentAssignments({
                             >
                               <Star
                                 size={24}
-                                className={`${(ratingInputs[item.id] || 5) >= star ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`}
+                                className={
+                                  (ratingInputs[item.id] || 5) >= star
+                                    ? 'fill-amber-400 text-amber-400'
+                                    : 'text-slate-200'
+                                }
                               />
                             </button>
                           ))}

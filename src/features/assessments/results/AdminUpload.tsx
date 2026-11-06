@@ -2,15 +2,25 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../../../supabase'
 import { Save, UserPlus, ClipboardList, Rocket, Award } from 'lucide-react'
 
+interface StudentOption {
+  id: string
+  full_name: string
+  grade_level: string | null
+}
+
+interface LabeledInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: string
+}
+
 // Dynamic slug generator based on immutable values
-const slugify = (name, examTitle) => {
+const slugify = (name: string, examTitle: string) => {
   const base = `${name}-${examTitle}`.toLowerCase().trim()
   return base.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
 const AdminEntryForm = () => {
   const [loading, setLoading] = useState(false)
-  const [studentsList, setStudentsList] = useState([])
+  const [studentsList, setStudentsList] = useState<StudentOption[]>([])
   const [fetchingStudents, setFetchingStudents] = useState(true)
 
   const initialState = {
@@ -55,7 +65,7 @@ const AdminEntryForm = () => {
   }, [])
 
   // 2. Handle selection changes cleanly
-  const handleStudentSelect = (e) => {
+  const handleStudentSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value
     if (!selectedId) {
       setFormData((prev) => ({
@@ -76,7 +86,11 @@ const AdminEntryForm = () => {
     }))
   }
 
-  const handleChange = (e) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value, type } = e.target
     const finalValue = type === 'number' ? parseInt(value) || 0 : value
 
@@ -90,7 +104,7 @@ const AdminEntryForm = () => {
     })
   }
 
-  const handleSave = async (e) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!formData.student_id) {
       alert('Please select a student from the directory.')
@@ -307,7 +321,7 @@ const AdminEntryForm = () => {
   )
 }
 
-const Input = ({ label, ...props }) => (
+const Input = ({ label, ...props }: LabeledInputProps) => (
   <div>
     <label className="mb-1 block text-sm font-semibold text-gray-700">
       {label}
@@ -319,7 +333,7 @@ const Input = ({ label, ...props }) => (
   </div>
 )
 
-const Score = ({ label, ...props }) => (
+const Score = ({ label, ...props }: LabeledInputProps) => (
   <div className="rounded border border-indigo-200 bg-white p-2">
     <label className="mb-1 block text-[10px] font-black uppercase text-indigo-400">
       {label}

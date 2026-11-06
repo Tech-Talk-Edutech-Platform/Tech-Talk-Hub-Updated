@@ -120,7 +120,7 @@ export default function StudentAssignmentManager() {
   if (loading)
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-white font-mono">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
         <span className="mt-4 text-xs font-bold uppercase tracking-widest text-gray-600">
           Fetching...
         </span>

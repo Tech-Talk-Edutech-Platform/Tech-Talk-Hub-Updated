@@ -15,6 +15,24 @@ import {
 import UserManagementModal from './AddUserModal'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import type { Tables } from '../../types/database'
+
+type UserRow = Pick<
+  Tables<'users'>,
+  | 'id'
+  | 'email'
+  | 'full_name'
+  | 'role'
+  | 'assigned_course_id'
+  | 'assigned_tutor_id'
+  | 'subscription_tier'
+  | 'total_classes'
+  | 'classes_remaining'
+  | 'personal_meet_link'
+>
+type CourseOption = Pick<Tables<'courses'>, 'id' | 'title'>
+type TutorOption = Pick<Tables<'users'>, 'id' | 'full_name'>
+type EditableField = 'role' | 'assigned_course_id' | 'assigned_tutor_id'
 
 interface UserManagementProps {
   viewerRole?: string
@@ -26,14 +44,14 @@ export default function UserManagement({
   showAdmins = false,
 }: UserManagementProps) {
   const [activeTab, setActiveTab] = useState('assignments') // 'assignments' or 'students'
-  const [users, setUsers] = useState([])
-  const [courses, setCourses] = useState([])
-  const [tutors, setTutors] = useState([])
+  const [users, setUsers] = useState<UserRow[]>([])
+  const [courses, setCourses] = useState<CourseOption[]>([])
+  const [tutors, setTutors] = useState<TutorOption[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterLowBalance, setFilterLowBalance] = useState(false)
   const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState(null)
+  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const navigate = useNavigate()
 
   const fetchData = async () => {
@@ -88,7 +106,11 @@ export default function UserManagement({
     return () => clearTimeout(handler)
   }, [searchTerm, filterLowBalance])
 
-  const handleUpdate = async (userId, value, field) => {
+  const handleUpdate = async (
+    userId: string,
+    value: string,
+    field: EditableField,
+  ) => {
     try {
       const { error } = await supabase
         .from('users')

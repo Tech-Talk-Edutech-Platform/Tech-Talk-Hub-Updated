@@ -111,7 +111,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
         <h2 className="text-xl font-black text-slate-900">
           My Homework Dashboard
         </h2>
-        <div className="w-16"></div> {/* Spacer for symmetry */}
+        <div className="w-16" /> {/* Spacer for symmetry */}
       </div>
 
       {assignments.length === 0 ? (

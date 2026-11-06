@@ -411,7 +411,7 @@ export default function FullCalendarView() {
     `)
 
     const mappedEvents = (calendarData || [])
-      .map((e) => {
+      .flatMap((e) => {
         // Logic: Admins see everything. Tutors only see their own slots.
         if (userRole === 'tutor' && e.tutor_id !== currentUser.id) return null
 
@@ -450,7 +450,6 @@ export default function FullCalendarView() {
 
         return [mainEvent, breakEvent]
       })
-      .flat()
       .filter(Boolean)
 
     setEvents(mappedEvents)
