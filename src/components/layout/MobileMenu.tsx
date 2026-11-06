@@ -142,7 +142,7 @@ export function MobileMenu({
         )}
 
         <Link
-          to="/book-class"
+          to="/book"
           onClick={onNavigate}
           className="rounded-xl bg-secondary px-4 py-3.5 text-center text-sm font-bold text-white"
         >

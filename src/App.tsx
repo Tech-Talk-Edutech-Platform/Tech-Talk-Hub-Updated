@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
   useParams,
 } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
@@ -37,6 +38,7 @@ import './index.css'
 import AdminDashboard from './dashboards/views/sendReceipt'
 import LandingOrDashboard from './LandingOrDashboard'
 import ErrorBoundary from './components/ErrorBoundary'
+import LandingPage from './Utils/LandingPage'
 import { HomePage } from './pages/HomePage'
 import { useScrollToHash } from './hooks/useScrollToHash'
 
@@ -50,6 +52,12 @@ const ClassroomRoutes = lazy(() =>
 function ScrollToHash() {
   useScrollToHash()
   return null
+}
+
+/** Old site's booking URL; keeps the query string (e.g. `?ref=`) on shared links. */
+function BookClassRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/book${search}`} replace />
 }
 
 // Newly Mounted Admin Views
@@ -144,6 +152,8 @@ function DashboardApp() {
             </Suspense>
           }
         />
+        <Route path="/book" element={<LandingPage />} />
+        <Route path="/book-class" element={<BookClassRedirect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/landing" element={<LandingOrDashboard />} />
         <Route

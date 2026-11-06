@@ -50,7 +50,7 @@ export function ProgramsSection() {
         {/* Actions */}
         <div className="mt-10 flex flex-col justify-center gap-4 text-center sm:flex-row">
           <Link
-            to="/book-class"
+            to="/book"
             className="rounded-xl bg-secondary px-8 py-3.5 font-bold text-white shadow-lg shadow-secondary/20 transition hover:-translate-y-0.5"
           >
             Book a Placement Assessment

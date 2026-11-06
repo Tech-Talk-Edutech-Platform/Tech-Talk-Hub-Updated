@@ -125,7 +125,7 @@ export function NavBar() {
           )}
 
           <Link
-            to="/book-class"
+            to="/book"
             className="rounded-xl bg-secondary px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-secondary/20"
           >
             Book Trial
