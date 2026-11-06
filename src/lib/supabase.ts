@@ -1,33 +1,25 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-let client: SupabaseClient | undefined
+import type { Database } from '../types/database'
+
+import { isSupabaseConfigured, supabase } from '../supabase'
+
+// Single client instance for the whole app; a second createClient() call would
+// start a second auth listener and token refresher in the same tab.
+export { isSupabaseConfigured, supabase }
 
 /**
- * Returns the shared Supabase client, creating it on first use.
+ * Returns the shared Supabase client.
  *
- * Created lazily so a missing env var only breaks the sections that need
- * Supabase (they show their error state) instead of the whole page.
+ * Throws when env vars are missing so callers (e.g. landing-page sections)
+ * can show their error state instead of querying the placeholder URL.
  */
-export function getSupabase(): SupabaseClient {
-  if (client) {
-    return client
-  }
-
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-  if (!url || !anonKey) {
+export function getSupabase(): SupabaseClient<Database> {
+  if (!isSupabaseConfigured) {
     throw new Error(
       'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.',
     )
   }
 
-  client = createClient(url, anonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  })
-
-  return client
+  return supabase
 }

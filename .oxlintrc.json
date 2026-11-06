@@ -13,7 +13,12 @@
     "suspicious": "error",
     "perf": "warn"
   },
-  "ignorePatterns": ["dist/**", "coverage/**", "public/skulpt/**"],
+  "ignorePatterns": [
+    "dist/**",
+    "coverage/**",
+    "public/skulpt/**",
+    "src/types/database.ts"
+  ],
   "rules": {
     "react/react-in-jsx-scope": "off",
     "react/rules-of-hooks": "error",
