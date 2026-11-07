@@ -1,25 +1,3 @@
-// CREATE OR REPLACE FUNCTION get_next_class(user_id uuid, role user_role)
-// RETURNS TABLE(event_id uuid, class_title text, meet_link text, start_time timestamptz, end_time timestamptz) AS $$
-// BEGIN
-//   IF role = 'tutor' THEN
-//     RETURN QUERY
-//     SELECT e.id, e.title, e.meet_link, e.start_time, e.end_time
-//     FROM calendar_events e
-//     WHERE e.tutor_id = user_id AND e.end_time > now()
-//     ORDER BY e.start_time ASC LIMIT 1;
-//   ELSIF role = 'student' THEN
-//     RETURN QUERY
-//     SELECT e.id, e.title, e.meet_link, e.start_time, e.end_time
-//     FROM calendar_events e
-//     JOIN classes c ON e.class_id = c.id
-//     JOIN students s ON c.student_id = s.id
-// --FIX: Link the student record to the User ID from Auth
-// WHERE(s.id = user_id OR s.assigned_tutor_id = user_id)
-//       AND e.end_time > now()
-//     ORDER BY e.start_time ASC LIMIT 1;
-//   END IF;
-// END;
-// $$ LANGUAGE plpgsql STABLE;
 import React, { useCallback, useState } from 'react'
 import { supabase } from '../supabase'
 import { toast } from 'react-hot-toast'
@@ -117,35 +95,6 @@ export default function QuickActions({ tutorId, role, studentId }) {
     setLoading(false)
   }
 
-  // const handleStartClass = async () => {
-  //   if (!tutorId && role === "tutor") return;
-  //   if (!studentId && role === "student") return;
-
-  //   setLoading(true);
-  //   const { data, error } = await supabase.rpc("get_next_class", {
-  //     user_id: role === "tutor" ? tutorId : studentId,
-  //     role,
-  //   });
-
-  //   const classData = Array.isArray(data) ? data[0] : data;
-  //   if (error || !classData) {
-  //     toast.error("No upcoming class found.");
-  //     setLoading(false);
-  //     return;
-  //   }
-
-  //   const meetingLink = classData.meet_link;
-  //   if (meetingLink) {
-  //     localStorage.setItem("class_in_progress", "true");
-  //     setHasStarted(true);
-  //     toast.success(hasStarted ? "Rejoining..." : `Starting: ${classData.class_title || classData.title}`);
-  //     const courseIdForNav = classData.course_id || classData.id;
-  //     navigate(`/learning/${courseIdForNav}`, { state: { openVideo: true, classData } });
-  //   } else {
-  //     toast.error("No meeting link available.");
-  //   }
-  //   setLoading(false);
-  // };
   const handleStartClass = async () => {
     setLoading(true)
     try {
@@ -193,32 +142,6 @@ export default function QuickActions({ tutorId, role, studentId }) {
     setStudentTasks([])
   }
 
-  // const handleAddAssignment = async () => {
-  //   console.log("Submitting:", { tutorId, studentId: selectedStudent.id, category });
-  //   if (!selectedStudent || !taskName.trim()) return;
-  //   setLoading(true);
-  //   const { error } = await supabase.from("student_assignments").insert([
-  //     {
-  //       tutor_id: tutorId,
-  //       student_id: selectedStudent.id,
-  //       task_name: taskName,
-  //       category: category,
-  //       task_url: taskUrl,
-  //       status: "pending",
-  //     },
-  //   ]);
-
-  //   if (error) {
-  //     toast.error("Failed to add assignment");
-  //   } else {
-  //     toast.success("Task assigned!");
-  //     // FIXED: Clear inputs after success
-  //     setTaskName("");
-  //     setTaskUrl("");
-  //     fetchStudentTasks(selectedStudent.id); // Refresh list
-  //   }
-  //   setLoading(false);
-  // };
   const handleAddAssignment = async () => {
     if (!tutorId || !selectedStudent || !taskName.trim()) {
       toast.error('Select a student and enter a task name.')
@@ -253,33 +176,6 @@ export default function QuickActions({ tutorId, role, studentId }) {
     setTaskUrl('')
     setCategory('')
   }
-  // const handleAddAssignment = async () => {
-  //   if (!selectedStudent || !taskName.trim()) return;
-  //   setLoading(true);
-
-  //   const { error } = await supabase.from("student_assignments").insert([
-  //     {
-  //       tutor_id: tutorId,
-  //       student_id: selectedStudent.id,
-  //       task_name: taskName,
-  //       // FIX: If category is empty string, send null so Postgres UUID doesn't crash
-  //       category: category || null,
-  //       task_url: taskUrl || null,
-  //       status: "pending",
-  //     },
-  //   ]);
-
-  //   if (error) {
-  //     console.error("Insert Error:", error);
-  //     toast.error("Error: " + error.message);
-  //   } else {
-  //     toast.success("Task assigned!");
-  //     setTaskName("");
-  //     setTaskUrl("");
-  //     fetchStudentTasks(selectedStudent.id);
-  //   }
-  //   setLoading(false);
-  // };
 
   const tutorActions = [
     {
@@ -328,7 +224,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
               localStorage.removeItem('class_in_progress')
               setHasStarted(false)
             }}
-            className="flex items-center gap-1 text-[10px] font-bold uppercase text-slate-400 hover:text-red-500"
+            className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase hover:text-red-500"
           >
             <RotateCcw size={12} /> Reset Status
           </button>
@@ -365,7 +261,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
 
             {!selectedStudent ? (
               <div className="space-y-2">
-                <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <p className="mb-3 text-[10px] font-black tracking-widest text-slate-400 uppercase">
                   {role === 'tutor' ? 'Choose a Student' : 'Your Teacher'}
                 </p>
                 {students.map((s) => (
@@ -392,7 +288,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
 
                 {modalType === 'assignment' && (
                   <div className="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-                    <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-indigo-400">
+                    <h3 className="mb-3 text-xs font-black tracking-widest text-indigo-400 uppercase">
                       Student Progress
                     </h3>
                     <div className="max-h-40 space-y-2 overflow-y-auto">
@@ -420,7 +316,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
                                     duration: 6000,
                                   })
                                 }
-                                className="text-[10px] font-black uppercase text-indigo-600 underline"
+                                className="text-[10px] font-black text-indigo-600 uppercase underline"
                               >
                                 View Submission
                               </button>

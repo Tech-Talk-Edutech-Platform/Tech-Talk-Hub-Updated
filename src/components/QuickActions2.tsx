@@ -191,7 +191,7 @@ export default function QuickActions2({
       <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-xs">
         <div className="mb-6 flex items-center justify-between">
           <h3 className="text-xl font-black text-slate-900">Actions</h3>
-          <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold uppercase text-slate-400">
+          <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-400 uppercase">
             {role}
           </span>
         </div>
@@ -234,7 +234,7 @@ export default function QuickActions2({
                 >
                   <div className="text-left">
                     <p className="font-bold text-slate-900">{s.full_name}</p>
-                    <p className="text-xs font-black uppercase text-slate-500">
+                    <p className="text-xs font-black text-slate-500 uppercase">
                       View Curriculum
                     </p>
                   </div>
@@ -352,7 +352,7 @@ const Modal = ({ title, children, onClose }: ModalProps) => (
     <div className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl">
       <button
         onClick={onClose}
-        className="absolute right-6 top-6 text-slate-400 hover:text-slate-700"
+        className="absolute top-6 right-6 text-slate-400 hover:text-slate-700"
       >
         <X size={22} />
       </button>

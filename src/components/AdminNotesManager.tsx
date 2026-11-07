@@ -181,7 +181,7 @@ export default function AdminNotesManager() {
         {/* Left Column - Hierarchy Setup */}
         <div className="space-y-6 lg:col-span-4">
           <div className="rounded-3xl border border-gray-700 bg-gray-800/50 p-6 backdrop-blur-xs">
-            <h2 className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-400">
+            <h2 className="mb-4 flex items-center gap-2 text-xs font-black tracking-widest text-indigo-400 uppercase">
               Step 1: Course Selection
             </h2>
             <div className="mb-4 flex gap-2">
@@ -189,7 +189,7 @@ export default function AdminNotesManager() {
                 value={newCourse}
                 onChange={(e) => setNewCourse(e.target.value)}
                 placeholder="New course title..."
-                className="flex-1 rounded-xl border border-gray-700 bg-gray-950 p-3 outline-hidden ring-indigo-500 transition-all focus:ring-2"
+                className="flex-1 rounded-xl border border-gray-700 bg-gray-950 p-3 ring-indigo-500 outline-hidden transition-all focus:ring-2"
               />
               <button
                 onClick={handleCreateCourse}
@@ -219,7 +219,7 @@ export default function AdminNotesManager() {
           <div
             className={`rounded-3xl border border-gray-700 bg-gray-800/50 p-6 transition-all duration-500 ${!selectedCourse ? 'pointer-events-none scale-95 opacity-30' : 'opacity-100'}`}
           >
-            <h2 className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-400">
+            <h2 className="mb-4 flex items-center gap-2 text-xs font-black tracking-widest text-emerald-400 uppercase">
               Step 2: Topic Selection
             </h2>
             <div className="mb-4 flex gap-2">
@@ -227,7 +227,7 @@ export default function AdminNotesManager() {
                 value={newTopic}
                 onChange={(e) => setNewTopic(e.target.value)}
                 placeholder="New topic title..."
-                className="flex-1 rounded-xl border border-gray-700 bg-gray-950 p-3 outline-hidden ring-emerald-500 transition-all focus:ring-2"
+                className="flex-1 rounded-xl border border-gray-700 bg-gray-950 p-3 ring-emerald-500 outline-hidden transition-all focus:ring-2"
               />
               <button
                 onClick={handleCreateTopic}
@@ -257,20 +257,20 @@ export default function AdminNotesManager() {
           className={`space-y-6 transition-all duration-500 lg:col-span-8 ${!selectedTopic ? 'pointer-events-none opacity-30' : 'opacity-100'}`}
         >
           <div className="rounded-3xl border border-gray-700 bg-gray-800/50 p-6 backdrop-blur-xs">
-            <h2 className="mb-6 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-purple-400">
+            <h2 className="mb-6 flex items-center gap-2 text-xs font-black tracking-widest text-purple-400 uppercase">
               Step 3: Content Editor (Markdown)
             </h2>
             <div className="space-y-4">
               <input
                 {...noteForm.register('title')}
                 placeholder="Lesson Title (e.g. Introduction to Hooks)"
-                className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 text-xl font-bold outline-hidden ring-purple-500 transition-all focus:ring-2"
+                className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 text-xl font-bold ring-purple-500 outline-hidden transition-all focus:ring-2"
               />
               <textarea
                 {...noteForm.register('content')}
                 placeholder="# Use Markdown! &#10;## Headers &#10;```javascript &#10; const code = 'blocks'; &#10;```"
                 rows={12}
-                className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 font-mono text-sm leading-relaxed outline-hidden ring-purple-500 focus:ring-2"
+                className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 font-mono text-sm leading-relaxed ring-purple-500 outline-hidden focus:ring-2"
               />
               <button
                 type="button"
@@ -303,7 +303,7 @@ export default function AdminNotesManager() {
                   <button
                     onClick={() => deleteNote(note.id)}
                     disabled={deleteNoteMutation.isPending}
-                    className="p-2 text-gray-500 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
+                    className="p-2 text-gray-500 opacity-0 transition group-hover:opacity-100 hover:text-red-400"
                   >
                     <Trash2 size={18} />
                   </button>
