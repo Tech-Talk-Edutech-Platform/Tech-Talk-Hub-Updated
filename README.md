@@ -114,7 +114,7 @@ Dashboards/
 │   ├── components/            # Reusable UI
 │   └── Utils/                 # Helper functions
 ├── supabase/                  # Edge Functions
-└── tailwind.config.ts
+└── vite.config.ts
 ```
 
 | Folder              | Purpose                             |
@@ -164,7 +164,7 @@ Route protection via `RoleGate` component:
 
 ## Design System
 
-Tokens defined in [`tailwind.config.ts`](./tailwind.config.ts):
+Tokens are defined with Tailwind v4 `@theme` blocks in [`src/index.css`](./src/index.css):
 
 | Token       | Value                  | Usage                 |
 | ----------- | ---------------------- | --------------------- |

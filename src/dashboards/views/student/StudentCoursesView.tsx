@@ -107,17 +107,17 @@ function LessonRenderer({ content }: { content: string }) {
 
           return (
             <div
-              className={`my-6 rounded-2xl border ${borderColor} ${boxBg} p-5 dark:border-white/10 dark:bg-white/[0.02]`}
+              className={`my-6 rounded-2xl border ${borderColor} ${boxBg} p-5 dark:border-white/10 dark:bg-white/2`}
             >
               <h2
-                className={`${badgeBg} mb-3 inline-flex rounded-r-full px-4 py-2 text-sm font-black uppercase text-white shadow-sm`}
+                className={`${badgeBg} mb-3 inline-flex rounded-r-full px-4 py-2 text-sm font-black uppercase text-white shadow-xs`}
               >
                 {title}
               </h2>
               {isByteAsks && (
                 <textarea
                   placeholder="Type your answer here..."
-                  className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white p-4 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:bg-white/[0.04] dark:text-white"
+                  className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white p-4 text-sm text-gray-900 outline-hidden focus:ring-2 focus:ring-amber-400 dark:bg-white/4 dark:text-white"
                 />
               )}
             </div>
@@ -636,7 +636,7 @@ export default function StudentCoursesView({
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="rounded-[30px] border border-gray-200 bg-white/10 p-8 text-center shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
+        <div className="rounded-[30px] border border-gray-200 bg-white/10 p-8 text-center shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-white/4">
           <div className="mx-auto mb-5 h-16 w-16 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Loading Learning Workspace...
@@ -663,7 +663,7 @@ export default function StudentCoursesView({
                   className={`flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left transition-all ${
                     isSelected
                       ? 'border-purple-500 bg-purple-600 text-white shadow-md shadow-purple-500/20'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-purple-500/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-purple-500/40 dark:border-white/10 dark:bg-white/4 dark:text-gray-200'
                   }`}
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-purple-500/20 text-xs font-bold">
@@ -690,7 +690,7 @@ export default function StudentCoursesView({
             })}
           </div>
 
-          <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-2 shadow-lg backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-2 shadow-lg backdrop-blur-2xl dark:border-white/10 dark:bg-white/4">
             <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <FileText size={14} className="text-blue-500" /> Homework:
             </span>
@@ -727,7 +727,7 @@ export default function StudentCoursesView({
       )}
 
       {courses.length === 0 ? (
-        <div className="rounded-[32px] border border-gray-200 bg-white p-12 text-center shadow-lg dark:border-white/10 dark:bg-white/[0.04]">
+        <div className="rounded-[32px] border border-gray-200 bg-white p-12 text-center shadow-lg dark:border-white/10 dark:bg-white/4">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 text-2xl font-bold text-purple-500">
             🎓
           </div>
@@ -741,8 +741,8 @@ export default function StudentCoursesView({
         activeCourse && (
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
             <div className="space-y-4 lg:sticky lg:top-6 lg:col-span-4 lg:flex lg:max-h-[calc(100vh-120px)] lg:flex-col">
-              <div className="shrink-0 overflow-hidden rounded-[28px] border border-gray-200 bg-white p-5 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
-                <div className="relative mb-4 flex h-28 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700">
+              <div className="shrink-0 overflow-hidden rounded-[28px] border border-gray-200 bg-white p-5 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/4">
+                <div className="relative mb-4 flex h-28 items-center justify-center overflow-hidden rounded-2xl bg-linear-to-br from-purple-600 to-indigo-700">
                   {activeCourse.thumbnail_url ? (
                     <img
                       src={activeCourse.thumbnail_url}
@@ -760,7 +760,7 @@ export default function StudentCoursesView({
                       </span>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
                   <h2 className="absolute bottom-3 left-4 right-4 line-clamp-1 text-base font-black text-white">
                     {activeCourse.title}
                   </h2>
@@ -778,7 +778,7 @@ export default function StudentCoursesView({
                 </div>
               </div>
 
-              <div className="flex-1 space-y-3 overflow-y-auto rounded-[28px] border border-gray-200 bg-white p-4 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="flex-1 space-y-3 overflow-y-auto rounded-[28px] border border-gray-200 bg-white p-4 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/4">
                 <h3 className="flex items-center gap-2 px-2 text-base font-black text-gray-900 dark:text-white">
                   Course Syllabus
                 </h3>
@@ -791,7 +791,7 @@ export default function StudentCoursesView({
                     return (
                       <div
                         key={phase.id}
-                        className="overflow-hidden rounded-2xl border border-gray-200/80 bg-gray-50/50 transition-all dark:border-white/10 dark:bg-white/[0.02]"
+                        className="overflow-hidden rounded-2xl border border-gray-200/80 bg-gray-50/50 transition-all dark:border-white/10 dark:bg-white/2"
                       >
                         <button
                           onClick={() => togglePhaseAccordion(phase.id)}
@@ -843,7 +843,7 @@ export default function StudentCoursesView({
                                   className={`flex w-full items-center justify-between rounded-xl border p-2.5 text-left transition-all ${
                                     isSelected
                                       ? 'border-transparent bg-purple-600 text-white shadow-md'
-                                      : 'border-gray-200/60 bg-white hover:border-purple-500/30 dark:border-white/5 dark:bg-white/[0.03]'
+                                      : 'border-gray-200/60 bg-white hover:border-purple-500/30 dark:border-white/5 dark:bg-white/3'
                                   }`}
                                 >
                                   <div className="flex min-w-0 items-center gap-2 pr-2">
@@ -897,7 +897,7 @@ export default function StudentCoursesView({
             </div>
 
             <div className="lg:col-span-8">
-              <div className="rounded-[32px] border border-gray-200 bg-white p-6 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04] md:p-8">
+              <div className="rounded-[32px] border border-gray-200 bg-white p-6 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/4 md:p-8">
                 {selectedLesson ? (
                   <div>
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -930,7 +930,7 @@ export default function StudentCoursesView({
                       </div>
                     </div>
 
-                    <div className="space-y-6 border-t border-gray-100 pt-6 dark:border-white/[0.08]">
+                    <div className="space-y-6 border-t border-gray-100 pt-6 dark:border-white/8">
                       {selectedLesson.video_url && (
                         <div className="relative aspect-video overflow-hidden rounded-2xl border border-gray-200/20 bg-black shadow-lg dark:border-white/10">
                           <iframe
@@ -965,7 +965,7 @@ export default function StudentCoursesView({
                       )}
 
                       {selectedLesson.content && (
-                        <div className="space-y-6 rounded-2xl border border-gray-200/60 bg-gray-50/80 p-6 dark:border-white/5 dark:bg-white/[0.02] md:p-8">
+                        <div className="space-y-6 rounded-2xl border border-gray-200/60 bg-gray-50/80 p-6 dark:border-white/5 dark:bg-white/2 md:p-8">
                           <div className="prose max-w-none text-sm leading-relaxed dark:prose-invert md:text-base">
                             <LessonRenderer content={selectedLesson.content} />
                           </div>
@@ -976,7 +976,7 @@ export default function StudentCoursesView({
                       {lessonQuiz &&
                         lessonQuiz.quiz_questions &&
                         lessonQuiz.quiz_questions.length > 0 && (
-                          <div className="space-y-6 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-6 dark:bg-purple-500/[0.02] md:p-8">
+                          <div className="space-y-6 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-6 dark:bg-purple-500/2 md:p-8">
                             <div className="flex items-center justify-between">
                               <h3 className="flex items-center gap-2 text-lg font-black text-gray-900 dark:text-white">
                                 <Sparkles
@@ -994,7 +994,7 @@ export default function StudentCoursesView({
                               {lessonQuiz.quiz_questions.map((q, qIdx) => (
                                 <div
                                   key={q.id || qIdx}
-                                  className="space-y-3 rounded-xl border border-gray-200/50 bg-white p-5 dark:border-white/5 dark:bg-white/[0.04]"
+                                  className="space-y-3 rounded-xl border border-gray-200/50 bg-white p-5 dark:border-white/5 dark:bg-white/4"
                                 >
                                   <p className="text-sm font-bold text-gray-900 dark:text-white">
                                     {qIdx + 1}. {q.question_text}
@@ -1005,8 +1005,8 @@ export default function StudentCoursesView({
                                         key={oIdx}
                                         className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-xs transition-all md:text-sm ${
                                           quizAnswers[qIdx] === oIdx
-                                            ? 'border-purple-600 bg-purple-600 text-white shadow-sm'
-                                            : 'border-gray-200 bg-gray-50 text-gray-800 hover:border-purple-500/30 dark:border-white/10 dark:bg-white/[0.02] dark:text-gray-200'
+                                            ? 'border-purple-600 bg-purple-600 text-white shadow-xs'
+                                            : 'border-gray-200 bg-gray-50 text-gray-800 hover:border-purple-500/30 dark:border-white/10 dark:bg-white/2 dark:text-gray-200'
                                         }`}
                                       >
                                         <input
@@ -1068,7 +1068,7 @@ export default function StudentCoursesView({
 
                       {/* Homework Section */}
                       {lessonAssignment && (
-                        <div className="space-y-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6 dark:bg-blue-500/[0.02] md:p-8">
+                        <div className="space-y-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6 dark:bg-blue-500/2 md:p-8">
                           <div className="flex items-center justify-between">
                             <h3 className="flex items-center gap-2 text-lg font-black text-gray-900 dark:text-white">
                               <FileText size={18} className="text-blue-500" />{' '}
@@ -1104,7 +1104,7 @@ export default function StudentCoursesView({
                                 onChange={(e) =>
                                   setSubmissionText(e.target.value)
                                 }
-                                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-900 outline-hidden focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-white/4 dark:text-white"
                               />
 
                               <button

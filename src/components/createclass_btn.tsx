@@ -110,7 +110,7 @@ export default function CreateClassForm() {
     <form
       onSubmit={handleSubmit(handleCreateClass)}
       noValidate
-      className="max-w-md rounded bg-white p-6 shadow-md"
+      className="max-w-md rounded-sm bg-white p-6 shadow-md"
     >
       <h2 className="mb-4 text-xl font-bold">Schedule New Class</h2>
 
@@ -156,7 +156,7 @@ export default function CreateClassForm() {
 
       <button
         type="submit"
-        className="w-full rounded bg-blue-600 p-2 text-white"
+        className="w-full rounded-sm bg-blue-600 p-2 text-white"
       >
         Create Class
       </button>

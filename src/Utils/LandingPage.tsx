@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import type { ChangeEvent, FormEvent } from 'react'
+import { staticPageMeta } from '../data/seo'
+import { usePageMeta } from '../hooks/usePageMeta'
 
 interface LeadForm {
   parent_name: string
@@ -19,6 +21,7 @@ type LeadField = keyof LeadForm
 type LeadErrors = Partial<Record<LeadField, boolean>>
 
 export default function LandingPage() {
+  usePageMeta(staticPageMeta('/book'))
   const today = new Date().toISOString().split('T')[0]
   const [form, setForm] = useState<LeadForm>({
     parent_name: '',
@@ -143,7 +146,7 @@ export default function LandingPage() {
   ]
 
   const baseInputClass =
-    'w-full border rounded-xl px-4 py-3 outline-none transition-all duration-300 focus:ring-2 focus:ring-purple-400 focus:shadow-lg focus:shadow-purple-300/30'
+    'w-full border rounded-xl px-4 py-3 outline-hidden transition-all duration-300 focus:ring-2 focus:ring-purple-400 focus:shadow-lg focus:shadow-purple-300/30'
 
   const getInputClass = (name: LeadField) =>
     `${baseInputClass} ${errors[name] ? 'border-red-500' : 'border-purple-400'}`
@@ -151,13 +154,13 @@ export default function LandingPage() {
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-gray-50 px-6 py-12 md:px-20">
       {/* LOGO */}
-      <div className="absolute left-6 top-6 z-50 md:left-12 md:top-8">
+      <div className="absolute top-6 left-6 z-50 md:top-8 md:left-12">
         <img src="/TechTalkBrand.png" alt="Logo" className="h-12 md:h-14" />
       </div>
 
       {/* HEADER */}
-      <div className="relative z-50 mb-8 mt-6 text-center md:mt-0">
-        <h1 className="text-3xl font-extrabold leading-tight text-gray-900 md:text-4xl">
+      <div className="relative z-50 mt-6 mb-8 text-center md:mt-0">
+        <h1 className="text-3xl leading-tight font-extrabold text-gray-900 md:text-4xl">
           Give Your Child a Confident Start in Coding 🚀
         </h1>
         <p className="mt-2 text-gray-600">
@@ -169,13 +172,13 @@ export default function LandingPage() {
       <div className="flex w-full max-w-6xl flex-col items-center gap-12 md:flex-row">
         {/* LEFT IMAGE */}
         <div className="relative mb-10 flex w-full justify-center md:mb-0 md:w-1/2">
-          <div className="animate-rotate-slow absolute -left-24 -top-24 h-96 w-96 rounded-full bg-gradient-to-tr from-blue-400 via-purple-400 to-pink-400 opacity-60" />
-          <div className="animate-rotate-slow reverse absolute -bottom-16 -right-16 h-72 w-72 rounded-full bg-gradient-to-br from-purple-300 via-pink-300 to-yellow-200 opacity-50" />
+          <div className="animate-rotate-slow absolute -top-24 -left-24 h-96 w-96 rounded-full bg-linear-to-tr from-blue-400 via-purple-400 to-pink-400 opacity-60" />
+          <div className="animate-rotate-slow reverse absolute -right-16 -bottom-16 h-72 w-72 rounded-full bg-linear-to-br from-purple-300 via-pink-300 to-yellow-200 opacity-50" />
 
           <img
             src="/girl-code.png"
             alt="Child coding"
-            className="relative z-50 w-80 rounded-3xl object-cover shadow-2xl md:w-[28rem] lg:w-[32rem]"
+            className="relative z-50 w-80 rounded-3xl object-cover shadow-2xl md:w-md lg:w-lg"
           />
         </div>
 
@@ -193,7 +196,7 @@ export default function LandingPage() {
           ) : (
             <form
               onSubmit={submitForm}
-              className="space-y-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-lg md:bg-transparent md:bg-opacity-50 md:p-10 md:backdrop-blur-sm"
+              className="md:bg-opacity-50 space-y-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-lg md:bg-transparent md:p-10 md:backdrop-blur-xs"
             >
               <input
                 name="parent_name"
@@ -222,7 +225,7 @@ export default function LandingPage() {
               <div className="flex items-center gap-2">
                 <div className="relative w-36">
                   {form.country && (
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl">
+                    <span className="absolute top-1/2 left-3 -translate-y-1/2 text-xl">
                       {
                         countryOptions.find((c) => c.name === form.country)
                           ?.flag
@@ -233,7 +236,7 @@ export default function LandingPage() {
                     name="country"
                     value={form.country}
                     onChange={handleCountryChange}
-                    className={`w-full rounded-xl border px-10 py-3 outline-none transition-all duration-300 focus:shadow-lg focus:shadow-purple-300/30 focus:ring-2 focus:ring-purple-400 ${errors.country ? 'border-red-500' : 'border-purple-400'} bg-white`}
+                    className={`w-full rounded-xl border px-10 py-3 outline-hidden transition-all duration-300 focus:shadow-lg focus:ring-2 focus:shadow-purple-300/30 focus:ring-purple-400 ${errors.country ? 'border-red-500' : 'border-purple-400'} bg-white`}
                   >
                     <option value="">🌍</option>
                     {countryOptions.map((c) => (
@@ -256,7 +259,7 @@ export default function LandingPage() {
                   name="grade"
                   value={form.grade}
                   onChange={handleChange}
-                  className={`w-24 rounded-xl border px-4 py-3 outline-none transition-all duration-300 focus:shadow-lg focus:shadow-purple-300/30 focus:ring-2 focus:ring-purple-400 ${errors.grade ? 'border-red-500' : 'border-purple-400'} bg-white`}
+                  className={`w-24 rounded-xl border px-4 py-3 outline-hidden transition-all duration-300 focus:shadow-lg focus:ring-2 focus:shadow-purple-300/30 focus:ring-purple-400 ${errors.grade ? 'border-red-500' : 'border-purple-400'} bg-white`}
                 >
                   <option value="" disabled>
                     Grade
@@ -291,7 +294,7 @@ export default function LandingPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-xl bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? 'Booking...' : 'Book Free Trial'}
               </button>
@@ -303,7 +306,7 @@ export default function LandingPage() {
       {/* TRUST / METRICS */}
       <div className="mt-16 w-full border-t border-gray-100 bg-gray-50 py-12">
         <div className="mx-auto max-w-6xl px-6 text-center">
-          <p className="mb-8 text-sm font-semibold uppercase tracking-widest text-gray-400">
+          <p className="mb-8 text-sm font-semibold tracking-widest text-gray-400 uppercase">
             Trusted by Parents from Top Schools
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8 transition-all md:gap-16">

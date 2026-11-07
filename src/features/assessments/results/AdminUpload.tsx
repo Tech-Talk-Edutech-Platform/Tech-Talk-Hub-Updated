@@ -150,7 +150,7 @@ const AdminEntryForm = () => {
   }
 
   return (
-    <div className="mx-auto my-10 max-w-2xl rounded-xl bg-white p-6 font-sans shadow">
+    <div className="mx-auto my-10 max-w-2xl rounded-xl bg-white p-6 font-sans shadow-sm">
       <div className="mb-6 flex items-center gap-3">
         <UserPlus className="text-indigo-600" />
         <h1 className="text-xl font-bold text-gray-800">
@@ -171,7 +171,7 @@ const AdminEntryForm = () => {
               onChange={handleStudentSelect}
               disabled={fetchingStudents}
               required
-              className="h-[38px] w-full rounded border bg-white p-2 text-sm outline-indigo-500"
+              className="h-[38px] w-full rounded-sm border bg-white p-2 text-sm outline-indigo-500"
             >
               <option value="">
                 {fetchingStudents
@@ -204,7 +204,7 @@ const AdminEntryForm = () => {
               name="performance_label"
               value={formData.performance_label}
               onChange={handleChange}
-              className="h-[38px] w-full rounded border bg-white p-2 text-sm"
+              className="h-[38px] w-full rounded-sm border bg-white p-2 text-sm"
             >
               <option value="Excellent">Excellent</option>
               <option value="Outstanding">Outstanding</option>
@@ -233,25 +233,25 @@ const AdminEntryForm = () => {
               required
               value={formData.exam_title}
               onChange={handleChange}
-              className="w-full rounded border p-2 text-sm"
+              className="w-full rounded-sm border p-2 text-sm"
             />
             <input
               type="date"
               name="exam_date"
               value={formData.exam_date}
               onChange={handleChange}
-              className="w-full rounded border p-2 text-sm"
+              className="w-full rounded-sm border p-2 text-sm"
             />
           </div>
           <div className="grid grid-cols-1 gap-4">
-            <div className="flex items-center gap-2 rounded border bg-white p-2">
+            <div className="flex items-center gap-2 rounded-sm border bg-white p-2">
               <Rocket size={16} className="text-orange-500" />
               <input
                 name="project_url"
                 value={formData.project_url}
                 onChange={handleChange}
                 placeholder="Project URL Link"
-                className="w-full text-sm outline-none"
+                className="w-full text-sm outline-hidden"
               />
             </div>
           </div>
@@ -300,7 +300,7 @@ const AdminEntryForm = () => {
             value={formData.tutor_feedback}
             onChange={handleChange}
             placeholder="Write a personalized note for the student..."
-            className="h-24 w-full rounded border p-3 text-sm"
+            className="h-24 w-full rounded-sm border p-3 text-sm"
           />
         </div>
 
@@ -328,13 +328,13 @@ const Input = ({ label, ...props }: LabeledInputProps) => (
     </label>
     <input
       {...props}
-      className="w-full rounded border p-2 text-sm outline-indigo-500"
+      className="w-full rounded-sm border p-2 text-sm outline-indigo-500"
     />
   </div>
 )
 
 const Score = ({ label, ...props }: LabeledInputProps) => (
-  <div className="rounded border border-indigo-200 bg-white p-2">
+  <div className="rounded-sm border border-indigo-200 bg-white p-2">
     <label className="mb-1 block text-[10px] font-black uppercase text-indigo-400">
       {label}
     </label>
@@ -343,7 +343,7 @@ const Score = ({ label, ...props }: LabeledInputProps) => (
       min="0"
       max="100"
       {...props}
-      className="w-full p-1 text-center font-bold text-indigo-900 outline-none"
+      className="w-full p-1 text-center font-bold text-indigo-900 outline-hidden"
     />
   </div>
 )

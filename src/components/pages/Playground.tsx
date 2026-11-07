@@ -182,7 +182,7 @@ export default function Playground({ darkMode }: PlaygroundProps) {
 
   return (
     <div
-      className={`flex-[2] overflow-y-auto rounded-lg p-3 shadow ${
+      className={`flex-2 overflow-y-auto rounded-lg p-3 shadow ${
         darkMode ? 'bg-gray-800' : 'bg-white'
       }`}
     >
@@ -218,7 +218,7 @@ export default function Playground({ darkMode }: PlaygroundProps) {
             />
             <button
               onClick={runPython}
-              className="mt-3 rounded bg-primary px-4 py-2 text-white"
+              className="mt-3 rounded-sm bg-primary px-4 py-2 text-white"
             >
               ▶️ Run Python
             </button>
@@ -232,13 +232,13 @@ export default function Playground({ darkMode }: PlaygroundProps) {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') submitInput()
                   }}
-                  className="flex-1 rounded border p-2"
+                  className="flex-1 rounded-sm border p-2"
                   placeholder={inputPrompt || 'Type input and press Enter...'}
                   autoFocus
                 />
                 <button
                   onClick={submitInput}
-                  className="rounded bg-primary px-3 text-white"
+                  className="rounded-sm bg-primary px-3 text-white"
                 >
                   Submit
                 </button>
@@ -295,11 +295,11 @@ export default function Playground({ darkMode }: PlaygroundProps) {
             <iframe
               ref={iframeRef}
               title="preview"
-              className="mt-3 h-64 w-full rounded border"
+              className="mt-3 h-64 w-full rounded-sm border"
             />
             <button
               onClick={() => setConsoleOpen(!consoleOpen)}
-              className="mt-2 rounded bg-primary px-4 py-1 text-white"
+              className="mt-2 rounded-sm bg-primary px-4 py-1 text-white"
             >
               {consoleOpen ? 'Hide JS Console' : 'Show JS Console'}
             </button>

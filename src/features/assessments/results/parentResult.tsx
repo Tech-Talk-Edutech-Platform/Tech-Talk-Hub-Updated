@@ -295,7 +295,7 @@ const StudentDashboard = () => {
         </div>
 
         <div className="mb-4 px-4">
-          <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 shadow-xs">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                 Overall Metric
@@ -321,7 +321,7 @@ const StudentDashboard = () => {
             activeDetailedExam.questions_and_answers.map((item, idx) => (
               <div
                 key={idx}
-                className="break-inside-avoid space-y-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+                className="break-inside-avoid space-y-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-xs"
               >
                 <div className="flex items-start gap-2">
                   <span className="mt-0.5 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600">
@@ -350,7 +350,7 @@ const StudentDashboard = () => {
               </div>
             ))
           ) : (
-            <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center text-xs font-medium text-gray-400 shadow-sm">
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center text-xs font-medium text-gray-400 shadow-xs">
               No digital structural breakdown arrays logged for this sheet.
             </div>
           )}
@@ -363,7 +363,7 @@ const StudentDashboard = () => {
   return (
     <div className="relative mx-auto min-h-screen max-w-md bg-gray-50 pb-20 font-sans shadow-2xl print:bg-white print:shadow-none">
       {/* 1. HEADER SECTION */}
-      <div className="rounded-b-3xl border-b border-gray-100 bg-white p-6 shadow-sm">
+      <div className="rounded-b-3xl border-b border-gray-100 bg-white p-6 shadow-xs">
         <div className="mb-4 flex items-center justify-between print:hidden">
           <button
             onClick={handleShareDashboard}
@@ -417,7 +417,7 @@ const StudentDashboard = () => {
 
       {/* 2. DYNAMIC MILESTONE TRACKER */}
       <div className="p-4 pb-0">
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
           <div className="mb-2 flex items-center justify-between">
             <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               <CheckCircle2 size={12} className="text-indigo-500" /> Milestone
@@ -429,7 +429,7 @@ const StudentDashboard = () => {
           </div>
           <div className="mb-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-700"
+              className="h-full rounded-full bg-linear-to-r from-indigo-500 to-emerald-500 transition-all duration-700"
               style={{ width: `${rawProgressPercent}%` }}
             />
           </div>
@@ -443,7 +443,7 @@ const StudentDashboard = () => {
 
       {/* 3. SUBSCRIPTION TRACKER PANEL */}
       <div className="p-4">
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-800">
               <Activity size={14} className="text-indigo-500" /> Subscription
@@ -482,7 +482,7 @@ const StudentDashboard = () => {
       {/* 4. UNLOCKED ACHIEVEMENTS & BADGES RACK */}
       {badges.length > 0 && (
         <div className="mb-2 px-4">
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
             <h2 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-800">
               <Trophy size={14} className="text-amber-500" /> Earned Skill
               Badges
@@ -511,7 +511,7 @@ const StudentDashboard = () => {
 
       {/* 5. TODAY'S LESSON SUMMARY */}
       <div className="mb-2 px-4">
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
           <div className="mb-3 flex items-center gap-2 border-b border-slate-50 pb-2">
             <div className="rounded-lg bg-amber-50 p-1.5 text-amber-500">
               <BookOpen size={16} />
@@ -532,7 +532,7 @@ const StudentDashboard = () => {
       {/* 6. PROJECT SHOWCASE */}
       {latestProject && (
         <div className="p-4">
-          <div className="rounded-2xl bg-gradient-to-br from-orange-500 to-pink-500 p-5 text-white shadow-lg">
+          <div className="rounded-2xl bg-linear-to-br from-orange-500 to-pink-500 p-5 text-white shadow-lg">
             <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
               <Rocket size={18} className="animate-bounce" /> Student Project
             </div>
@@ -576,7 +576,7 @@ const StudentDashboard = () => {
                         </span>
                         <ExternalLink
                           size={12}
-                          className="flex-shrink-0 opacity-80"
+                          className="shrink-0 opacity-80"
                         />
                       </a>
                     ))}
@@ -590,12 +590,12 @@ const StudentDashboard = () => {
 
       {/* 7. OVERALL PERFORMANCE */}
       <div className="p-4">
-        <div className="rounded-2xl border border-gray-50 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-50 bg-white p-5 shadow-xs">
           <h2 className="mb-4 flex items-center gap-1.5 px-1 text-sm font-bold uppercase tracking-wide text-gray-800">
             <Award size={15} className="text-green-500" /> Overall Performance
           </h2>
           <div className="flex items-center gap-6">
-            <div className="relative flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full border-[10px] border-green-500">
+            <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-10 border-green-500">
               <div className="text-center">
                 <span className="text-2xl font-black text-gray-800">
                   {cumulativeAverage}%
@@ -623,7 +623,7 @@ const StudentDashboard = () => {
         </h2>
         <div
           onClick={() => triggerExamPrompt(latestExam || data)}
-          className="cursor-pointer rounded-2xl border-l-[6px] border-indigo-500 bg-white p-4 shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
+          className="cursor-pointer rounded-2xl border-l-[6px] border-indigo-500 bg-white p-4 shadow-xs transition hover:bg-slate-50 active:scale-[0.99]"
         >
           <div className="flex items-start justify-between">
             <div className="flex gap-3">
@@ -661,7 +661,7 @@ const StudentDashboard = () => {
         <h2 className="mb-3 px-1 text-sm font-bold uppercase tracking-wide text-gray-800">
           Section Breakdown
         </h2>
-        <div className="space-y-4 rounded-2xl border border-gray-50 bg-white p-5 shadow-sm">
+        <div className="space-y-4 rounded-2xl border border-gray-50 bg-white p-5 shadow-xs">
           <StatRow
             label="Theory"
             score={latestExam ? latestExam.theory_score : data.theory_score}
@@ -707,7 +707,7 @@ const StudentDashboard = () => {
             <div
               key={ex.id}
               onClick={() => triggerExamPrompt(ex)}
-              className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-white px-4 py-3 opacity-85 shadow-sm transition hover:opacity-100"
+              className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-white px-4 py-3 opacity-85 shadow-xs transition hover:opacity-100"
             >
               <div>
                 <h4 className="text-xs font-bold text-gray-700">
@@ -734,7 +734,7 @@ const StudentDashboard = () => {
             <div
               key={ex.id}
               onClick={() => triggerExamPrompt(ex)}
-              className="group flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-indigo-200"
+              className="group flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-xs transition-all hover:border-indigo-200"
             >
               <div className="flex items-center gap-4">
                 <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
@@ -764,7 +764,7 @@ const StudentDashboard = () => {
 
       {/* 11. GLOBAL TUTOR FEEDBACK */}
       <div className="px-4">
-        <div className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-slate-900 to-indigo-950 p-6 text-white shadow-xl">
+        <div className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-linear-to-br from-slate-900 to-indigo-950 p-6 text-white shadow-xl">
           <div className="pointer-events-none absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-indigo-500/10 blur-xl" />
 
           <div className="mb-3.5 flex items-center gap-2.5 text-xs font-bold uppercase tracking-widest text-indigo-300">
@@ -772,7 +772,7 @@ const StudentDashboard = () => {
             <span>Instructor Feedback Notes</span>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-inner backdrop-blur-sm">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-inner backdrop-blur-xs">
             {/* Added whitespace-pre-line to render user paragraph wraps/breaks perfectly */}
             <p className="whitespace-pre-line text-sm font-medium italic leading-relaxed tracking-tight text-slate-100">
               "
@@ -793,7 +793,7 @@ const StudentDashboard = () => {
 
       {/* ================= CONFIRMATION MODAL ================= */}
       {selectedExamForPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-sm space-y-4 rounded-3xl bg-white p-6 text-center shadow-2xl">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
               <HelpCircle size={24} />

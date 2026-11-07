@@ -21,7 +21,7 @@ export default function UnifiedDashboard() {
         } = await supabase.auth.getUser()
 
         if (authError || !authUser) {
-          navigate('/', { replace: true })
+          void navigate('/login', { replace: true })
           return
         }
 

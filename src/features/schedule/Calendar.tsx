@@ -223,17 +223,17 @@
 //             <button onClick={() => setSidebarOpen(false)}><X size={18} /></button>
 //           </div>
 //           <div className="flex gap-2 mb-4">
-//             <button className={`flex-1 py-2 rounded font-bold ${showTrial ? "bg-blue-600 text-white" : "bg-slate-100"}`} onClick={() => setShowTrial(true)}>Trials</button>
-//             <button className={`flex-1 py-2 rounded font-bold ${!showTrial ? "bg-blue-600 text-white" : "bg-slate-100"}`} onClick={() => setShowTrial(false)}>Courses</button>
+//             <button className={`flex-1 py-2 rounded-sm font-bold ${showTrial ? "bg-blue-600 text-white" : "bg-slate-100"}`} onClick={() => setShowTrial(true)}>Trials</button>
+//             <button className={`flex-1 py-2 rounded-sm font-bold ${!showTrial ? "bg-blue-600 text-white" : "bg-slate-100"}`} onClick={() => setShowTrial(false)}>Courses</button>
 //           </div>
 
 //           {availableStudents.map((s) => {
 //             const freeTutors = getFreeTutorsForStudent(s);
 //             return (
-//               <div key={s.id} className="p-4 mb-3 rounded-2xl border bg-white shadow-sm">
+//               <div key={s.id} className="p-4 mb-3 rounded-2xl border bg-white shadow-xs">
 //                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.preferred_date || s.class_date} @ {s.preferred_time || s.class_time}</div>
 //                 <div className="font-bold text-slate-900 mb-3">{showTrial ? s.student_name : s.full_name}</div>
-//                 <select className="w-full p-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" onChange={e => handleAssign(s.id, e.target.value, showTrial ? "trial" : "course")} defaultValue="">
+//                 <select className="w-full p-2 border rounded-xl text-sm outline-hidden focus:ring-2 focus:ring-blue-500" onChange={e => handleAssign(s.id, e.target.value, showTrial ? "trial" : "course")} defaultValue="">
 //                   <option value="" disabled>{freeTutors.length ? "Assign Tutor" : "No Tutors Free"}</option>
 //                   {freeTutors.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
 //                 </select>
@@ -248,7 +248,7 @@
 //       <div className={`flex-1 p-6 transition-all ${sidebarOpen ? "ml-80" : ""}`}>
 //         <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
 //           {tutorSummary.map((t, i) => (
-//             <div key={i} className="p-4 rounded-2xl shadow-sm text-white" style={{ backgroundColor: t.color }}>
+//             <div key={i} className="p-4 rounded-2xl shadow-xs text-white" style={{ backgroundColor: t.color }}>
 //               <div className="font-black text-lg">{t.full_name}</div>
 //               <div className="text-xs opacity-80 font-bold uppercase tracking-tighter">Free: {t.free} | Booked: {t.booked}</div>
 //             </div>
@@ -262,7 +262,7 @@
 //           </div>
 //         </div>
 
-//         <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+//         <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xs">
 //           <FullCalendar
 //             ref={calendarRef}
 //             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -303,10 +303,10 @@
 //       </div>
 
 //       {reassignEvent && (
-//         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+//         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-100 p-4">
 //           <div className="bg-white p-8 rounded-[32px] w-full max-w-md shadow-2xl">
 //             <h2 className="text-xl font-black mb-6">Reassign Class</h2>
-//             <select value={selectedNewTutor} onChange={(e) => setSelectedNewTutor(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl font-bold mb-6 outline-none">
+//             <select value={selectedNewTutor} onChange={(e) => setSelectedNewTutor(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl font-bold mb-6 outline-hidden">
 //               {tutors.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
 //             </select>
 //             <div className="flex gap-3">
@@ -581,13 +581,13 @@ export default function FullCalendarView() {
           </div>
           <div className="mb-4 flex gap-2">
             <button
-              className={`flex-1 rounded px-3 py-1 ${showTrial ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              className={`flex-1 rounded-sm px-3 py-1 ${showTrial ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
               onClick={() => setShowTrial(true)}
             >
               Trials
             </button>
             <button
-              className={`flex-1 rounded px-3 py-1 ${!showTrial ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              className={`flex-1 rounded-sm px-3 py-1 ${!showTrial ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
               onClick={() => setShowTrial(false)}
             >
               Subscribers
@@ -599,18 +599,18 @@ export default function FullCalendarView() {
           ).map((s) => (
             <div
               key={s.id}
-              className="mb-3 rounded border bg-gray-50 p-3 shadow-sm"
+              className="mb-3 rounded-sm border bg-gray-50 p-3 shadow-xs"
             >
               <div className="mb-1 flex items-start justify-between">
                 <span className="text-sm font-bold">
                   {showTrial ? s.student_name : s.full_name}
                 </span>
-                <span className="rounded bg-blue-100 px-2 text-[10px]">
+                <span className="rounded-sm bg-blue-100 px-2 text-[10px]">
                   {showTrial ? 'Trial' : s.subscription_tier}
                 </span>
               </div>
               <select
-                className="mt-2 w-full rounded border p-1 text-xs"
+                className="mt-2 w-full rounded-sm border p-1 text-xs"
                 onChange={(e) =>
                   handleAssign(
                     s.id,
@@ -639,7 +639,7 @@ export default function FullCalendarView() {
           {tutorSummary.map((t) => (
             <div
               key={t.id}
-              className="rounded-xl p-3 text-white shadow"
+              className="rounded-xl p-3 text-white shadow-sm"
               style={{ backgroundColor: t.color }}
             >
               <span className="font-bold">{t.full_name}</span>
@@ -654,21 +654,21 @@ export default function FullCalendarView() {
           {!sidebarOpen && isAdminRole(userRole) && (
             <button
               onClick={() => setSidebarOpen(true)}
-              className="rounded bg-purple-600 px-3 py-2 text-white shadow"
+              className="rounded-sm bg-purple-600 px-3 py-2 text-white shadow-sm"
             >
               Students
             </button>
           )}
           <button
             onClick={() => navigate(-1)}
-            className="rounded border bg-white p-2"
+            className="rounded-sm border bg-white p-2"
           >
             <ArrowLeft size={18} />
           </button>
           <h1 className="text-xl font-bold">Global Schedule</h1>
         </div>
 
-        <div className="rounded-xl border bg-white p-4 shadow-sm">
+        <div className="rounded-xl border bg-white p-4 shadow-xs">
           <FullCalendar
             key={`${userRole}-${events.length}`} // Forces re-render when data or role changes
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -706,13 +706,13 @@ export default function FullCalendarView() {
       </div>
 
       {reassignEvent && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40">
           <div className="w-96 rounded-2xl bg-white p-6 shadow-xl">
             <h2 className="mb-4 font-bold">Reassign Tutor</h2>
             <select
               value={selectedNewTutor}
               onChange={(e) => setSelectedNewTutor(e.target.value)}
-              className="mb-4 w-full rounded border p-2"
+              className="mb-4 w-full rounded-sm border p-2"
             >
               {tutors.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -723,7 +723,7 @@ export default function FullCalendarView() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setReassignEvent(null)}
-                className="rounded bg-gray-200 px-4 py-2"
+                className="rounded-sm bg-gray-200 px-4 py-2"
               >
                 Cancel
               </button>
@@ -736,7 +736,7 @@ export default function FullCalendarView() {
                   setReassignEvent(null)
                   fetchData()
                 }}
-                className="rounded bg-purple-600 px-4 py-2 text-white"
+                className="rounded-sm bg-purple-600 px-4 py-2 text-white"
               >
                 Save
               </button>

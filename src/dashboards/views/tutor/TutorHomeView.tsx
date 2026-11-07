@@ -135,7 +135,7 @@ export default function TutorHomeView({ userId, courseId, user }) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-4 text-gray-900 dark:text-white md:p-8">
-      <div className="relative overflow-hidden rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#131b31]/65 md:p-8">
+      <div className="relative overflow-hidden rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/65 md:p-8">
         <div className="pointer-events-none absolute right-0 top-0 h-80 w-80 bg-purple-500/10 blur-[100px]" />
         <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
           <div>
@@ -152,7 +152,7 @@ export default function TutorHomeView({ userId, courseId, user }) {
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-4 rounded-full border border-gray-100 bg-gray-50/80 p-3.5 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div className="flex shrink-0 items-center gap-4 rounded-full border border-gray-100 bg-gray-50/80 p-3.5 shadow-xs dark:border-white/10 dark:bg-white/5">
             {tutorAvatar ? (
               <img
                 src={tutorAvatar}
@@ -204,11 +204,11 @@ export default function TutorHomeView({ userId, courseId, user }) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#131b31]/60 lg:col-span-8">
+        <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60 lg:col-span-8">
           <UpcomingClasses classes={upcomingClasses} loading={loading} />
         </div>
 
-        <div className="flex flex-col justify-between rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#131b31]/60 lg:col-span-4">
+        <div className="flex flex-col justify-between rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60 lg:col-span-4">
           <div>
             <div className="mb-3 flex items-center gap-2 text-red-500">
               <ShieldAlert size={20} />

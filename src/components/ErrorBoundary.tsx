@@ -53,7 +53,7 @@ export default class ErrorBoundary extends Component<
                 <h2 className="text-xs font-bold uppercase tracking-wider text-rose-200">
                   {error.name}
                 </h2>
-                <pre className="mt-2 overflow-auto whitespace-pre-wrap break-words text-sm text-rose-100">
+                <pre className="mt-2 overflow-auto whitespace-pre-wrap wrap-break-word text-sm text-rose-100">
                   {error.message}
                 </pre>
               </div>
@@ -62,7 +62,7 @@ export default class ErrorBoundary extends Component<
                   <summary className="cursor-pointer text-sm font-semibold text-slate-200">
                     JavaScript stack trace
                   </summary>
-                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-slate-400">
+                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap wrap-break-word text-xs leading-5 text-slate-400">
                     {error.stack}
                   </pre>
                 </details>
@@ -72,7 +72,7 @@ export default class ErrorBoundary extends Component<
                   <summary className="cursor-pointer text-sm font-semibold text-slate-200">
                     React component stack
                   </summary>
-                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-slate-400">
+                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap wrap-break-word text-xs leading-5 text-slate-400">
                     {componentStack}
                   </pre>
                 </details>
@@ -84,13 +84,13 @@ export default class ErrorBoundary extends Component<
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900"
             >
               <RefreshCw size={16} /> Try again
             </button>
             <a
               href="/"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/5 focus:outline-hidden focus:ring-2 focus:ring-slate-300"
             >
               <ArrowLeft size={16} /> Go to home
             </a>

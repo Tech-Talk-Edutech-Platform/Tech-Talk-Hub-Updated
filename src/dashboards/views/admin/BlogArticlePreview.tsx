@@ -237,7 +237,7 @@ function PreviewArticleContent({ content }: { content: string }) {
 
         blockquote({ children }) {
           return (
-            <blockquote className="my-10 rounded-r-[1.75rem] border-l-[5px] border-[#FF3F7F] bg-gradient-to-r from-[#FFF5F8] to-[#FBF8FF] px-6 py-5 sm:px-8">
+            <blockquote className="my-10 rounded-r-[1.75rem] border-l-[5px] border-[#FF3F7F] bg-linear-to-r from-[#FFF5F8] to-[#FBF8FF] px-6 py-5 sm:px-8">
               <div className="text-lg font-semibold italic leading-8 text-[#2947C7] [&_p]:my-1 [&_p]:text-[#2947C7]">
                 {children}
               </div>
@@ -354,9 +354,9 @@ export default function BlogArticlePreview({
       role="dialog"
       aria-modal="true"
       aria-label="Article preview"
-      className="fixed inset-0 z-[100] overflow-y-auto bg-white"
+      className="fixed inset-0 z-100 overflow-y-auto bg-white"
     >
-      <div className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
+      <div className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-600">
@@ -394,7 +394,7 @@ export default function BlogArticlePreview({
       </div>
 
       <main className="min-h-screen bg-white text-[#172554]">
-        <header className="relative overflow-hidden bg-gradient-to-br from-white via-[#FBF9FF] to-[#F0E8FF] px-6 pb-20 pt-16 lg:px-8 lg:pb-24">
+        <header className="relative overflow-hidden bg-linear-to-br from-white via-[#FBF9FF] to-[#F0E8FF] px-6 pb-20 pt-16 lg:px-8 lg:pb-24">
           <div className="pointer-events-none absolute -left-32 top-12 h-80 w-80 rounded-full bg-[#9B6CFF]/10 blur-[100px]" />
 
           <div className="pointer-events-none absolute -right-32 top-0 h-96 w-96 rounded-full bg-[#FF3F7F]/10 blur-[110px]" />
@@ -438,7 +438,7 @@ export default function BlogArticlePreview({
 
         {article.cover_image_url && (
           <section className="relative z-10 mx-auto -mt-9 max-w-6xl px-5 sm:-mt-12 sm:px-6 lg:px-8">
-            <div className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white shadow-2xl shadow-purple-900/10 sm:rounded-[2rem]">
+            <div className="overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl shadow-purple-900/10 sm:rounded-4xl">
               <img
                 src={article.cover_image_url}
                 alt={article.title || 'Article cover'}
@@ -473,7 +473,7 @@ export default function BlogArticlePreview({
                   </div>
                 )}
 
-                <div className="rounded-[1.75rem] bg-gradient-to-br from-[#2947C7] to-[#7C3AED] p-5 text-white">
+                <div className="rounded-[1.75rem] bg-linear-to-br from-[#2947C7] to-[#7C3AED] p-5 text-white">
                   <p className="text-xs font-black uppercase tracking-[0.15em] text-white/70">
                     Tech Talk Hub
                   </p>
@@ -526,7 +526,7 @@ export default function BlogArticlePreview({
                 </div>
               )}
 
-              <div className="mt-16 overflow-hidden rounded-[2rem] border border-purple-100 bg-gradient-to-br from-[#FBF8FF] via-white to-[#FFF5F8] p-7 shadow-sm sm:p-9">
+              <div className="mt-16 overflow-hidden rounded-4xl border border-purple-100 bg-linear-to-br from-[#FBF8FF] via-white to-[#FFF5F8] p-7 shadow-xs sm:p-9">
                 <div className="flex items-start gap-4">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pink-100 text-[#FF3F7F]">
                     <Heart size={21} fill="currentColor" />

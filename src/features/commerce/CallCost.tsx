@@ -64,7 +64,7 @@ export default function CallCost() {
   }
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow">
+    <div className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
         <PhoneCall className="text-indigo-600" />
         <h3 className="font-bold text-gray-700">Call Costs (USD)</h3>

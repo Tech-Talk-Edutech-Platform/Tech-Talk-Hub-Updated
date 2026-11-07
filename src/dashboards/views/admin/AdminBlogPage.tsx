@@ -868,7 +868,7 @@ export default function AdminBlogPage({
           <MessageAlert message={message} />
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-8">
+            <div className="space-y-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5 sm:p-8">
               <div>
                 <label className="mb-2 block text-sm font-bold">
                   Article title
@@ -879,7 +879,7 @@ export default function AdminBlogPage({
                   value={form.title}
                   onChange={(event) => handleTitleChange(event.target.value)}
                   placeholder="Coding for Kids: A Parent’s Guide to Getting Started"
-                  className="w-full rounded-xl border border-gray-200 bg-transparent px-4 py-3 outline-none transition focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 dark:border-white/10"
+                  className="w-full rounded-xl border border-gray-200 bg-transparent px-4 py-3 outline-hidden transition focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 dark:border-white/10"
                 />
               </div>
 
@@ -902,7 +902,7 @@ export default function AdminBlogPage({
                       )
                     }
                     placeholder="coding-for-kids"
-                    className="w-full bg-transparent px-4 py-3 text-sm outline-none"
+                    className="w-full bg-transparent px-4 py-3 text-sm outline-hidden"
                   />
                 </div>
               </div>
@@ -931,7 +931,7 @@ export default function AdminBlogPage({
                     )
                   }
                   placeholder="A short description displayed on the blog page and search results."
-                  className="w-full resize-none rounded-xl border border-gray-200 bg-transparent px-4 py-3 outline-none transition focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 dark:border-white/10"
+                  className="w-full resize-none rounded-xl border border-gray-200 bg-transparent px-4 py-3 outline-hidden transition focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 dark:border-white/10"
                 />
               </div>
 
@@ -1120,7 +1120,7 @@ Write your introduction here.
 > Highlight an important idea.
 
 Use the Add Image button to insert pictures between sections.`}
-                    className="min-h-[560px] w-full resize-y bg-transparent px-5 py-5 text-sm leading-8 outline-none sm:text-base"
+                    className="min-h-[560px] w-full resize-y bg-transparent px-5 py-5 text-sm leading-8 outline-hidden sm:text-base"
                   />
                 </div>
 
@@ -1138,7 +1138,7 @@ Use the Add Image button to insert pictures between sections.`}
             </div>
 
             <aside className="space-y-6">
-              <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5">
                 <label className="mb-2 block text-sm font-bold">Category</label>
 
                 <input
@@ -1153,7 +1153,7 @@ Use the Add Image button to insert pictures between sections.`}
                     )
                   }
                   placeholder="Parent Guides"
-                  className="w-full rounded-xl border border-gray-200 bg-transparent px-4 py-3 outline-none transition focus:border-purple-500 dark:border-white/10"
+                  className="w-full rounded-xl border border-gray-200 bg-transparent px-4 py-3 outline-hidden transition focus:border-purple-500 dark:border-white/10"
                 />
 
                 <datalist id="blog-categories">
@@ -1167,7 +1167,7 @@ Use the Add Image button to insert pictures between sections.`}
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-sm font-bold">Cover image</p>
 
@@ -1240,7 +1240,7 @@ Use the Add Image button to insert pictures between sections.`}
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-gray-100 bg-white p-6 text-sm shadow-sm dark:border-white/10 dark:bg-white/5">
+              <div className="rounded-3xl border border-gray-100 bg-white p-6 text-sm shadow-xs dark:border-white/10 dark:bg-white/5">
                 <p className="font-bold">Current status</p>
 
                 <span
@@ -1267,7 +1267,7 @@ Use the Add Image button to insert pictures between sections.`}
 
                 <div className="mt-4 space-y-3 text-xs text-gray-600 dark:text-gray-300">
                   <div>
-                    <code className="rounded bg-white px-2 py-1 text-purple-700">
+                    <code className="rounded-sm bg-white px-2 py-1 text-purple-700">
                       ## Heading
                     </code>
 
@@ -1275,7 +1275,7 @@ Use the Add Image button to insert pictures between sections.`}
                   </div>
 
                   <div>
-                    <code className="rounded bg-white px-2 py-1 text-purple-700">
+                    <code className="rounded-sm bg-white px-2 py-1 text-purple-700">
                       ### Heading
                     </code>
 
@@ -1283,7 +1283,7 @@ Use the Add Image button to insert pictures between sections.`}
                   </div>
 
                   <div>
-                    <code className="rounded bg-white px-2 py-1 text-purple-700">
+                    <code className="rounded-sm bg-white px-2 py-1 text-purple-700">
                       **Text**
                     </code>
 
@@ -1291,7 +1291,7 @@ Use the Add Image button to insert pictures between sections.`}
                   </div>
 
                   <div>
-                    <code className="rounded bg-white px-2 py-1 text-purple-700">
+                    <code className="rounded-sm bg-white px-2 py-1 text-purple-700">
                       - Item
                     </code>
 
@@ -1299,7 +1299,7 @@ Use the Add Image button to insert pictures between sections.`}
                   </div>
 
                   <div>
-                    <code className="rounded bg-white px-2 py-1 text-purple-700">
+                    <code className="rounded-sm bg-white px-2 py-1 text-purple-700">
                       &gt; Quote
                     </code>
 
@@ -1344,7 +1344,7 @@ Use the Add Image button to insert pictures between sections.`}
 
         <MessageAlert message={message} />
 
-        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5">
+        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-xs dark:border-white/10 dark:bg-white/5">
           <Search size={19} className="text-gray-400" />
 
           <input
@@ -1352,7 +1352,7 @@ Use the Add Image button to insert pictures between sections.`}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search articles..."
-            className="w-full bg-transparent text-sm outline-none"
+            className="w-full bg-transparent text-sm outline-hidden"
           />
         </div>
 
@@ -1386,7 +1386,7 @@ Use the Add Image button to insert pictures between sections.`}
             )}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xs dark:border-white/10 dark:bg-white/5">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[850px]">
                 <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500 dark:bg-white/5">

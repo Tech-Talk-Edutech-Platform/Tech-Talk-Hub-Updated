@@ -5,7 +5,7 @@ import AnalyticsDashboard from '../../../features/commerce/Analytics'
 export default function AdminAnalyticsView() {
   return (
     <div className="space-y-6">
-      <div className="shadow-xs rounded-[32px] border border-slate-100 bg-white p-6 md:p-8">
+      <div className="shadow-2xs rounded-[32px] border border-slate-100 bg-white p-6 md:p-8">
         <h2 className="mb-2 flex items-center gap-3 text-2xl font-black text-slate-900">
           <BarChart3 className="text-purple-600" /> Advanced Financial & Growth
           Analytics
@@ -16,7 +16,7 @@ export default function AdminAnalyticsView() {
         </p>
       </div>
 
-      <div className="shadow-xs rounded-[32px] border border-slate-100 bg-white p-6">
+      <div className="shadow-2xs rounded-[32px] border border-slate-100 bg-white p-6">
         <AnalyticsDashboard isOpen={true} onClose={() => undefined} />
       </div>
     </div>

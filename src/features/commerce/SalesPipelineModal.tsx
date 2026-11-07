@@ -48,7 +48,7 @@ const ModalShell = ({
   children,
   onClose,
 }: ModalShellProps) => (
-  <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
+  <div className="fixed inset-0 z-1000 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
     <div className="flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-[40px] bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b p-8">
         <h2 className="flex items-center gap-2 text-2xl font-black">
@@ -197,7 +197,7 @@ export default function SalesPipelineModal({
               className="flex flex-col gap-2 rounded-[32px] border bg-white p-6"
             >
               <div className="flex items-center justify-between">
-                <span className="rounded bg-slate-100 px-2 py-1 text-[10px] font-black uppercase">
+                <span className="rounded-sm bg-slate-100 px-2 py-1 text-[10px] font-black uppercase">
                   {l.status || 'NEW'}
                 </span>
                 {getFollowUpBadge(l.next_follow_up_at) && (

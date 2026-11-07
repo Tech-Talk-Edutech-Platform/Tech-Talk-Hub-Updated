@@ -78,7 +78,7 @@ export default function AuditLogsModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
+    <div className="fixed inset-0 z-1000 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
       <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-[40px] bg-white shadow-2xl">
         {/* HEADER */}
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 p-8">
@@ -108,7 +108,7 @@ export default function AuditLogsModal({
             <input
               type="text"
               placeholder="Search by student, class, or tutor..."
-              className="w-full rounded-2xl border border-transparent bg-slate-50 py-4 pl-12 pr-4 font-bold outline-none transition-all focus:border-blue-500"
+              className="w-full rounded-2xl border border-transparent bg-slate-50 py-4 pl-12 pr-4 font-bold outline-hidden transition-all focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />

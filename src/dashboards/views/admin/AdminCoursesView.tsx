@@ -614,7 +614,7 @@ export default function AdminCoursesView() {
   )
 
   return (
-    <div className="shadow-xs space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 dark:border-white/10 dark:bg-white/5 md:p-8">
+    <div className="shadow-2xs space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 dark:border-white/10 dark:bg-white/5 md:p-8">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="flex items-center gap-3 text-2xl font-black text-slate-900 dark:text-white">
@@ -729,13 +729,13 @@ export default function AdminCoursesView() {
                           setEditingCourseCover(course)
                           setEditThumbnailUrl(course.thumbnail_url || '')
                         }}
-                        className="shadow-xs rounded-lg bg-slate-900/80 p-1.5 text-white backdrop-blur-md transition-colors hover:bg-slate-900"
+                        className="shadow-2xs rounded-lg bg-slate-900/80 p-1.5 text-white backdrop-blur-md transition-colors hover:bg-slate-900"
                         title="Change Cover Image"
                       >
                         <Edit3 size={14} />
                       </button>
                       <span
-                        className={`shadow-xs rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md ${course.is_active ? 'border-emerald-400/30 bg-emerald-500/90 text-white' : 'border-white/10 bg-slate-900/80 text-slate-300'}`}
+                        className={`shadow-2xs rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md ${course.is_active ? 'border-emerald-400/30 bg-emerald-500/90 text-white' : 'border-white/10 bg-slate-900/80 text-slate-300'}`}
                       >
                         {course.is_active ? 'Active' : 'Draft'}
                       </span>
@@ -817,7 +817,7 @@ export default function AdminCoursesView() {
 
       {/* EDIT COURSE COVER MODAL */}
       {editingCourseCover && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900 md:p-8">
             <div className="flex items-center justify-between">
               <div>
@@ -846,7 +846,7 @@ export default function AdminCoursesView() {
                   placeholder="https://example.com/image.jpg"
                   value={editThumbnailUrl}
                   onChange={(e) => setEditThumbnailUrl(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-hidden focus:border-blue-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
               </div>
 
@@ -886,7 +886,7 @@ export default function AdminCoursesView() {
 
       {/* MANAGE COURSE MODAL (Deep Dive) */}
       {selectedCourse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
           <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900">
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6 dark:border-white/10 md:p-8">
@@ -953,7 +953,7 @@ export default function AdminCoursesView() {
                           e.preventDefault()
                           await handleCreatePhase(e)
                         }}
-                        className="flex flex-col items-stretch gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/5 sm:flex-row sm:items-center"
+                        className="flex flex-col items-stretch gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-xs dark:border-blue-500/20 dark:bg-blue-500/5 sm:flex-row sm:items-center"
                       >
                         <div className="flex-1">
                           <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
@@ -965,7 +965,7 @@ export default function AdminCoursesView() {
                             value={newPhaseTitle}
                             onChange={(e) => setNewPhaseTitle(e.target.value)}
                             disabled={creatingPhase}
-                            className="w-full rounded-xl border border-white p-3 text-sm font-bold shadow-sm focus:outline-blue-500 disabled:opacity-50 dark:border-white/10 dark:bg-slate-900 dark:text-white"
+                            className="w-full rounded-xl border border-white p-3 text-sm font-bold shadow-xs focus:outline-blue-500 disabled:opacity-50 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                           />
                         </div>
                         <button
@@ -984,7 +984,7 @@ export default function AdminCoursesView() {
                           .map((phase) => (
                             <div
                               key={phase.id}
-                              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5"
+                              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs dark:border-white/10 dark:bg-white/5"
                             >
                               <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/50 p-4 dark:border-white/10 dark:bg-slate-800/50">
                                 <h5 className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
@@ -1092,7 +1092,7 @@ export default function AdminCoursesView() {
                             return (
                               <div
                                 key={student.id}
-                                className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-white/5"
+                                className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:shadow-md dark:border-white/10 dark:bg-white/5"
                               >
                                 <div className="flex items-start justify-between">
                                   <div>

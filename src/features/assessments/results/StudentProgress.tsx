@@ -142,7 +142,7 @@
 //   return (
 //     <>
 //       {/* MAIN CARD */}
-//       <div className="bg-white p-6 rounded-2xl shadow-sm">
+//       <div className="bg-white p-6 rounded-2xl shadow-xs">
 //         <h3 className="font-bold mb-6">Students</h3>
 //         <div className="space-y-3">
 //           {students.slice(0, 3).map(renderStudent)}
@@ -428,7 +428,7 @@ export default function StudentList({ tutorId }) {
   return (
     <>
       {/* MAIN CARD */}
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <div className="rounded-2xl bg-white p-6 shadow-xs">
         <h3 className="mb-6 font-bold">Students</h3>
 
         <div className="space-y-3">

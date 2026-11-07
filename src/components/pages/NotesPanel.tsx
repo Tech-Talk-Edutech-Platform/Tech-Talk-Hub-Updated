@@ -91,7 +91,7 @@ export default function NotesPanel({ darkMode, courseId }) {
                 className={`w-full rounded-xl px-4 py-3 text-left font-semibold transition-all ${
                   darkMode
                     ? 'bg-gray-800 hover:bg-primary hover:text-white'
-                    : 'bg-white shadow hover:bg-primary hover:text-white'
+                    : 'bg-white shadow-sm hover:bg-primary hover:text-white'
                 }`}
               >
                 {t.title}
@@ -118,7 +118,7 @@ export default function NotesPanel({ darkMode, courseId }) {
                   className={`w-full rounded-xl px-4 py-3 text-left transition-all ${
                     darkMode
                       ? 'bg-gray-800 hover:bg-accent hover:text-black'
-                      : 'bg-white shadow hover:bg-accent hover:text-black'
+                      : 'bg-white shadow-sm hover:bg-accent hover:text-black'
                   }`}
                 >
                   {n.title}
@@ -181,7 +181,7 @@ export default function NotesPanel({ darkMode, courseId }) {
                         {String(children).replace(/\n$/, '')}
                       </SyntaxHighlighter>
                     ) : (
-                      <code className="rounded bg-gray-200 px-2 py-1 text-pink-500 dark:bg-gray-800">
+                      <code className="rounded-sm bg-gray-200 px-2 py-1 text-pink-500 dark:bg-gray-800">
                         {children}
                       </code>
                     )

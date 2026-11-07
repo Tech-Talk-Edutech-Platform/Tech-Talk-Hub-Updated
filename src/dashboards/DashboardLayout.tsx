@@ -284,7 +284,7 @@ export default function DashboardLayout({
         {/* Sidebar heading */}
         {!isCollapsed && (
           <div className="mb-6 overflow-hidden px-2">
-            <h1 className="whitespace-nowrap bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-xl font-black tracking-tight text-transparent">
+            <h1 className="whitespace-nowrap bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-xl font-black tracking-tight text-transparent">
               Tech Talk Hub
             </h1>
 

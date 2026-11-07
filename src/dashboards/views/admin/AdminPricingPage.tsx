@@ -174,7 +174,7 @@ function InputField({
         required={required}
         min={min}
         max={max}
-        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
+        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-800 outline-hidden transition placeholder:text-slate-400 focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
       />
     </div>
   )
@@ -547,7 +547,7 @@ export default function AdminPricingPage() {
 
         {/* Overview */}
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <p className="text-sm text-slate-500">Total Plans</p>
 
             <p className="mt-2 text-3xl font-black text-slate-900">
@@ -555,7 +555,7 @@ export default function AdminPricingPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <p className="text-sm text-slate-500">Published Plans</p>
 
             <p className="mt-2 text-3xl font-black text-emerald-600">
@@ -563,7 +563,7 @@ export default function AdminPricingPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <p className="text-sm text-slate-500">Most Popular</p>
 
             <p className="mt-2 text-2xl font-black text-purple-600">
@@ -602,7 +602,7 @@ export default function AdminPricingPage() {
               {plans.map((plan) => (
                 <article
                   key={plan.id}
-                  className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+                  className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs"
                 >
                   <div className="border-b border-slate-100 p-6">
                     <div className="flex flex-wrap items-start justify-between gap-4">
@@ -769,7 +769,7 @@ export default function AdminPricingPage() {
       {/* Create/edit modal */}
       {showForm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
           onClick={closeForm}
         >
           <div
@@ -873,7 +873,7 @@ export default function AdminPricingPage() {
                       value={form.description}
                       onChange={handleChange}
                       placeholder="A short description of this plan."
-                      className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
+                      className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-hidden transition focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
                     />
                   </div>
                 </div>
@@ -1032,7 +1032,7 @@ export default function AdminPricingPage() {
                   placeholder={
                     '2 personalized live classes each week\n45-minute learning sessions\nGuided projects and assignments'
                   }
-                  className="mt-3 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
+                  className="mt-3 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-hidden transition focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
                 />
               </section>
 
@@ -1059,7 +1059,7 @@ export default function AdminPricingPage() {
                         name="is_active"
                         checked={form.is_active}
                         onChange={handleChange}
-                        className="h-4 w-4 rounded border-slate-300 accent-purple-600"
+                        className="h-4 w-4 rounded-sm border-slate-300 accent-purple-600"
                       />
                       Show on public website
                     </label>
@@ -1070,7 +1070,7 @@ export default function AdminPricingPage() {
                         name="is_popular"
                         checked={form.is_popular}
                         onChange={handleChange}
-                        className="h-4 w-4 rounded border-slate-300 accent-pink-500"
+                        className="h-4 w-4 rounded-sm border-slate-300 accent-pink-500"
                       />
                       Mark as Most Popular
                     </label>

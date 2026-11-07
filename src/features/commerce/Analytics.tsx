@@ -14,7 +14,7 @@ export default function AnalyticsDashboard({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
+    <div className="fixed inset-0 z-1000 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
       <div className="max-h-[85vh] w-full max-w-6xl overflow-y-auto rounded-[40px] bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b p-6">
           <h2 className="flex items-center gap-2 text-xl font-black">

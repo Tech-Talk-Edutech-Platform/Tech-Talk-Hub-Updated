@@ -123,7 +123,7 @@ interface PanelProps {
 
 function Panel({ title, icon: Icon, children, action }: PanelProps) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-white/10 dark:bg-slate-900">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white">
           {Icon ? <Icon size={16} className="text-indigo-500" /> : null}
@@ -145,7 +145,7 @@ interface ModalProps {
 function Modal({ title, onClose, children }: ModalProps) {
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-4"
+      className="fixed inset-0 z-1000 flex items-center justify-center bg-slate-950/60 p-4"
       onMouseDown={(e: MouseEvent<HTMLDivElement>) =>
         e.target === e.currentTarget && onClose()
       }
@@ -908,7 +908,7 @@ export default function GlobalScheduleView() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
-        <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-slate-900 md:p-5">
+        <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-slate-900 md:p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">
               <CalendarDays size={18} className="text-indigo-500" /> Calendar
@@ -1539,7 +1539,7 @@ export default function GlobalScheduleView() {
       )}
 
       {saving && (
-        <div className="fixed bottom-4 right-4 z-[1100] rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-xl">
+        <div className="fixed bottom-4 right-4 z-1100 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-xl">
           <RefreshCw size={14} className="mr-2 inline animate-spin" /> Saving
           changes…
         </div>

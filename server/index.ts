@@ -3,6 +3,8 @@ import express, { type Request, type Response } from 'express'
 import WebPush from 'web-push'
 import './SMSServer'
 import sendReceiptRoute from './routes/sendReceipt'
+import sendCurriculumRoute from './routes/sendCurriculum'
+import { allowOrigins } from './middleware/cors'
 import { requireServerEnv } from './env'
 import { supabase } from './supabase'
 
@@ -13,7 +15,23 @@ interface PushNotificationBody {
 }
 
 const app = express()
-app.use(express.json())
+// When the API sits behind proxies (nginx, a platform router), set TRUST_PROXY
+// to their count so rate limits see the client's IP, not the proxy's.
+const trustedProxyHops = Number(process.env.TRUST_PROXY ?? 0)
+if (trustedProxyHops > 0) {
+  app.set('trust proxy', trustedProxyHops)
+}
+
+const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+if (corsOrigins.length > 0) {
+  app.use(allowOrigins(corsOrigins))
+}
+
+app.use(express.json({ limit: '100kb' }))
 
 // optional attach
 app.use((req, res, next) => {
@@ -25,6 +43,7 @@ app.use((req, res, next) => {
 // ROUTES
 // =========================
 app.use('/api/send-receipt', sendReceiptRoute)
+app.use('/api/send-curriculum', sendCurriculumRoute)
 
 // =========================
 // PUSH SETUP

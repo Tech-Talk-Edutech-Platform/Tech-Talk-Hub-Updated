@@ -27,7 +27,7 @@ export function StatCard({
   const colors = accentClasses[accent]
 
   return (
-    <article className="group flex min-w-0 flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+    <article className="group flex min-w-0 flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-xs transition-shadow hover:shadow-md">
       <h4 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400">
         {Icon && <Icon size={20} className={colors.icon} aria-hidden="true" />}
         {title}

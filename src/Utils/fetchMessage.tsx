@@ -74,7 +74,7 @@ export default function Messages({ tutorId }: MessagesProps) {
   }, [tutorId, fetchMessages])
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-xs">
       <div className="mb-6 flex justify-between">
         <h3 className="font-bold text-slate-800">Recent Messages</h3>
         <button className="text-xs font-bold text-blue-600 hover:underline">

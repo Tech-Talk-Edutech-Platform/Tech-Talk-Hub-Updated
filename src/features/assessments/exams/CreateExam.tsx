@@ -136,7 +136,7 @@ export default function CreateExam({ examId }: CreateExamProps) {
                   onBlur={(e) =>
                     updateQuestion(q.id, { question_text: e.target.value })
                   }
-                  className="w-full rounded-xl border p-3 shadow-sm outline-none ring-blue-200 focus:ring-2"
+                  className="w-full rounded-xl border p-3 shadow-xs outline-hidden ring-blue-200 focus:ring-2"
                   placeholder="Type your question text here..."
                 />
                 <div className="grid grid-cols-2 gap-4">
@@ -155,7 +155,7 @@ export default function CreateExam({ examId }: CreateExamProps) {
                           }
                           updateQuestion(q.id, { options: newOpts })
                         }}
-                        className="rounded-xl border p-3 shadow-sm outline-none ring-blue-200 focus:ring-2"
+                        className="rounded-xl border p-3 shadow-xs outline-hidden ring-blue-200 focus:ring-2"
                       />
                     </div>
                   ))}

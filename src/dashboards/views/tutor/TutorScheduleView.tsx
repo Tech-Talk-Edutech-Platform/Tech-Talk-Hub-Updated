@@ -75,7 +75,7 @@ export default function TutorScheduleView({ userId }: TutorScheduleViewProps) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 text-gray-900 dark:text-white md:p-8">
-      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#131b31]/60 md:p-8">
+      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60 md:p-8">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-purple-500/10 px-3.5 py-1.5 text-xs font-bold tracking-wider text-purple-600 dark:text-purple-300">
           <CalendarIcon size={14} />
           CALENDAR & SESSIONS
@@ -89,7 +89,7 @@ export default function TutorScheduleView({ userId }: TutorScheduleViewProps) {
         </p>
       </div>
 
-      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#131b31]/60 md:p-8">
+      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60 md:p-8">
         <UpcomingClasses classes={classes} loading={loading} />
       </div>
     </div>

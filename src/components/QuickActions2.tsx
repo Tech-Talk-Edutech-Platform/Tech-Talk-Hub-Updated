@@ -188,7 +188,7 @@ export default function QuickActions2({
 
   return (
     <>
-      <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm">
+      <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-xs">
         <div className="mb-6 flex items-center justify-between">
           <h3 className="text-xl font-black text-slate-900">Actions</h3>
           <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold uppercase text-slate-400">
@@ -348,7 +348,7 @@ export default function QuickActions2({
 }
 
 const Modal = ({ title, children, onClose }: ModalProps) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6 backdrop-blur-xs">
     <div className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl">
       <button
         onClick={onClose}

@@ -188,7 +188,7 @@ export default function InvoiceDownloadButton({
         />
       }
       fileName={`Invoice-${fetchedInvoice.invoice_number}.pdf`}
-      className="rounded bg-green-600 px-4 py-2 font-bold text-white transition hover:bg-green-700"
+      className="rounded-sm bg-green-600 px-4 py-2 font-bold text-white transition hover:bg-green-700"
     >
       {({ loading }) =>
         loading ? 'Generating PDF...' : 'Download PDF Receipt'
@@ -290,7 +290,7 @@ export default function InvoiceDownloadButton({
 //     <PDFDownloadLink
 //       document={<InvoicePDF invoice={fetchedInvoice} customer={fetchedCustomer} items={fetchedItems} logoUrl={logoUrl} />}
 //       fileName={`Invoice-${fetchedInvoice.invoice_number}.pdf`}
-//       className="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 transition"
+//       className="bg-green-600 text-white px-4 py-2 rounded-sm font-bold hover:bg-green-700 transition"
 //     >
 //       {({ loading }) => (loading ? "Generating PDF..." : "Download PDF Receipt")}
 //     </PDFDownloadLink>

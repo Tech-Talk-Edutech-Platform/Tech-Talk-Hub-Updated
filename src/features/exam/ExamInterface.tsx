@@ -60,7 +60,7 @@ export default function EnhancedExamInterface() {
         </header>
 
         <section className="flex-1 p-8">
-          <div className="rounded-lg border bg-white p-8 shadow-sm">
+          <div className="rounded-lg border bg-white p-8 shadow-xs">
             <h2 className="mb-6 text-xl">
               {examData.questions[currentIdx].text}
             </h2>
@@ -71,7 +71,7 @@ export default function EnhancedExamInterface() {
                   onClick={() =>
                     handleSelect(examData.questions[currentIdx].id, opt)
                   }
-                  className={`block w-full rounded border p-4 ${answers[examData.questions[currentIdx].id] === opt ? 'border-blue-600 bg-blue-50' : 'hover:bg-gray-50'}`}
+                  className={`block w-full rounded-sm border p-4 ${answers[examData.questions[currentIdx].id] === opt ? 'border-blue-600 bg-blue-50' : 'hover:bg-gray-50'}`}
                 >
                   {opt}
                 </button>
@@ -91,7 +91,7 @@ export default function EnhancedExamInterface() {
           <div className="flex gap-4">
             <button
               onClick={() => setCurrentIdx((p) => Math.max(0, p - 1))}
-              className="rounded border px-6 py-2"
+              className="rounded-sm border px-6 py-2"
             >
               Previous
             </button>
@@ -101,7 +101,7 @@ export default function EnhancedExamInterface() {
                   Math.min(examData.questions.length - 1, p + 1),
                 )
               }
-              className="rounded bg-blue-600 px-6 py-2 text-white"
+              className="rounded-sm bg-blue-600 px-6 py-2 text-white"
             >
               Next
             </button>

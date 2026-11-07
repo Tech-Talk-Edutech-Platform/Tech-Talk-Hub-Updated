@@ -94,7 +94,7 @@ const StudentDashboard = () => {
   return (
     <div className="mx-auto min-h-screen max-w-md bg-gray-50 pb-20 font-sans shadow-2xl">
       {/* HEADER */}
-      <div className="rounded-b-3xl border-b border-gray-100 bg-white p-6 shadow-sm">
+      <div className="rounded-b-3xl border-b border-gray-100 bg-white p-6 shadow-xs">
         <div className="flex items-center gap-4">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-indigo-100 shadow-inner">
             {latest.avatar_url ? (
@@ -122,7 +122,7 @@ const StudentDashboard = () => {
       {/* PROJECT */}
       {latest.project_url && (
         <div className="p-4">
-          <div className="rounded-2xl bg-gradient-to-br from-orange-500 to-pink-500 p-5 text-white shadow-lg">
+          <div className="rounded-2xl bg-linear-to-br from-orange-500 to-pink-500 p-5 text-white shadow-lg">
             <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
               <Rocket size={18} /> Student Project
             </div>
@@ -145,13 +145,13 @@ const StudentDashboard = () => {
 
       {/* OVERALL */}
       <div className="p-4">
-        <div className="rounded-2xl border border-gray-50 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-50 bg-white p-5 shadow-xs">
           <h2 className="mb-4 px-1 text-sm font-bold uppercase tracking-wide text-gray-800">
             Overall Performance
           </h2>
 
           <div className="flex items-center gap-6">
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border-[10px] border-green-500">
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border-10 border-green-500">
               <div className="text-center">
                 <span className="text-2xl font-black text-gray-800">
                   {latest.overall_score}%
@@ -181,7 +181,7 @@ const StudentDashboard = () => {
             aria-pressed={selectedId === item.id}
             aria-label={`View results for ${item.exam_title}`}
             onClick={() => setSelectedId(item.id)}
-            className={`mb-3 block w-full cursor-pointer rounded-2xl border-l-[6px] border-indigo-500 bg-white p-4 text-left shadow-sm ${
+            className={`mb-3 block w-full cursor-pointer rounded-2xl border-l-[6px] border-indigo-500 bg-white p-4 text-left shadow-xs ${
               selectedId === item.id ? 'ring-2 ring-indigo-400' : ''
             }`}
           >
@@ -221,7 +221,7 @@ const StudentDashboard = () => {
           Average Summary
         </h2>
 
-        <div className="grid grid-cols-2 gap-3 rounded-2xl border border-gray-50 bg-white p-5 text-center shadow-sm">
+        <div className="grid grid-cols-2 gap-3 rounded-2xl border border-gray-50 bg-white p-5 text-center shadow-xs">
           <div className="rounded-xl bg-gray-50 p-3">
             <p className="text-xs text-gray-500">Overall</p>
             <p className="text-lg font-black text-gray-800">
@@ -265,7 +265,7 @@ const StudentDashboard = () => {
           Section Breakdown
         </h2>
 
-        <div className="space-y-4 rounded-2xl border border-gray-50 bg-white p-5 shadow-sm">
+        <div className="space-y-4 rounded-2xl border border-gray-50 bg-white p-5 shadow-xs">
           <StatRow
             label="Theory"
             score={latest.theory_score}

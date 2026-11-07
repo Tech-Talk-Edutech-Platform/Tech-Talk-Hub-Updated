@@ -59,7 +59,7 @@ export default function StudentGradesView({ userId }) {
           {attempts.map((att) => (
             <div
               key={att.id}
-              className="flex items-center justify-between rounded-3xl border border-slate-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5"
+              className="flex items-center justify-between rounded-3xl border border-slate-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5"
             >
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">

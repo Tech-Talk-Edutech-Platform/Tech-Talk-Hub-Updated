@@ -405,7 +405,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
         {/* Sidebar Container */}
         <div
-          className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-20 px-3 lg:col-span-1' : 'lg:col-span-4'} relative space-y-4 rounded-[32px] border border-gray-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5`}
+          className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-20 px-3 lg:col-span-1' : 'lg:col-span-4'} relative space-y-4 rounded-[32px] border border-gray-100 bg-white p-5 shadow-xs dark:border-white/10 dark:bg-white/5`}
         >
           {/* Collapse/Expand Toggle Button */}
           <button
@@ -431,7 +431,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                 placeholder="Search students..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-xs font-medium focus:border-purple-500 focus:outline-none dark:border-white/10 dark:bg-white/5"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-xs font-medium focus:border-purple-500 focus:outline-hidden dark:border-white/10 dark:bg-white/5"
               />
             </div>
           )}
@@ -525,7 +525,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                         className={`flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left transition-all ${
                           isSelected
                             ? 'border-purple-500 bg-purple-600 text-white shadow-md shadow-purple-500/20'
-                            : 'border-gray-200 bg-white text-gray-700 hover:border-purple-500/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-purple-500/40 dark:border-white/10 dark:bg-white/4 dark:text-gray-200'
                         }`}
                       >
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-purple-500/20 text-xs font-bold">
@@ -576,7 +576,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                     return (
                       <div
                         key={phase.id}
-                        className="space-y-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all dark:border-white/10 dark:bg-white/5"
+                        className="space-y-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition-all dark:border-white/10 dark:bg-white/5"
                       >
                         <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-white/5">
                           <div className="flex items-center gap-2.5">
@@ -639,7 +639,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                               return (
                                 <div
                                   key={lesson.id}
-                                  className={`rounded-xl border bg-gray-50/60 p-3.5 transition-all dark:bg-white/[0.02] ${
+                                  className={`rounded-xl border bg-gray-50/60 p-3.5 transition-all dark:bg-white/2 ${
                                     !isUnlocked
                                       ? 'border-dashed border-gray-300 opacity-60 dark:border-white/10'
                                       : 'border-gray-200/60 dark:border-white/5'
@@ -728,7 +728,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                                         )
                                       }
                                       disabled={unlockingLessonId === lesson.id}
-                                      className={`flex shrink-0 items-center gap-1.5 self-end rounded-lg px-3 py-1.5 text-xs font-bold shadow-sm transition-all disabled:opacity-50 sm:self-center ${
+                                      className={`flex shrink-0 items-center gap-1.5 self-end rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs transition-all disabled:opacity-50 sm:self-center ${
                                         isCompleted
                                           ? 'border border-rose-500/20 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20'
                                           : 'bg-purple-600 text-white hover:bg-purple-700'

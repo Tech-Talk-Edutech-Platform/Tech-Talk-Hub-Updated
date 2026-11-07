@@ -183,7 +183,7 @@ export default function UserManagementModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl md:flex-row">
         {/* LEFT SIDE: FORM */}
         <div className="flex-1 overflow-y-auto border-r border-slate-100 p-8">
@@ -212,7 +212,7 @@ export default function UserManagementModal({
               <input
                 required
                 placeholder="Alex Rivera"
-                className="w-full rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.fullName}
                 onChange={(e) =>
                   setFormData({ ...formData, fullName: e.target.value })
@@ -229,7 +229,7 @@ export default function UserManagementModal({
                 disabled={!!editingUser}
                 type="email"
                 placeholder="email@company.com"
-                className="w-full rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-none disabled:opacity-50"
+                className="w-full rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-hidden disabled:opacity-50"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -242,7 +242,7 @@ export default function UserManagementModal({
                 Position / Permissions
               </label>
               <select
-                className="w-full appearance-none rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full appearance-none rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.role}
                 onChange={(e) =>
                   setFormData({ ...formData, role: e.target.value })
@@ -297,7 +297,7 @@ export default function UserManagementModal({
                     </label>
                     <input
                       type="number"
-                      className="w-full rounded-xl border-none bg-white p-3 text-xs font-bold outline-none"
+                      className="w-full rounded-xl border-none bg-white p-3 text-xs font-bold outline-hidden"
                       value={formData.totalClasses}
                       onChange={(e) =>
                         setFormData({
@@ -313,7 +313,7 @@ export default function UserManagementModal({
                     </label>
                     <input
                       type="number"
-                      className="w-full rounded-xl border-none bg-red-50 p-3 text-xs font-bold text-red-600 outline-none"
+                      className="w-full rounded-xl border-none bg-red-50 p-3 text-xs font-bold text-red-600 outline-hidden"
                       value={formData.classesRemaining}
                       onChange={(e) =>
                         setFormData({
@@ -334,7 +334,7 @@ export default function UserManagementModal({
                 </label>
                 <input
                   placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                  className="w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold outline-none"
+                  className="w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold outline-hidden"
                   value={formData.meetLink}
                   onChange={(e) =>
                     setFormData({ ...formData, meetLink: e.target.value })
@@ -367,7 +367,7 @@ export default function UserManagementModal({
               history.map((h, i) => (
                 <div
                   key={i}
-                  className="animate-in slide-in-from-right-2 rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
+                  className="animate-in slide-in-from-right-2 rounded-xl border border-slate-100 bg-white p-3 shadow-xs"
                 >
                   <p className="text-[10px] font-bold leading-tight text-slate-900">
                     {h.calendar_events?.title || 'Unnamed Session'}

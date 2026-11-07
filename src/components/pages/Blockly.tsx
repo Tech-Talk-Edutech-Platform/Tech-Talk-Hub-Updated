@@ -280,11 +280,11 @@
 //         <div ref={blocklyDiv} className="flex-1" />
 
 //         <div className="w-1/3 p-3 flex flex-col gap-2 bg-gray-900 text-white">
-//           <button onClick={runCode} className="bg-blue-500 p-2 rounded">
+//           <button onClick={runCode} className="bg-blue-500 p-2 rounded-sm">
 //             ▶ Run
 //           </button>
 
-//           <button onClick={saveProject} className="bg-green-500 p-2 rounded">
+//           <button onClick={saveProject} className="bg-green-500 p-2 rounded-sm">
 //             💾 Save
 //           </button>
 
@@ -579,20 +579,20 @@ export default function BlocklyEditor({
       >
         <button
           onClick={() => runCode('js')}
-          className="mb-3 w-full rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+          className="mb-3 w-full rounded-sm bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
         >
           ▶ Run JavaScript
         </button>
         <button
           onClick={() => runCode('python')}
-          className="mb-3 w-full rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600"
+          className="mb-3 w-full rounded-sm bg-green-500 px-4 py-2 text-white hover:bg-green-600"
         >
           🐍 Run Python
         </button>
 
         <h3 className="mb-2 font-semibold">Console Output</h3>
         <pre
-          className="flex-1 overflow-auto rounded p-3"
+          className="flex-1 overflow-auto rounded-sm p-3"
           style={{
             background: darkMode ? '#222' : '#f3f3f3',
             color: darkMode ? '#eee' : '#111',

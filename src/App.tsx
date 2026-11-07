@@ -40,8 +40,29 @@ import LandingOrDashboard from './LandingOrDashboard'
 import ErrorBoundary from './components/ErrorBoundary'
 import LandingPage from './Utils/LandingPage'
 import { HomePage } from './pages/HomePage'
+import { SiteLayout } from './components/layout/SiteLayout'
 import { ComingSoonPage } from './pages/ComingSoonPage'
-import { UPCOMING_PAGES } from './data/navigation'
+import { AboutPage } from './pages/AboutPage'
+import { BlogPage } from './pages/BlogPage'
+import { BlogPostPage } from './pages/BlogPostPage'
+import { BookingFailedPage } from './pages/BookingFailedPage'
+import { BookingSuccessPage } from './pages/BookingSuccessPage'
+import { CareersPage } from './pages/CareersPage'
+import { CartPage } from './pages/CartPage'
+import { CheckoutPage } from './pages/CheckoutPage'
+import { ChildSafetyPage } from './pages/ChildSafetyPage'
+import { CoursePage } from './pages/CoursePage'
+import { CurriculumPage } from './pages/CurriculumPage'
+import { FacultyPage } from './pages/FacultyPage'
+import { FavoritesPage } from './pages/FavoritesPage'
+import { NotFoundPage } from './pages/NotFoundPage'
+import { PrivacyPage } from './pages/PrivacyPage'
+import { ProductPage } from './pages/ProductPage'
+import { ProgramShopPage } from './pages/ProgramShopPage'
+import { ShopPage } from './pages/ShopPage'
+import { TermsPage } from './pages/TermsPage'
+import { PROGRAM_SLUGS } from './data/programs'
+import { staticPageMeta } from './data/seo'
 import { useScrollToHash } from './hooks/useScrollToHash'
 
 const ClassroomRoutes = lazy(() =>
@@ -64,7 +85,11 @@ function RoleDashboardRoute() {
   const { role } = useParams()
 
   if (!isAppRole(role)) {
-    return <Navigate to="/" replace />
+    return (
+      <SiteLayout>
+        <NotFoundPage />
+      </SiteLayout>
+    )
   }
 
   return (
@@ -140,7 +165,7 @@ function DashboardApp() {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-gray-900 font-sans text-white">
         <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+        <p className="text-xs font-bold tracking-widest text-gray-400 uppercase">
           Initializing Session
         </p>
       </div>
@@ -151,19 +176,65 @@ function DashboardApp() {
     <BrowserRouter>
       <ScrollToHash />
       <Routes>
-        <Route
-          path="/"
-          element={
-            user ? (
-              <Navigate
-                to={`/${isAppRole(user.user_metadata?.role) ? user.user_metadata.role : 'student'}`}
-                replace
-              />
-            ) : (
-              <HomePage />
-            )
-          }
-        />
+        <Route element={<SiteLayout />}>
+          <Route
+            path="/"
+            element={
+              user ? (
+                <Navigate
+                  to={`/${isAppRole(user.user_metadata?.role) ? user.user_metadata.role : 'student'}`}
+                  replace
+                />
+              ) : (
+                <HomePage />
+              )
+            }
+          />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/faculty" element={<FacultyPage />} />
+          <Route path="/careers" element={<CareersPage />} />
+          <Route path="/curriculum" element={<CurriculumPage />} />
+          {/* Old links: the hero's "Explore courses" and the blog sidebar's "View programs". */}
+          <Route
+            path="/courses"
+            element={<Navigate to="/curriculum" replace />}
+          />
+          <Route
+            path="/programs"
+            element={<Navigate to="/curriculum" replace />}
+          />
+          {PROGRAM_SLUGS.map((slug) => (
+            <Route
+              key={slug}
+              path={`/courses/${slug}`}
+              element={<CoursePage slug={slug} />}
+            />
+          ))}
+          {PROGRAM_SLUGS.map((slug) => (
+            <Route
+              key={slug}
+              path={`/${slug}`}
+              element={<ProgramShopPage slug={slug} />}
+            />
+          ))}
+          <Route path="/shop" element={<ShopPage />} />
+          <Route path="/shop/:slug" element={<ProductPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/favorites" element={<FavoritesPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/child-safety" element={<ChildSafetyPage />} />
+          <Route path="/booking-success" element={<BookingSuccessPage />} />
+          <Route path="/booking-failed" element={<BookingFailedPage />} />
+          <Route
+            path="/donate"
+            element={<ComingSoonPage meta={staticPageMeta('/donate')} />}
+          />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
         <Route
           path="/classroom/*"
           element={
@@ -185,13 +256,6 @@ function DashboardApp() {
         <Route path="/admin/referrals" element={<ReferralDashboard />} />
         <Route path="/marketer" element={<MarketerView />} />
         // <Route path="/exam1" element={<ExamInterface />} />
-        {UPCOMING_PAGES.map(({ path, title }) => (
-          <Route
-            key={path}
-            path={path}
-            element={<ComingSoonPage title={title} />}
-          />
-        ))}
         <Route path="/:role" element={<RoleDashboardRoute />} />
         <Route
           path="/receive-homework"
@@ -230,7 +294,6 @@ function DashboardApp() {
             </RoleGate>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )
@@ -242,7 +305,7 @@ function SupabaseConfigurationError() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-12 text-slate-100">
       <section className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-900 p-8 shadow-2xl sm:p-10">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">
+        <p className="text-xs font-bold tracking-[0.2em] text-amber-300 uppercase">
           Setup required
         </p>
         <h1 className="mt-3 text-2xl font-black">

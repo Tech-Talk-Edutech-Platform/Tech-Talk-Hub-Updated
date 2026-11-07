@@ -67,17 +67,17 @@ function renderByteHeading(children: unknown, level: 'h2' | 'h3') {
 
   return (
     <div
-      className={`my-6 rounded-2xl border ${borderColor} ${boxBg} p-5 dark:border-white/10 dark:bg-white/[0.02]`}
+      className={`my-6 rounded-2xl border ${borderColor} ${boxBg} p-5 dark:border-white/10 dark:bg-white/2`}
     >
       <h3
-        className={`${badgeBg} mb-3 inline-flex rounded-r-full px-4 py-2 text-sm font-black uppercase text-white shadow-sm`}
+        className={`${badgeBg} mb-3 inline-flex rounded-r-full px-4 py-2 text-sm font-black uppercase text-white shadow-xs`}
       >
         {rawTitle}
       </h3>
       {isByteAsks && (
         <textarea
           placeholder="Type your answer here..."
-          className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white p-4 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:bg-white/[0.04] dark:text-white"
+          className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white p-4 text-sm text-gray-900 outline-hidden focus:ring-2 focus:ring-amber-400 dark:bg-white/4 dark:text-white"
         />
       )}
     </div>
@@ -128,14 +128,14 @@ function renderByteHeading(children: unknown, level: 'h2' | 'h3') {
 //   const isByteAsks = matchedKey === "byte asks";
 
 //   return (
-//     <div className={`my-6 rounded-2xl border ${borderColor} ${boxBg} dark:bg-white/[0.02] dark:border-white/10 p-5`}>
-//       <h3 className={`${badgeBg} inline-flex text-white px-4 py-2 rounded-r-full font-black uppercase text-sm mb-3 shadow-sm`}>
+//     <div className={`my-6 rounded-2xl border ${borderColor} ${boxBg} dark:bg-white/2 dark:border-white/10 p-5`}>
+//       <h3 className={`${badgeBg} inline-flex text-white px-4 py-2 rounded-r-full font-black uppercase text-sm mb-3 shadow-xs`}>
 //         {rawTitle}
 //       </h3>
 //       {isByteAsks && (
 //         <textarea
 //           placeholder="Type your answer here..."
-//           className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white dark:bg-white/[0.04] p-4 outline-none focus:ring-2 focus:ring-amber-400 text-gray-900 dark:text-white text-sm"
+//           className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white dark:bg-white/4 p-4 outline-hidden focus:ring-2 focus:ring-amber-400 text-gray-900 dark:text-white text-sm"
 //         />
 //       )}
 //     </div>
@@ -165,14 +165,14 @@ function renderByteHeading(children: unknown, level: 'h2' | 'h3') {
 // //           const [badgeBg, borderColor, boxBg] = currentStyle.split(" ");
 
 // //           return (
-// //             <div className={`my-6 rounded-2xl border ${borderColor} ${boxBg} dark:bg-white/[0.02] dark:border-white/10 p-5`}>
-// //               <h2 className={`${badgeBg} inline-flex text-white px-4 py-2 rounded-r-full font-black uppercase text-sm mb-3 shadow-sm`}>
+// //             <div className={`my-6 rounded-2xl border ${borderColor} ${boxBg} dark:bg-white/2 dark:border-white/10 p-5`}>
+// //               <h2 className={`${badgeBg} inline-flex text-white px-4 py-2 rounded-r-full font-black uppercase text-sm mb-3 shadow-xs`}>
 // //                 {title}
 // //               </h2>
 // //               {isByteAsks && (
 // //                 <textarea
 // //                   placeholder="Type your answer here..."
-// //                   className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white dark:bg-white/[0.04] p-4 outline-none focus:ring-2 focus:ring-amber-400 text-gray-900 dark:text-white text-sm"
+// //                   className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white dark:bg-white/4 p-4 outline-hidden focus:ring-2 focus:ring-amber-400 text-gray-900 dark:text-white text-sm"
 // //                 />
 // //               )}
 // //             </div>

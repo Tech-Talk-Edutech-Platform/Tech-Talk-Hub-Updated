@@ -132,7 +132,7 @@ export default function ClassRecordingsManager() {
   return (
     <div className="mx-auto min-h-screen max-w-7xl space-y-8 bg-slate-50 p-6 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100 md:p-10">
       {/* Header Section */}
-      <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 md:flex-row md:items-center">
+      <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 md:flex-row md:items-center">
         <div className="relative z-10 space-y-1">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-600 dark:border-purple-500/25 dark:bg-purple-500/10 dark:text-purple-400">
             <Sparkles size={13} /> Session Library
@@ -147,14 +147,14 @@ export default function ClassRecordingsManager() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-purple-700 dark:hover:bg-purple-500"
+          className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-xs transition-all hover:bg-purple-700 dark:hover:bg-purple-500"
         >
           <Plus size={18} /> Upload Recording
         </button>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-slate-800 dark:bg-slate-900/40">
         <div className="relative max-w-md flex-1">
           <Search
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -165,7 +165,7 @@ export default function ClassRecordingsManager() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search recordings by title, course, or student..."
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-500"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-500"
           />
         </div>
         <div className="px-2 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -187,8 +187,8 @@ export default function ClassRecordingsManager() {
             >
               <div className="aspect-video rounded-xl bg-slate-100 dark:bg-slate-800" />
               <div className="space-y-2">
-                <div className="h-4 w-1/3 rounded bg-slate-100 dark:bg-slate-800" />
-                <div className="h-5 w-3/4 rounded bg-slate-100 dark:bg-slate-800" />
+                <div className="h-4 w-1/3 rounded-sm bg-slate-100 dark:bg-slate-800" />
+                <div className="h-5 w-3/4 rounded-sm bg-slate-100 dark:bg-slate-800" />
               </div>
             </div>
           ))}
@@ -198,7 +198,7 @@ export default function ClassRecordingsManager() {
           {filteredRecordings.map((rec) => (
             <div
               key={rec.id}
-              className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-purple-500/50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
+              className="group flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition-all duration-200 hover:border-purple-500/50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
             >
               {/* Thumbnail Video Container */}
               <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
@@ -288,7 +288,7 @@ export default function ClassRecordingsManager() {
           ))}
         </div>
       ) : (
-        <div className="space-y-3 rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-400">
+        <div className="space-y-3 rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center text-sm text-slate-500 shadow-xs dark:border-slate-800 dark:bg-slate-900/20 dark:text-slate-400">
           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
             <Video size={20} />
           </div>
@@ -306,7 +306,7 @@ export default function ClassRecordingsManager() {
 
       {/* Upload Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm dark:bg-slate-950/80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs dark:bg-slate-950/80">
           <div className="w-full max-w-lg space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
               <div className="flex items-center gap-3">
@@ -341,7 +341,7 @@ export default function ClassRecordingsManager() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Intro to Loops & Variables"
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
                 />
               </div>
 
@@ -354,7 +354,7 @@ export default function ClassRecordingsManager() {
                   value={courseName}
                   onChange={(e) => setCourseName(e.target.value)}
                   placeholder="e.g. Python Fundamentals"
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
                 />
               </div>
 
@@ -368,7 +368,7 @@ export default function ClassRecordingsManager() {
                   value={recordingUrl}
                   onChange={(e) => setRecordingUrl(e.target.value)}
                   placeholder="https://..."
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
                 />
               </div>
 
@@ -381,7 +381,7 @@ export default function ClassRecordingsManager() {
                   value={thumbnailUrl}
                   onChange={(e) => setThumbnailUrl(e.target.value)}
                   placeholder="https://... image link"
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
                 />
               </div>
 
@@ -393,7 +393,7 @@ export default function ClassRecordingsManager() {
                   <select
                     value={tutorId}
                     onChange={(e) => setTutorId(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
                   >
                     <option value="">Auto-detect / Me</option>
                     {tutors.map((t) => (
@@ -411,7 +411,7 @@ export default function ClassRecordingsManager() {
                   <select
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
                   >
                     <option value="">Global (All Students)</option>
                     {students.map((s) => (
@@ -433,7 +433,7 @@ export default function ClassRecordingsManager() {
                 </button>
                 <button
                   type="submit"
-                  className="cursor-pointer rounded-xl bg-purple-600 px-5 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-purple-700 dark:hover:bg-purple-500"
+                  className="cursor-pointer rounded-xl bg-purple-600 px-5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700 dark:hover:bg-purple-500"
                 >
                   Save & Publish
                 </button>

@@ -2,19 +2,24 @@ import { Link } from 'react-router-dom'
 
 import { Footer } from '../components/layout/Footer'
 import { NavBar } from '../components/layout/NavBar'
+import { usePageMeta } from '../hooks/usePageMeta'
+import type { PageMeta } from '../lib/seo'
 
 type ComingSoonPageProps = {
-  title: string
+  meta: PageMeta
 }
 
-/** Stand-in for public site pages that haven't been migrated from the old site yet. */
-export function ComingSoonPage({ title }: ComingSoonPageProps) {
+/** Stand-in for pages the site links to that don't exist yet (the old site had none either). */
+export function ComingSoonPage({ meta }: ComingSoonPageProps) {
+  usePageMeta(meta)
+  const { title } = meta
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-background">
       <NavBar />
 
-      <section className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-24 pt-40 text-center">
-        <p className="rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary">
+      <section className="mx-auto flex max-w-3xl flex-col items-center px-6 pt-40 pb-24 text-center">
+        <p className="rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-xs font-bold tracking-widest text-primary uppercase">
           Coming soon
         </p>
 

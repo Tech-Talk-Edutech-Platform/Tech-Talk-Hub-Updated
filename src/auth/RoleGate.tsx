@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { isAppRole, type AppRole } from '../types/roles'
 
@@ -9,8 +9,10 @@ interface RoleGateProps {
   allowedRoles: readonly AppRole[]
 }
 
+type GateStatus = 'loading' | 'signedOut' | 'unauthorized' | 'authorized'
+
 export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
-  const [status, setStatus] = useState('loading') // loading, unauthorized, authorized
+  const [status, setStatus] = useState<GateStatus>('loading')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -24,8 +26,9 @@ export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
 
       if (!active) return
 
+      // Not signed in (e.g. right after logging out) is not "access denied".
       if (!user) {
-        setStatus('unauthorized')
+        setStatus('signedOut')
         return
       }
 
@@ -60,11 +63,29 @@ export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
     }
 
     void checkAccess()
+
+    // Any logout button (or a logout in another tab) sends the user to login.
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setStatus('signedOut')
+      }
+    })
+
     return () => {
       active = false
       controller.abort()
+      listener.subscription.unsubscribe()
     }
-  }, [allowedRoles, navigate])
+  }, [allowedRoles])
+
+  const signInWithDifferentAccount = async () => {
+    await supabase.auth.signOut()
+    void navigate('/login', { replace: true })
+  }
+
+  if (status === 'signedOut') {
+    return <Navigate to="/login" replace />
+  }
 
   if (status === 'loading') {
     return (
@@ -104,10 +125,8 @@ export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
           dashboard.
         </p>
         <button
-          onClick={async () => {
-            await supabase.auth.signOut()
-            navigate('/')
-          }}
+          type="button"
+          onClick={() => void signInWithDifferentAccount()}
           className="mt-8 rounded-[20px] bg-slate-900 px-8 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-slate-200 transition-all hover:bg-blue-600"
         >
           Login with Different Account

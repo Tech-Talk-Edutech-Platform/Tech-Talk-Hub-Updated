@@ -386,7 +386,7 @@ export default function AdminShopPage() {
         </div>
 
         {/* Product List */}
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs">
           {loading ? (
             <div className="flex min-h-[300px] items-center justify-center">
               <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -507,10 +507,10 @@ export default function AdminShopPage() {
           PRODUCT MODAL
       ====================================================== */}
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-xs">
           <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
             {/* Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-6 py-5 backdrop-blur">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-6 py-5 backdrop-blur-sm">
               <div>
                 <h2 className="text-xl font-extrabold text-slate-900">
                   {editingId ? 'Edit Product' : 'Add Product'}
@@ -838,7 +838,7 @@ export default function AdminShopPage() {
 }
 
 const inputClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10'
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-hidden transition focus:border-primary focus:ring-4 focus:ring-primary/10'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -854,7 +854,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function StatCard({ title, value }: { title: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
       <p className="text-sm text-slate-500">{title}</p>
 
       <p className="mt-1 text-3xl font-extrabold text-slate-900">{value}</p>

@@ -203,7 +203,7 @@ export default function AdminTestimonialsPage() {
           {/* Upload form */}
           <form
             onSubmit={handleSubmit}
-            className="h-fit rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+            className="h-fit rounded-3xl border border-slate-200 bg-white p-6 shadow-xs"
           >
             <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900">
               <Plus className="h-5 w-5 text-secondary" />
@@ -374,9 +374,9 @@ export default function AdminTestimonialsPage() {
                 {testimonials.map((testimonial) => (
                   <article
                     key={testimonial.id}
-                    className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+                    className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs"
                   >
-                    <div className="relative aspect-[4/5] bg-slate-100">
+                    <div className="relative aspect-4/5 bg-slate-100">
                       <img
                         src={testimonial.screenshot_url}
                         alt="Testimonial screenshot"

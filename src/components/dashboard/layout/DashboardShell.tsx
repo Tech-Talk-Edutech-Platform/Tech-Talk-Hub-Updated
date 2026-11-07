@@ -56,7 +56,7 @@ function DashboardNavigation({
                   title={collapsed ? label : undefined}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => onNavigate(id)}
-                  className={`focus-visible:ring-dashboard-accent flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 ${
+                  className={`focus-visible:ring-dashboard-accent flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 ${
                     active
                       ? 'bg-dashboard-accent text-white shadow-md shadow-purple-500/20'
                       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -141,7 +141,7 @@ export function DashboardShell({
         <div className="mb-6 flex min-h-12 items-center justify-between gap-2 px-2">
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-lg font-black tracking-tight text-transparent">
+              <p className="truncate bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-lg font-black tracking-tight text-transparent">
                 Tech Talk Hub
               </p>
               <p className="truncate text-xs font-medium text-slate-400">
@@ -153,7 +153,7 @@ export function DashboardShell({
             type="button"
             onClick={() => setCollapsed((value) => !value)}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="focus-visible:ring-dashboard-accent grid size-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2"
+            className="focus-visible:ring-dashboard-accent grid size-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-hidden focus-visible:ring-2"
           >
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
@@ -180,7 +180,7 @@ export function DashboardShell({
             }
             aria-expanded={mobileOpen}
             aria-controls="dashboard-mobile-navigation"
-            className="focus-visible:ring-dashboard-accent grid size-10 shrink-0 place-items-center rounded-lg text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2"
+            className="focus-visible:ring-dashboard-accent grid size-10 shrink-0 place-items-center rounded-lg text-slate-700 hover:bg-slate-100 focus-visible:outline-hidden focus-visible:ring-2"
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -214,7 +214,7 @@ export function DashboardShell({
         >
           <div className="mb-6 flex min-h-12 items-center justify-between gap-2 px-2">
             <div className="min-w-0">
-              <p className="truncate bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-lg font-black tracking-tight text-transparent">
+              <p className="truncate bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-lg font-black tracking-tight text-transparent">
                 Tech Talk Hub
               </p>
               <p className="truncate text-xs font-medium text-slate-400">
@@ -228,7 +228,7 @@ export function DashboardShell({
                 mobileMenuButton.current?.focus()
               }}
               aria-label="Close dashboard navigation"
-              className="focus-visible:ring-dashboard-accent grid size-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2"
+              className="focus-visible:ring-dashboard-accent grid size-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-hidden focus-visible:ring-2"
             >
               <X size={18} />
             </button>

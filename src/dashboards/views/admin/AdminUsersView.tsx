@@ -152,7 +152,7 @@ export default function AdminUsersView() {
   }
 
   return (
-    <div className="shadow-xs space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 dark:border-white/10 dark:bg-white/5 md:p-8">
+    <div className="shadow-2xs space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 dark:border-white/10 dark:bg-white/5 md:p-8">
       {/* Header & Action */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
@@ -179,7 +179,7 @@ export default function AdminUsersView() {
             size={18}
           />
           <input
-            className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 py-3.5 pl-12 pr-4 text-sm font-bold text-slate-900 outline-none transition-all focus:border-purple-500 focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:bg-white/10"
+            className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 py-3.5 pl-12 pr-4 text-sm font-bold text-slate-900 outline-hidden transition-all focus:border-purple-500 focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:bg-white/10"
             placeholder="Search by name or email..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -192,7 +192,7 @@ export default function AdminUsersView() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="cursor-pointer bg-transparent py-3 text-xs font-black uppercase tracking-wider text-slate-600 outline-none dark:text-slate-300"
+              className="cursor-pointer bg-transparent py-3 text-xs font-black uppercase tracking-wider text-slate-600 outline-hidden dark:text-slate-300"
             >
               <option value="all" className="dark:bg-slate-900">
                 All Roles
@@ -216,14 +216,14 @@ export default function AdminUsersView() {
           <div className="flex shrink-0 items-center rounded-2xl border border-slate-200/60 bg-slate-50 p-1 dark:border-white/10 dark:bg-white/5">
             <button
               onClick={() => setViewMode('grid')}
-              className={`rounded-xl p-2.5 transition-all ${viewMode === 'grid' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'}`}
+              className={`rounded-xl p-2.5 transition-all ${viewMode === 'grid' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'}`}
               title="Grid View"
             >
               <LayoutGrid size={16} />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`rounded-xl p-2.5 transition-all ${viewMode === 'table' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'}`}
+              className={`rounded-xl p-2.5 transition-all ${viewMode === 'table' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'}`}
               title="Table View"
             >
               <TableIcon size={16} />
@@ -445,7 +445,7 @@ export default function AdminUsersView() {
                       full_name: e.target.value,
                     })
                   }
-                  className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-hidden focus:border-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
               </div>
 
@@ -471,7 +471,7 @@ export default function AdminUsersView() {
                     onChange={(e) =>
                       setEditingUser({ ...editingUser, role: e.target.value })
                     }
-                    className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700 outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                    className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                   >
                     <option value="student" className="dark:bg-slate-900">
                       Student
@@ -509,7 +509,7 @@ export default function AdminUsersView() {
                         is_active: e.target.value === 'true',
                       })
                     }
-                    className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700 outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                    className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                   >
                     <option value="true" className="dark:bg-slate-900">
                       Active
@@ -540,7 +540,7 @@ export default function AdminUsersView() {
                           assigned_tutor_id: e.target.value || null,
                         })
                       }
-                      className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                      className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                     >
                       <option value="">-- No Tutor Assigned --</option>
                       {tutorsList.map((t) => (
@@ -567,7 +567,7 @@ export default function AdminUsersView() {
                           assigned_course_id: e.target.value || null,
                         })
                       }
-                      className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                      className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                     >
                       <option value="">-- No Course Assigned --</option>
                       {coursesList.map((c) => (
@@ -596,7 +596,7 @@ export default function AdminUsersView() {
                             classes_per_week: e.target.value,
                           })
                         }
-                        className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                        className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-hidden focus:border-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
                       />
                     </div>
                     <div>
@@ -612,7 +612,7 @@ export default function AdminUsersView() {
                             classes_remaining: e.target.value,
                           })
                         }
-                        className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                        className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-hidden focus:border-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
                       />
                     </div>
                   </div>

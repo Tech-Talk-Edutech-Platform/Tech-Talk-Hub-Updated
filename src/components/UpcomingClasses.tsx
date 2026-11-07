@@ -41,7 +41,7 @@ export default function UpcomingClasses({
     return <div className="h-48 animate-pulse rounded-2xl bg-white p-5" />
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-300">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs transition-all duration-300">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
           {selectedClass

@@ -9,9 +9,13 @@ import { Testimonials } from '../components/home/Testimonials'
 import { Footer } from '../components/layout/Footer'
 import { NavBar } from '../components/layout/NavBar'
 import { PageSection } from '../components/ui/PageSection'
+import { staticPageMeta } from '../data/seo'
+import { usePageMeta } from '../hooks/usePageMeta'
 
 /** The landing page. Section ids are the targets of `/#…` links across the site. */
 export function HomePage() {
+  usePageMeta(staticPageMeta('/'))
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-background">
       <NavBar />

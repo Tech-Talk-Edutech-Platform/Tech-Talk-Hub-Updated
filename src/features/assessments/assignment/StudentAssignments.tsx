@@ -68,7 +68,7 @@ export default function StudentAssignments({
   const getStatusStyles = (status: string | null | undefined) => {
     switch (status?.toLowerCase()) {
       case 'submitted':
-        return 'bg-amber-500 text-white border-amber-600 shadow-sm animate-pulse'
+        return 'bg-amber-500 text-white border-amber-600 shadow-xs animate-pulse'
       case 'pending':
         return 'bg-slate-100 text-slate-500 border-slate-200'
       case 'completed':
@@ -184,7 +184,7 @@ export default function StudentAssignments({
   }
 
   return (
-    <div className="mb-6 rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm">
+    <div className="mb-6 rounded-[32px] border border-slate-100 bg-white p-6 shadow-xs">
       <div className="mb-8 flex items-center justify-between">
         <h3 className="text-2xl font-black tracking-tight text-slate-900">
           Active Assignments
@@ -225,7 +225,7 @@ export default function StudentAssignments({
               </div>
 
               {item.submission_text && (
-                <div className="mt-2 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                <div className="mt-2 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xs">
                   <div className="bg-slate-50/50 p-4">
                     <p className="mb-1 text-[10px] font-black uppercase text-slate-400">
                       Submission
@@ -269,7 +269,7 @@ export default function StudentAssignments({
 
                       <textarea
                         placeholder="Feedback note..."
-                        className="w-full rounded-xl border-none bg-slate-50 p-3 text-sm outline-none transition focus:ring-2 focus:ring-amber-200"
+                        className="w-full rounded-xl border-none bg-slate-50 p-3 text-sm outline-hidden transition focus:ring-2 focus:ring-amber-200"
                         rows={2}
                         value={feedbackInputs[item.id] || ''}
                         onChange={(e) =>
@@ -329,7 +329,7 @@ export default function StudentAssignments({
             <h3 className="mb-4 font-bold">New Assignment</h3>
 
             <select
-              className="mb-2 w-full rounded border p-2"
+              className="mb-2 w-full rounded-sm border p-2"
               value={newAssignment.student_id}
               onChange={(e) =>
                 setNewAssignment({
@@ -347,7 +347,7 @@ export default function StudentAssignments({
             </select>
 
             <select
-              className="mb-2 w-full rounded border p-2"
+              className="mb-2 w-full rounded-sm border p-2"
               value={newAssignment.course_id}
               onChange={(e) =>
                 setNewAssignment({
@@ -367,7 +367,7 @@ export default function StudentAssignments({
             <input
               type="text"
               placeholder="Task Name"
-              className="mb-2 w-full rounded border p-2"
+              className="mb-2 w-full rounded-sm border p-2"
               value={newAssignment.task_name}
               onChange={(e) =>
                 setNewAssignment({
@@ -380,7 +380,7 @@ export default function StudentAssignments({
             <input
               type="text"
               placeholder="Category"
-              className="mb-2 w-full rounded border p-2"
+              className="mb-2 w-full rounded-sm border p-2"
               value={newAssignment.category}
               onChange={(e) =>
                 setNewAssignment({ ...newAssignment, category: e.target.value })
@@ -390,7 +390,7 @@ export default function StudentAssignments({
             <input
               type="text"
               placeholder="Submission Link"
-              className="mb-2 w-full rounded border p-2"
+              className="mb-2 w-full rounded-sm border p-2"
               value={newAssignment.submission_link}
               onChange={(e) =>
                 setNewAssignment({
@@ -402,7 +402,7 @@ export default function StudentAssignments({
 
             <textarea
               placeholder="Description"
-              className="mb-4 w-full rounded border p-2"
+              className="mb-4 w-full rounded-sm border p-2"
               value={newAssignment.description}
               onChange={(e) =>
                 setNewAssignment({
@@ -415,13 +415,13 @@ export default function StudentAssignments({
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowModal(false)}
-                className="rounded bg-slate-200 px-3 py-1 text-xs"
+                className="rounded-sm bg-slate-200 px-3 py-1 text-xs"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateAssignment}
-                className="rounded bg-blue-600 px-3 py-1 text-xs text-white"
+                className="rounded-sm bg-blue-600 px-3 py-1 text-xs text-white"
               >
                 Create
               </button>

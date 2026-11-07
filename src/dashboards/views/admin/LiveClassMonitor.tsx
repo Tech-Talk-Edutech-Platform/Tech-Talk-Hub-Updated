@@ -261,7 +261,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
           type="button"
           onClick={() => fetchClasses(true)}
           disabled={refreshing || loading}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-700 shadow-sm hover:bg-gray-100 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-700 shadow-xs hover:bg-gray-100 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
         >
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
           {refreshing ? 'Refreshing...' : 'Refresh Classes'}
@@ -294,7 +294,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
         ].map(({ label, value, Icon, color, bg }) => (
           <div
             key={label}
-            className="rounded-[28px] border border-gray-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5"
+            className="rounded-[28px] border border-gray-100 bg-white p-5 shadow-xs dark:border-white/10 dark:bg-white/5"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -313,7 +313,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
+      <section className="overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-xs dark:border-white/10 dark:bg-white/5">
         <div className="flex flex-col gap-4 border-b border-gray-100 p-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <h2 className="text-lg font-black text-gray-900 dark:text-white">
@@ -332,7 +332,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search classes or tutors..."
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm text-gray-900 outline-none focus:border-purple-400 dark:border-white/10 dark:bg-white/5 dark:text-white"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm text-gray-900 outline-hidden focus:border-purple-400 dark:border-white/10 dark:bg-white/5 dark:text-white"
             />
           </div>
         </div>
@@ -396,7 +396,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
               return (
                 <article
                   key={item.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 hover:border-purple-200 dark:border-white/10 dark:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 hover:border-purple-200 dark:border-white/10 dark:bg-white/2 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex min-w-0 items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-500/15">
@@ -446,7 +446,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
                           ? 'Join this class as an admin'
                           : 'No meeting link saved for this class'
                       }
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-xs font-black text-white shadow-sm hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-xs font-black text-white shadow-xs hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Video size={14} />
                       Join Class{link && <ExternalLink size={12} />}
@@ -455,7 +455,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
                       type="button"
                       onClick={() => handlePingTutor(item)}
                       disabled={!assigned || pingingTutorId === item.id}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-black text-emerald-700 shadow-sm hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-emerald-400"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-black text-emerald-700 shadow-xs hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-emerald-400"
                     >
                       {pingingTutorId === item.id ? (
                         <RefreshCw size={14} className="animate-spin" />

@@ -122,7 +122,7 @@ export default function AdminDashboard() {
             Tech Talk Hub Administrative Portal
           </p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-right shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-right shadow-xs">
           <span className="block text-xs font-semibold uppercase text-slate-400">
             Total Settled Invoices
           </span>
@@ -148,7 +148,7 @@ export default function AdminDashboard() {
       {/* WORKSPACE CONTENT SPLIT SYSTEM */}
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         {/* ACTION SIDEBAR PANEL: INVOICING ENGINE */}
-        <div className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
           <h2 className="mb-5 text-lg font-bold text-slate-900">
             Issue New Receipt
           </h2>
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
+              className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-xs transition hover:bg-indigo-700 disabled:opacity-50"
             >
               {loading ? 'Processing Ledger...' : 'Send Receipt via Resend'}
             </button>
@@ -304,7 +304,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* DATA WORKSPACE GRID: HISTORICAL LEDGER TABLE ARCHIVE */}
-        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2">
+        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-xs xl:col-span-2">
           <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <h2 className="text-lg font-bold text-slate-900">
               Paid Receipts Archive

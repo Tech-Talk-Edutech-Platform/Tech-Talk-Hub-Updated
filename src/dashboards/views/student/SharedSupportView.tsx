@@ -124,7 +124,7 @@ export default function SharedSupportView({ user }) {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         {/* Ticket Submission Form */}
-        <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5 lg:col-span-5">
+        <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5 lg:col-span-5">
           <div className="mb-6 flex items-center gap-2 text-purple-600">
             <ShieldAlert size={22} />
             <h2 className="text-lg font-black text-gray-900 dark:text-white">
@@ -152,7 +152,7 @@ export default function SharedSupportView({ user }) {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium focus:border-purple-500 focus:outline-none dark:border-white/10 dark:bg-white/5"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium focus:border-purple-500 focus:outline-hidden dark:border-white/10 dark:bg-white/5"
               >
                 <option value="technical">Technical Issue / Bug</option>
                 <option value="scheduling">Class / Schedule Conflict</option>
@@ -170,7 +170,7 @@ export default function SharedSupportView({ user }) {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Cannot load student homework files"
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium focus:border-purple-500 focus:outline-none dark:border-white/10 dark:bg-white/5"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium focus:border-purple-500 focus:outline-hidden dark:border-white/10 dark:bg-white/5"
               />
             </div>
 
@@ -183,7 +183,7 @@ export default function SharedSupportView({ user }) {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the issue in detail..."
-                className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm font-medium focus:border-purple-500 focus:outline-none dark:border-white/10 dark:bg-white/5"
+                className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm font-medium focus:border-purple-500 focus:outline-hidden dark:border-white/10 dark:bg-white/5"
               />
             </div>
 
@@ -223,7 +223,7 @@ export default function SharedSupportView({ user }) {
               {issues.map((issue) => (
                 <div
                   key={issue.id}
-                  className="space-y-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5"
+                  className="space-y-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-xs dark:border-white/10 dark:bg-white/5"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>

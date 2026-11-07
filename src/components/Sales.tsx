@@ -29,7 +29,7 @@ export default function Receipt() {
   return (
     <div
       id="receipt"
-      className="mx-auto w-full max-w-[380px] rounded-sm border-t-4 border-black bg-white p-8 font-mono shadow-xl"
+      className="mx-auto w-full max-w-[380px] rounded-xs border-t-4 border-black bg-white p-8 font-mono shadow-xl"
     >
       <div className="mb-2 border-b pb-2 text-center">
         <h1 className="text-lg font-bold">TECH TALK HUB</h1>

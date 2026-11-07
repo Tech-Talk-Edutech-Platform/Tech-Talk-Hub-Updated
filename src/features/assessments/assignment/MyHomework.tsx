@@ -116,7 +116,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
 
       {assignments.length === 0 ? (
         <div className="rounded-[32px] border-2 border-dashed border-slate-200 bg-slate-50 py-16 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xs">
             <CheckCircle className="text-slate-200" size={32} />
           </div>
           <p className="font-bold text-slate-400">
@@ -161,7 +161,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
                 </div>
 
                 <span
-                  className={`flex items-center gap-2 rounded-2xl px-4 py-1.5 text-[10px] font-black uppercase tracking-widest shadow-sm ${
+                  className={`flex items-center gap-2 rounded-2xl px-4 py-1.5 text-[10px] font-black uppercase tracking-widest shadow-xs ${
                     a.status === 'pending'
                       ? 'border border-amber-100 bg-white text-amber-600'
                       : a.status === 'submitted'
@@ -183,7 +183,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
                 <div className="mt-4 space-y-3">
                   <textarea
                     disabled={isSubmitting}
-                    className="w-full rounded-[24px] border-none bg-slate-50 p-5 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                    className="w-full rounded-[24px] border-none bg-slate-50 p-5 text-sm font-medium text-slate-700 outline-hidden transition placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                     placeholder="Write your answer or link your work here..."
                     rows={4}
                     value={submissions[a.id] || ''}
@@ -216,7 +216,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
               ) : (
                 <div className="space-y-4">
                   {/* Student's Submission */}
-                  <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                  <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
                     <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                       Your Work
                     </p>

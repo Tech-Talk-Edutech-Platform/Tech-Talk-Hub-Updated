@@ -79,7 +79,7 @@ export default function UploadNote() {
         <select
           value={selectedCourse}
           onChange={(e) => setSelectedCourse(e.target.value)}
-          className="rounded border p-2 dark:bg-gray-800 dark:text-white"
+          className="rounded-sm border p-2 dark:bg-gray-800 dark:text-white"
         >
           <option value="">Select Course</option>
           {courses.map((c) => (
@@ -92,7 +92,7 @@ export default function UploadNote() {
         <select
           value={selectedTopic}
           onChange={(e) => setSelectedTopic(e.target.value)}
-          className="rounded border p-2 dark:bg-gray-800 dark:text-white"
+          className="rounded-sm border p-2 dark:bg-gray-800 dark:text-white"
           disabled={!selectedCourse}
         >
           <option value="">Select Topic</option>
@@ -108,7 +108,7 @@ export default function UploadNote() {
           placeholder="Note Title"
           value={noteTitle}
           onChange={(e) => setNoteTitle(e.target.value)}
-          className="rounded border p-2 dark:bg-gray-800 dark:text-white"
+          className="rounded-sm border p-2 dark:bg-gray-800 dark:text-white"
         />
 
         <textarea
@@ -116,10 +116,10 @@ export default function UploadNote() {
           rows="6"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="rounded border p-2 dark:bg-gray-800 dark:text-white"
+          className="rounded-sm border p-2 dark:bg-gray-800 dark:text-white"
         />
 
-        <button type="submit" className="rounded bg-primary py-2 text-white">
+        <button type="submit" className="rounded-sm bg-primary py-2 text-white">
           Upload Note
         </button>
       </form>

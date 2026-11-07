@@ -123,7 +123,7 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
           </button>
 
           {/* Detail/Edit View */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
             <div className="mb-3 flex items-start justify-between">
               {isEditing ? (
                 <input
@@ -155,7 +155,7 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
 
             {isEditing ? (
               <textarea
-                className="w-full rounded border p-2 text-xs text-slate-500"
+                className="w-full rounded-sm border p-2 text-xs text-slate-500"
                 value={selectedTicket.description}
                 onChange={(e) =>
                   setSelectedTicket({

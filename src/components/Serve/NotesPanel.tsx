@@ -206,7 +206,7 @@
 // //                     </SyntaxHighlighter>
 // //                   ) : (
 // //                     <code
-// //                       className="bg-gray-700 text-green-300 px-1 rounded font-mono"
+// //                       className="bg-gray-700 text-green-300 px-1 rounded-sm font-mono"
 // //                       {...props}
 // //                     >
 // //                       {children}
@@ -438,7 +438,7 @@
 // //                     </SyntaxHighlighter>
 // //                   ) : (
 // //                     <code
-// //                       className="bg-gray-700 text-green-300 px-1 rounded font-mono"
+// //                       className="bg-gray-700 text-green-300 px-1 rounded-sm font-mono"
 // //                       {...props}
 // //                     >
 // //                       {children}
@@ -570,7 +570,7 @@
 //             {selectedNote.title}
 //           </h3>
 
-//           <div className="prose dark:prose-invert max-w-full overflow-x-auto p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">
+//           <div className="prose dark:prose-invert max-w-full overflow-x-auto p-3 rounded-sm border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">
 //             <ReactMarkdown
 //               remarkPlugins={[remarkGfm]}
 //               components={{
@@ -587,7 +587,7 @@
 //                     </SyntaxHighlighter>
 //                   ) : (
 //                     <code
-//                       className="bg-gray-700 text-green-300 px-1 rounded font-mono"
+//                       className="bg-gray-700 text-green-300 px-1 rounded-sm font-mono"
 //                       {...props}
 //                     >
 //                       {children}
@@ -711,7 +711,7 @@ export default function NotesPanel({ darkMode = true, courseId }) {
             <button
               key={t.id}
               onClick={() => setSelectedTopic(t)}
-              className="group rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500"
+              className="group rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xs transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500"
             >
               <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
                 Topic
@@ -738,7 +738,7 @@ export default function NotesPanel({ darkMode = true, courseId }) {
               <button
                 key={n.id}
                 onClick={() => openNote(n.id)}
-                className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500"
+                className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xs transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500"
               >
                 <div className="font-medium text-slate-800 dark:text-slate-200">
                   {n.title || `Document ${n.id}`}
@@ -764,7 +764,7 @@ export default function NotesPanel({ darkMode = true, courseId }) {
           </h3>
 
           {/* Clean base document card container using direct explicit tracking text styles */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-800 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-800 shadow-xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -829,7 +829,7 @@ export default function NotesPanel({ darkMode = true, courseId }) {
                       {String(children).replace(/\n$/, '')}
                     </SyntaxHighlighter>
                   ) : (
-                    <code className="rounded border border-slate-200/60 bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-pink-600 dark:border-slate-700/50 dark:bg-slate-800 dark:text-emerald-400">
+                    <code className="rounded-sm border border-slate-200/60 bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-pink-600 dark:border-slate-700/50 dark:bg-slate-800 dark:text-emerald-400">
                       {children}
                     </code>
                   )

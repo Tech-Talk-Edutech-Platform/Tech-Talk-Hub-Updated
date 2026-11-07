@@ -142,7 +142,7 @@ export default function AdminNotesManager() {
           >
             ← Back
           </button>
-          <h6 className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-2xl font-black text-transparent">
+          <h6 className="bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-2xl font-black text-transparent">
             Curriculum Builder
           </h6>
         </div>
@@ -180,7 +180,7 @@ export default function AdminNotesManager() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         {/* Left Column - Hierarchy Setup */}
         <div className="space-y-6 lg:col-span-4">
-          <div className="rounded-3xl border border-gray-700 bg-gray-800/50 p-6 backdrop-blur-sm">
+          <div className="rounded-3xl border border-gray-700 bg-gray-800/50 p-6 backdrop-blur-xs">
             <h2 className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-400">
               Step 1: Course Selection
             </h2>
@@ -189,7 +189,7 @@ export default function AdminNotesManager() {
                 value={newCourse}
                 onChange={(e) => setNewCourse(e.target.value)}
                 placeholder="New course title..."
-                className="flex-1 rounded-xl border border-gray-700 bg-gray-950 p-3 outline-none ring-indigo-500 transition-all focus:ring-2"
+                className="flex-1 rounded-xl border border-gray-700 bg-gray-950 p-3 outline-hidden ring-indigo-500 transition-all focus:ring-2"
               />
               <button
                 onClick={handleCreateCourse}
@@ -205,7 +205,7 @@ export default function AdminNotesManager() {
                 setSelectedCourse(e.target.value)
                 setSelectedTopic('')
               }}
-              className="w-full cursor-pointer rounded-xl border border-gray-700 bg-gray-950 p-3 text-gray-200 outline-none transition hover:border-gray-600"
+              className="w-full cursor-pointer rounded-xl border border-gray-700 bg-gray-950 p-3 text-gray-200 outline-hidden transition hover:border-gray-600"
             >
               <option value="">-- Choose Course --</option>
               {courses.map((c) => (
@@ -227,7 +227,7 @@ export default function AdminNotesManager() {
                 value={newTopic}
                 onChange={(e) => setNewTopic(e.target.value)}
                 placeholder="New topic title..."
-                className="flex-1 rounded-xl border border-gray-700 bg-gray-950 p-3 outline-none ring-emerald-500 transition-all focus:ring-2"
+                className="flex-1 rounded-xl border border-gray-700 bg-gray-950 p-3 outline-hidden ring-emerald-500 transition-all focus:ring-2"
               />
               <button
                 onClick={handleCreateTopic}
@@ -240,7 +240,7 @@ export default function AdminNotesManager() {
             <select
               value={selectedTopic}
               onChange={(e) => setSelectedTopic(e.target.value)}
-              className="w-full cursor-pointer rounded-xl border border-gray-700 bg-gray-950 p-3 text-gray-200 outline-none transition hover:border-gray-600"
+              className="w-full cursor-pointer rounded-xl border border-gray-700 bg-gray-950 p-3 text-gray-200 outline-hidden transition hover:border-gray-600"
             >
               <option value="">-- Choose Topic --</option>
               {topics.map((t) => (
@@ -256,7 +256,7 @@ export default function AdminNotesManager() {
         <div
           className={`space-y-6 transition-all duration-500 lg:col-span-8 ${!selectedTopic ? 'pointer-events-none opacity-30' : 'opacity-100'}`}
         >
-          <div className="rounded-3xl border border-gray-700 bg-gray-800/50 p-6 backdrop-blur-sm">
+          <div className="rounded-3xl border border-gray-700 bg-gray-800/50 p-6 backdrop-blur-xs">
             <h2 className="mb-6 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-purple-400">
               Step 3: Content Editor (Markdown)
             </h2>
@@ -264,19 +264,19 @@ export default function AdminNotesManager() {
               <input
                 {...noteForm.register('title')}
                 placeholder="Lesson Title (e.g. Introduction to Hooks)"
-                className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 text-xl font-bold outline-none ring-purple-500 transition-all focus:ring-2"
+                className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 text-xl font-bold outline-hidden ring-purple-500 transition-all focus:ring-2"
               />
               <textarea
                 {...noteForm.register('content')}
                 placeholder="# Use Markdown! &#10;## Headers &#10;```javascript &#10; const code = 'blocks'; &#10;```"
                 rows={12}
-                className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 font-mono text-sm leading-relaxed outline-none ring-purple-500 focus:ring-2"
+                className="w-full rounded-2xl border border-gray-700 bg-gray-950 p-4 font-mono text-sm leading-relaxed outline-hidden ring-purple-500 focus:ring-2"
               />
               <button
                 type="button"
                 disabled={publishing}
                 onClick={handleUploadNote}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 py-4 text-lg font-black shadow-xl shadow-indigo-900/20 transition hover:from-purple-500 hover:to-indigo-500"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-purple-600 to-indigo-600 py-4 text-lg font-black shadow-xl shadow-indigo-900/20 transition hover:from-purple-500 hover:to-indigo-500"
               >
                 {publishing ? (
                   <Loader2 className="animate-spin" />

@@ -320,7 +320,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
   const actions = role === 'tutor' ? tutorActions : studentActions
 
   return (
-    <div className="relative rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <div className="relative rounded-2xl border border-slate-100 bg-white p-6 shadow-xs">
       <div className="mb-5 flex items-center justify-between">
         {hasStarted && (
           <button
@@ -349,7 +349,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
       </div>
 
       {modalType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[32px] bg-white p-8 shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-black text-slate-900">
@@ -400,7 +400,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
                         studentTasks.map((task) => (
                           <div
                             key={task.id}
-                            className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
+                            className="rounded-xl border border-slate-100 bg-white p-3 shadow-xs"
                           >
                             <div className="mb-1 flex items-center justify-between">
                               <span className="text-sm font-bold text-slate-800">
@@ -439,7 +439,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
                 {modalType === 'message' ? (
                   <>
                     <textarea
-                      className="h-32 w-full resize-none rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      className="h-32 w-full resize-none rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm outline-hidden focus:ring-2 focus:ring-blue-500"
                       placeholder="Type your message..."
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
@@ -460,13 +460,13 @@ export default function QuickActions({ tutorId, role, studentId }) {
                     <input
                       type="text"
                       placeholder="Task Name"
-                      className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 outline-hidden focus:ring-2 focus:ring-indigo-500"
                       value={taskName}
                       onChange={(e) => setTaskName(e.target.value)}
                     />
                     {/* FIXED: Dropdown only includes the student's assigned course */}
                     <select
-                      className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 outline-none"
+                      className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 outline-hidden"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     >
@@ -480,7 +480,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
                     <input
                       type="url"
                       placeholder="Resource URL (Optional)"
-                      className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 outline-none"
+                      className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 outline-hidden"
                       value={taskUrl}
                       onChange={(e) => setTaskUrl(e.target.value)}
                     />

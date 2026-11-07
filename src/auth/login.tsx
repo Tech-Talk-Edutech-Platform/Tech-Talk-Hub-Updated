@@ -162,11 +162,14 @@ export default function Login() {
           Continue with Google
         </button>
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-5">
+        <form
+          onSubmit={(event) => void handleSubmit(handleLogin)(event)}
+          className="flex flex-col gap-5"
+        >
           <input
             type="email"
             placeholder="Email Address"
-            className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3.5 text-sm font-bold outline-hidden focus:ring-2 focus:ring-blue-500"
             {...register('email')}
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? 'login-email-error' : undefined}
@@ -184,7 +187,7 @@ export default function Login() {
           <input
             type="password"
             placeholder="Password"
-            className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3.5 text-sm font-bold outline-hidden focus:ring-2 focus:ring-blue-500"
             {...register('password')}
             aria-invalid={Boolean(errors.password)}
             aria-describedby={

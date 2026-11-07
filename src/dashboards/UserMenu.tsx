@@ -13,7 +13,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    navigate('/', { replace: true })
+    void navigate('/login', { replace: true })
   }
 
   return (

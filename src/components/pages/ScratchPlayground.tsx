@@ -155,7 +155,7 @@ export default function ScratchPlayground({ code }: ScratchPlaygroundProps) {
 
         <button
           onClick={runCode}
-          className="mt-3 rounded bg-green-600 px-4 py-2 text-white"
+          className="mt-3 rounded-sm bg-green-600 px-4 py-2 text-white"
         >
           🟢 Green Flag
         </button>
@@ -252,12 +252,12 @@ export default function ScratchPlayground({ code }: ScratchPlaygroundProps) {
 //                 ref={canvasRef}
 //                 width={600}
 //                 height={400}
-//                 className="border rounded bg-white"
+//                 className="border rounded-sm bg-white"
 //             />
 
 //             <button
 //                 onClick={runCode}
-//                 className="mt-4 bg-purple-600 text-white px-4 py-2 rounded"
+//                 className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-sm"
 //             >
 //                 ▶ Run Animation
 //             </button>

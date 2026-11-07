@@ -146,7 +146,7 @@ export default function SalesDashboardCharts() {
 /* Small helper */
 const ChartCard = ({ title, children, wide }) => (
   <div
-    className={`rounded-xl bg-white p-4 shadow ${wide ? 'md:col-span-2' : ''}`}
+    className={`rounded-xl bg-white p-4 shadow-sm ${wide ? 'md:col-span-2' : ''}`}
   >
     <h3 className="mb-2 font-bold text-gray-700">{title}</h3>
     <ResponsiveContainer width="100%" height={250}>

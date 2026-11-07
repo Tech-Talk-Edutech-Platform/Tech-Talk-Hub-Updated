@@ -31,4 +31,15 @@ export const queryKeys = {
     all: ['notes'] as const,
     byTopic: (topicId: string) => ['notes', 'topic', topicId] as const,
   },
+  site: {
+    program: (slug: string) => ['site', 'program', slug] as const,
+    products: (program?: string) =>
+      ['site', 'products', program ?? 'all'] as const,
+    product: (slug: string) => ['site', 'product', slug] as const,
+    productsByIds: (ids: string[]) =>
+      ['site', 'products-by-id', ...ids] as const,
+    blogPosts: (category: string) => ['site', 'blog', category] as const,
+    blogPost: (slug: string) => ['site', 'blog-post', slug] as const,
+    relatedPosts: (postId: string) => ['site', 'blog-related', postId] as const,
+  },
 }

@@ -317,7 +317,7 @@ export default function ExamPage({ user }: ExamPageProps) {
                     isCurrent ? 'ring-2 ring-indigo-600 ring-offset-2' : ''
                   } ${
                     isFlagged
-                      ? 'border-amber-500 bg-amber-400 text-white shadow-sm'
+                      ? 'border-amber-500 bg-amber-400 text-white shadow-xs'
                       : isAnswered
                         ? 'border-emerald-600 bg-emerald-500 text-white'
                         : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100'
@@ -332,13 +332,13 @@ export default function ExamPage({ user }: ExamPageProps) {
 
         <div className="mt-6 space-y-2 rounded-2xl bg-slate-50 p-4 text-[11px] font-bold text-slate-500">
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-emerald-500" /> Saved Response
+            <div className="h-3 w-3 rounded-sm bg-emerald-500" /> Saved Response
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-amber-400" /> Flagged For Review
+            <div className="h-3 w-3 rounded-sm bg-amber-400" /> Flagged For Review
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded border bg-slate-50" /> Not Attempted
+            <div className="h-3 w-3 rounded-sm border bg-slate-50" /> Not Attempted
           </div>
         </div>
       </aside>
@@ -346,7 +346,7 @@ export default function ExamPage({ user }: ExamPageProps) {
       {/* ===== MAIN WORKSPACE ===== */}
       <main className="flex flex-1 flex-col">
         {/* Header Block */}
-        <header className="flex items-center justify-between border-b border-slate-100 bg-white px-8 py-5 shadow-sm">
+        <header className="flex items-center justify-between border-b border-slate-100 bg-white px-8 py-5 shadow-xs">
           <div>
             <h1 className="text-lg font-black tracking-tight text-slate-900">
               {exam.title}
@@ -357,7 +357,7 @@ export default function ExamPage({ user }: ExamPageProps) {
           </div>
 
           <div
-            className={`flex items-center gap-2 rounded-2xl border px-5 py-2 font-mono text-sm font-black shadow-sm transition-all ${
+            className={`flex items-center gap-2 rounded-2xl border px-5 py-2 font-mono text-sm font-black shadow-xs transition-all ${
               timeLeft < 120
                 ? 'animate-pulse border-red-100 bg-red-50 text-red-600'
                 : 'border-transparent bg-slate-900 text-white'
@@ -371,7 +371,7 @@ export default function ExamPage({ user }: ExamPageProps) {
 
         {/* Interactive Workspace Area */}
         <section className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-8">
-          <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm">
+          <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-xs">
             <span className="rounded-lg bg-indigo-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
               Question {currentIdx + 1} of {questions.length} (
               {currentQuestion.marks || 1} Marks)
@@ -406,7 +406,7 @@ export default function ExamPage({ user }: ExamPageProps) {
             {(currentQuestion.type === 'short' ||
               currentQuestion.type === 'debug') && (
               <textarea
-                className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-5 text-sm font-medium text-slate-700 shadow-inner outline-none transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-indigo-500"
+                className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-5 text-sm font-medium text-slate-700 shadow-inner outline-hidden transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-indigo-500"
                 rows={6}
                 value={answers[currentQuestion.id] || ''}
                 placeholder="Type your formal code snippet or textual response evaluation here..."

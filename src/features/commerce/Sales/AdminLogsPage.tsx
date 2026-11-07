@@ -95,7 +95,7 @@ export default function AdminLogsPage() {
           <button
             onClick={fetchLiveAuditLogs}
             disabled={loading}
-            className="shadow-xs flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+            className="shadow-2xs flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />{' '}
             Refresh Pipeline
@@ -104,7 +104,7 @@ export default function AdminLogsPage() {
       </div>
 
       {/* SEARCH AND INTERACTION ROUTERS */}
-      <div className="shadow-xs mx-auto mb-6 flex max-w-7xl flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 md:flex-row">
+      <div className="shadow-2xs mx-auto mb-6 flex max-w-7xl flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 md:flex-row">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -112,7 +112,7 @@ export default function AdminLogsPage() {
             placeholder="Filter by student, class name, or tutor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm font-medium transition focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm font-medium transition focus:border-indigo-500 focus:outline-hidden focus:ring-4 focus:ring-indigo-500/10"
           />
         </div>
 
@@ -139,7 +139,7 @@ export default function AdminLogsPage() {
       </div>
 
       {/* CORE MATRIX RENDER ENGINE */}
-      <div className="shadow-xs mx-auto max-w-7xl overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="shadow-2xs mx-auto max-w-7xl overflow-hidden rounded-xl border border-slate-200 bg-white">
         {loading ? (
           <div className="flex flex-col items-center justify-center space-y-3 p-24 text-center">
             <RefreshCw className="h-8 w-8 animate-spin text-indigo-600" />
@@ -183,7 +183,7 @@ export default function AdminLogsPage() {
                         {log.students?.full_name || 'Corrupted Record Name'}
                       </td>
                       <td className="p-4">
-                        <span className="rounded bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
+                        <span className="rounded-sm bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
                           {log.calendar_events?.title || 'Undefined Instance'}
                         </span>
                       </td>
@@ -272,14 +272,14 @@ export default function AdminLogsPage() {
 //         </div>
 
 //         <div className="flex items-center gap-3">
-//           <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition shadow-sm text-slate-600">
+//           <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition shadow-xs text-slate-600">
 //             <Download className="w-4 h-4" /> Export CSV
 //           </button>
 //         </div>
 //       </div>
 
 //       {/* Control Bar */}
-//       <div className="max-w-7xl mx-auto mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+//       <div className="max-w-7xl mx-auto mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-4 items-center justify-between">
 //         {/* Search */}
 //         <div className="relative w-full md:w-80">
 //           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -288,7 +288,7 @@ export default function AdminLogsPage() {
 //             placeholder="Search action, user, or details..."
 //             value={searchTerm}
 //             onChange={(e) => setSearchTerm(e.target.value)}
-//             className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+//             className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
 //           />
 //         </div>
 
@@ -312,7 +312,7 @@ export default function AdminLogsPage() {
 //       </div>
 
 //       {/* Logs Table */}
-//       <div className="max-w-7xl mx-auto bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+//       <div className="max-w-7xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
 //         <div className="overflow-x-auto">
 //           <table className="w-full text-left border-collapse">
 //             <thead>

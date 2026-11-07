@@ -56,7 +56,7 @@ function NotesNavigation({
       </button>
 
       <h3
-        className={`mb-4 px-2 text-xs font-black uppercase tracking-widest ${darkMode ? 'text-gray-400' : 'text-gray-500'} opacity-70`}
+        className={`mb-4 px-2 text-xs font-black tracking-widest uppercase ${darkMode ? 'text-gray-400' : 'text-gray-500'} opacity-70`}
       >
         {topic.title}
       </h3>
@@ -69,7 +69,7 @@ function NotesNavigation({
             className={`flex w-full items-center justify-between rounded-xl border-l-4 p-3 text-left font-bold transition-all ${
               darkMode
                 ? 'border-indigo-500 bg-gray-700 text-gray-200 hover:bg-gray-600'
-                : 'border-yellow-400 bg-white text-gray-800 shadow-sm hover:bg-yellow-50'
+                : 'border-yellow-400 bg-white text-gray-800 shadow-xs hover:bg-yellow-50'
             }`}
           >
             <span className="truncate text-sm">{n.title}</span>
@@ -283,7 +283,7 @@ export default function LearningPage({ user }) {
                 </h2>
 
                 <div
-                  className={`prose ${darkMode ? 'prose-invert text-gray-200' : 'text-gray-800'} mb-10 max-w-none font-medium leading-relaxed`}
+                  className={`prose ${darkMode ? 'text-gray-200 prose-invert' : 'text-gray-800'} mb-10 max-w-none leading-relaxed font-medium`}
                 >
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
@@ -295,14 +295,14 @@ export default function LearningPage({ user }) {
                             style={darkMode ? materialDark : vscDarkPlus}
                             language={match[1]}
                             PreTag="div"
-                            className="my-4 rounded-xl border border-opacity-10 shadow-inner"
+                            className="border-opacity-10 my-4 rounded-xl border shadow-inner"
                             {...props}
                           >
                             {String(children).replace(/\n$/, '')}
                           </SyntaxHighlighter>
                         ) : (
                           <code
-                            className="rounded bg-indigo-100 px-2 py-0.5 font-mono font-bold text-indigo-600 dark:bg-gray-700 dark:text-green-300"
+                            className="rounded-sm bg-indigo-100 px-2 py-0.5 font-mono font-bold text-indigo-600 dark:bg-gray-700 dark:text-green-300"
                             {...props}
                           >
                             {children}

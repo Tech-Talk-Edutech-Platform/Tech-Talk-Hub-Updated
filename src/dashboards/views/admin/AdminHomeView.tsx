@@ -162,7 +162,7 @@ export default function AdminHomeView({ userId, role }) {
         <div className="col-span-12 flex flex-col gap-6 xl:col-span-8">
           {/* REPORTED TECHNICAL & SUPPORT ISSUES */}
           {(role === 'owner' || role === 'tech_admin') && (
-            <div className="space-y-6 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5 md:p-8">
+            <div className="space-y-6 rounded-[32px] border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5 md:p-8">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-rose-500 dark:border-rose-500/20 dark:bg-rose-500/10">
@@ -221,7 +221,7 @@ export default function AdminHomeView({ userId, role }) {
           )}
 
           {/* INTERNAL CHAT / MESSAGING WIDGET */}
-          <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5 md:p-8">
+          <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5 md:p-8">
             <Messages userId={userId} isAdmin={true} />
           </div>
         </div>
@@ -240,7 +240,7 @@ export default function AdminHomeView({ userId, role }) {
             <div className="relative z-10 space-y-3">
               <Link
                 to="/calendar"
-                className="flex w-full items-center justify-between rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-xs font-black uppercase tracking-wider shadow-md shadow-purple-950/40 transition-all hover:from-purple-700 hover:to-indigo-700 active:scale-[0.99]"
+                className="flex w-full items-center justify-between rounded-2xl border border-purple-500/30 bg-linear-to-r from-purple-600 to-indigo-600 p-4 text-xs font-black uppercase tracking-wider shadow-md shadow-purple-950/40 transition-all hover:from-purple-700 hover:to-indigo-700 active:scale-[0.99]"
               >
                 <span>📅 Open Global Calendar</span>
                 <Plus size={14} />
@@ -292,7 +292,7 @@ export default function AdminHomeView({ userId, role }) {
           </div>
 
           {/* LIVE CLASS MONITOR */}
-          <div className="space-y-4 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div className="space-y-4 rounded-[32px] border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5">
             <h3 className="flex items-center gap-2 text-sm font-black text-gray-900 dark:text-white">
               <Activity
                 size={16}
@@ -327,7 +327,7 @@ export default function AdminHomeView({ userId, role }) {
                         notifyTutor(c.tutor_id, `Confirmed: ${c.title}`)
                         toast.success('Pinged tutor successfully!')
                       }}
-                      className="shadow-xs shrink-0 rounded-xl border border-gray-100 bg-white p-2.5 text-emerald-600 transition-all hover:bg-emerald-50 dark:border-white/10 dark:bg-white/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                      className="shadow-2xs shrink-0 rounded-xl border border-gray-100 bg-white p-2.5 text-emerald-600 transition-all hover:bg-emerald-50 dark:border-white/10 dark:bg-white/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
                       title="Ping Tutor"
                     >
                       <CheckCircle2 size={14} />

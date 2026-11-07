@@ -73,7 +73,7 @@ export default function MarketerDashboard({ currentMarketerId }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    navigate('/')
+    void navigate('/login', { replace: true })
   }
 
   const copyReferralLink = (code) => {
@@ -160,7 +160,7 @@ export default function MarketerDashboard({ currentMarketerId }) {
             <p className="mt-1 text-xs text-slate-400">
               {totalConversions}/4 required
             </p>
-            <div className="mt-3 h-2 rounded bg-slate-800">
+            <div className="mt-3 h-2 rounded-sm bg-slate-800">
               <div
                 className={`h-full ${eligible ? 'bg-green-500' : 'bg-indigo-500'}`}
                 style={{
@@ -215,7 +215,7 @@ export default function MarketerDashboard({ currentMarketerId }) {
                       +KES {c.calculated_commission}
                     </p>
                     <span
-                      className={`rounded px-2 py-1 text-xs ${c.status === 'paid' ? 'bg-green-900 text-green-400' : 'bg-amber-900 text-amber-400'}`}
+                      className={`rounded-sm px-2 py-1 text-xs ${c.status === 'paid' ? 'bg-green-900 text-green-400' : 'bg-amber-900 text-amber-400'}`}
                     >
                       {c.status}
                     </span>

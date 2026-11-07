@@ -109,38 +109,38 @@ export default function SalesDashboard() {
   return (
     <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2 lg:grid-cols-3">
       {/* KPI Cards */}
-      <div className="rounded-xl bg-white p-4 shadow">
+      <div className="rounded-xl bg-white p-4 shadow-sm">
         <h3 className="mb-2 font-bold text-gray-700">Calls Today</h3>
         <p className="text-2xl font-black">{kpis.callsToday}</p>
         <small>Talk Time: {Math.floor(kpis.talkTimeToday / 60)} min</small>
       </div>
 
-      <div className="rounded-xl bg-white p-4 shadow">
+      <div className="rounded-xl bg-white p-4 shadow-sm">
         <h3 className="mb-2 font-bold text-gray-700">Calls This Week</h3>
         <p className="text-2xl font-black">{kpis.callsWeek}</p>
         <small>Talk Time: {Math.floor(kpis.talkTimeWeek / 60)} min</small>
       </div>
 
-      <div className="rounded-xl bg-white p-4 shadow">
+      <div className="rounded-xl bg-white p-4 shadow-sm">
         <h3 className="mb-2 font-bold text-gray-700">Leads Progressed Today</h3>
         <p className="text-2xl font-black">{kpis.leadsProgressedToday}</p>
       </div>
 
-      <div className="rounded-xl bg-white p-4 shadow">
+      <div className="rounded-xl bg-white p-4 shadow-sm">
         <h3 className="mb-2 font-bold text-gray-700">
           Leads Progressed This Week
         </h3>
         <p className="text-2xl font-black">{kpis.leadsProgressedWeek}</p>
       </div>
 
-      <div className="rounded-xl bg-white p-4 shadow">
+      <div className="rounded-xl bg-white p-4 shadow-sm">
         <h3 className="mb-2 font-bold text-gray-700">Follow-ups Today</h3>
         <p className="text-xl font-black">
           {kpis.followupRateToday.completed} / {kpis.followupRateToday.due}
         </p>
       </div>
 
-      <div className="rounded-xl bg-white p-4 shadow">
+      <div className="rounded-xl bg-white p-4 shadow-sm">
         <h3 className="mb-2 font-bold text-gray-700">Follow-ups This Week</h3>
         <p className="text-xl font-black">
           {kpis.followupRateWeek.completed} / {kpis.followupRateWeek.due}
@@ -148,7 +148,7 @@ export default function SalesDashboard() {
       </div>
 
       {/* Leaderboard Today */}
-      <div className="col-span-1 rounded-xl bg-white p-4 shadow md:col-span-2">
+      <div className="col-span-1 rounded-xl bg-white p-4 shadow-sm md:col-span-2">
         <h3 className="mb-2 font-bold text-gray-700">Leaderboard Today</h3>
         <ul>
           {kpis.leaderboardToday.map((a, idx) => (
@@ -165,7 +165,7 @@ export default function SalesDashboard() {
       </div>
 
       {/* Leaderboard Week */}
-      <div className="col-span-1 rounded-xl bg-white p-4 shadow md:col-span-2">
+      <div className="col-span-1 rounded-xl bg-white p-4 shadow-sm md:col-span-2">
         <h3 className="mb-2 font-bold text-gray-700">Leaderboard This Week</h3>
         <ul>
           {kpis.leaderboardWeek.map((a, idx) => (

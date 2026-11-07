@@ -14,8 +14,10 @@ import {
   Camera,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { useNavigate } from 'react-router-dom'
 
 export default function AdminSettingsView({ user }) {
+  const navigate = useNavigate()
   const [fullName, setFullName] = useState(user?.full_name || user?.name || '')
   const [email] = useState(user?.email || '')
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '')
@@ -166,7 +168,7 @@ export default function AdminSettingsView({ user }) {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       toast.success('Signed out successfully.')
-      window.location.reload()
+      void navigate('/login', { replace: true })
     } catch (err) {
       toast.error('Failed to sign out.')
     }
@@ -184,7 +186,7 @@ export default function AdminSettingsView({ user }) {
         </p>
       </div>
 
-      <div className="flex items-center justify-between rounded-3xl border border-slate-100 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className="flex items-center justify-between rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
         <div className="flex items-center gap-3">
           <div className="rounded-2xl bg-amber-50 p-3 text-amber-600 dark:bg-amber-500/10">
             {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
@@ -207,7 +209,7 @@ export default function AdminSettingsView({ user }) {
         </button>
       </div>
 
-      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
         <div className="mb-6 flex items-center gap-3">
           <div className="rounded-2xl bg-purple-50 p-3 text-purple-600 dark:bg-purple-500/10">
             <User size={20} />
@@ -265,7 +267,7 @@ export default function AdminSettingsView({ user }) {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
                 required
               />
             </div>
@@ -298,7 +300,7 @@ export default function AdminSettingsView({ user }) {
         </form>
       </div>
 
-      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
         <div className="mb-6 flex items-center gap-3">
           <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/10">
             <Lock size={20} />
@@ -324,7 +326,7 @@ export default function AdminSettingsView({ user }) {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 6 characters"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
                 required
               />
             </div>
@@ -337,7 +339,7 @@ export default function AdminSettingsView({ user }) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter password"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
                 required
               />
             </div>
@@ -359,7 +361,7 @@ export default function AdminSettingsView({ user }) {
         </form>
       </div>
 
-      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
         <div className="mb-6 flex items-center gap-3">
           <div className="rounded-2xl bg-pink-50 p-3 text-pink-600 dark:bg-pink-500/10">
             <Bell size={20} />
@@ -388,7 +390,7 @@ export default function AdminSettingsView({ user }) {
               type="checkbox"
               checked={emailNotifications}
               onChange={() => setEmailNotifications(!emailNotifications)}
-              className="h-5 w-5 cursor-pointer rounded accent-purple-600"
+              className="h-5 w-5 cursor-pointer rounded-sm accent-purple-600"
             />
           </label>
 
@@ -405,7 +407,7 @@ export default function AdminSettingsView({ user }) {
               type="checkbox"
               checked={examReminders}
               onChange={() => setExamReminders(!examReminders)}
-              className="h-5 w-5 cursor-pointer rounded accent-purple-600"
+              className="h-5 w-5 cursor-pointer rounded-sm accent-purple-600"
             />
           </label>
         </div>
@@ -423,7 +425,7 @@ export default function AdminSettingsView({ user }) {
           </div>
           <button
             onClick={() => toast.success('Settings updated successfully!')}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-sm"
+            className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-xs"
           >
             Configure
           </button>
@@ -442,14 +444,14 @@ export default function AdminSettingsView({ user }) {
             onClick={() =>
               toast.error('Action requires Master Owner privileges.')
             }
-            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-sm"
+            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-xs"
           >
             Toggle
           </button>
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-3xl border border-red-100 bg-red-50/50 p-8 shadow-sm dark:border-red-500/20 dark:bg-red-500/5">
+      <div className="flex items-center justify-between rounded-3xl border border-red-100 bg-red-50/50 p-8 shadow-xs dark:border-red-500/20 dark:bg-red-500/5">
         <div>
           <h3 className="text-base font-bold text-red-600 dark:text-red-400">
             Terminate Session

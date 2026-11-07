@@ -102,7 +102,7 @@ export default function AddPhaseModal({
       </Button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-lg space-y-6 rounded-[32px] border border-white/10 bg-white p-6 shadow-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-xl font-black text-slate-900 dark:text-white">
@@ -134,13 +134,13 @@ export default function AddPhaseModal({
                   required
                   placeholder="Phase Title (e.g., Phase 1: Getting Started)"
                   rules={{ required: 'Please enter a phase title' }}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
                 <textarea
                   rows={2}
                   placeholder="Focus Description..."
                   {...form.register('phaseFocus')}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
                 <FormTextField<PhaseFormValues>
                   name="lessonCount"
@@ -164,7 +164,7 @@ export default function AddPhaseModal({
                         ? Number.parseInt(value, 10) || 8
                         : 8,
                   }}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
 
                 <div className="flex justify-end gap-3 pt-4">

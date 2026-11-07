@@ -86,7 +86,7 @@ const EMPTY_FORM: LeadFormData = {
 }
 
 const inputClass =
-  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'
+  'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-hidden transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'
 
 const labelClass = 'block text-sm font-medium text-slate-700'
 
@@ -230,7 +230,7 @@ function StatCard({
   iconClass: string
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-slate-500">{label}</p>
@@ -298,7 +298,7 @@ function LeadDrawer({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      className="my-0 ml-auto mr-0 h-full max-h-none w-full max-w-xl flex-col border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/40 backdrop:backdrop-blur-sm open:flex"
+      className="my-0 ml-auto mr-0 h-full max-h-none w-full max-w-xl flex-col border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/40 backdrop:backdrop-blur-xs open:flex"
     >
       {children}
     </dialog>
@@ -332,7 +332,7 @@ function Modal({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      className="m-auto max-h-[92vh] w-[calc(100%-1.5rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/50 backdrop:backdrop-blur-sm open:flex"
+      className="m-auto max-h-[92vh] w-[calc(100%-1.5rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/50 backdrop:backdrop-blur-xs open:flex"
     >
       <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
         <div>
@@ -1004,7 +1004,7 @@ export default function LeadsPage() {
               type="button"
               onClick={refreshLeads}
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span>↻</span>
               {loading ? 'Refreshing...' : 'Refresh'}
@@ -1013,7 +1013,7 @@ export default function LeadsPage() {
             <button
               type="button"
               onClick={openCreateForm}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/20"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 focus:outline-hidden focus:ring-4 focus:ring-indigo-500/20"
             >
               <span className="text-lg leading-none">+</span>
               Add Lead
@@ -1113,7 +1113,7 @@ export default function LeadsPage() {
 
         {/* FOLLOW-UP OVERVIEW */}
 
-        <section className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center">
+        <section className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center">
           <div>
             <h2 className="font-semibold text-slate-900">Follow-up overview</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -1166,7 +1166,7 @@ export default function LeadsPage() {
 
         {/* SEARCH AND FILTERS */}
 
-        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-lg text-slate-400">
               ⌕
@@ -1178,7 +1178,7 @@ export default function LeadsPage() {
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search by parent, student, phone, email..."
               aria-label="Search leads"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-10 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-10 text-sm outline-hidden transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
             />
 
             {searchTerm && (
@@ -1259,7 +1259,7 @@ export default function LeadsPage() {
 
         {/* LEADS TABLE */}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
           <div className="flex flex-col justify-between gap-3 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-lg font-bold text-slate-900">All Leads</h2>
@@ -1396,7 +1396,7 @@ export default function LeadsPage() {
                             aria-label={`Change status for ${getLeadName(
                               lead,
                             )}`}
-                            className={`max-w-44 cursor-pointer rounded-full border-0 px-3 py-2 text-xs font-semibold outline-none ring-1 ring-inset focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 ${getStatusStyle(
+                            className={`max-w-44 cursor-pointer rounded-full border-0 px-3 py-2 text-xs font-semibold outline-hidden ring-1 ring-inset focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 ${getStatusStyle(
                               lead.status,
                             )}`}
                           >
@@ -1906,7 +1906,7 @@ export default function LeadsPage() {
                     className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                   >
                     <span className="text-sm text-slate-500">{label}</span>
-                    <span className="break-words text-sm font-medium text-slate-800 sm:text-right">
+                    <span className="wrap-break-word text-sm font-medium text-slate-800 sm:text-right">
                       {value || '—'}
                     </span>
                   </div>

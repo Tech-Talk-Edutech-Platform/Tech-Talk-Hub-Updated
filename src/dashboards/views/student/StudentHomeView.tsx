@@ -96,7 +96,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
 
       <div className="animate-fade-in relative z-10 mx-auto max-w-7xl space-y-8 p-4 md:p-6 lg:p-8">
         {/* WELCOME BANNER HEADER */}
-        <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-[25px] border border-purple-700/30 bg-gradient-to-r from-purple-900 via-purple-800 to-indigo-900 p-6 text-white shadow-2xl sm:rounded-[30px] sm:p-8 md:rounded-[35px] lg:flex-row lg:items-center">
+        <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-[25px] border border-purple-700/30 bg-linear-to-r from-purple-900 via-purple-800 to-indigo-900 p-6 text-white shadow-2xl sm:rounded-[30px] sm:p-8 md:rounded-[35px] lg:flex-row lg:items-center">
           <div className="pointer-events-none absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-pink-500/10 blur-3xl" />
 
           <div className="relative z-10 space-y-3">
@@ -129,19 +129,19 @@ export default function StudentHomeView({ userId }: { userId: string }) {
             </p>
 
             <div className="flex flex-wrap gap-3 pt-2">
-              <div className="shadow-xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
+              <div className="shadow-2xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
                 <Flame className="text-orange-400" size={16} />
                 <span className="text-xs font-bold text-white">
                   {streak} Day Streak
                 </span>
               </div>
-              <div className="shadow-xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
+              <div className="shadow-2xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
                 <Crown className="text-yellow-400" size={16} />
                 <span className="text-xs font-bold text-white">
                   Level {level}
                 </span>
               </div>
-              <div className="shadow-xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
+              <div className="shadow-2xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
                 <Sparkles className="text-pink-400" size={16} />
                 <span className="text-xs font-bold text-white">
                   {clampedScore}% Score
@@ -153,7 +153,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
           <div className="relative z-10 w-full shrink-0 lg:w-auto">
             <div className="min-w-[260px] rounded-3xl border border-white/15 bg-white/10 p-5 shadow-lg backdrop-blur-xl">
               <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-lg text-white shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-r from-purple-500 to-pink-500 text-lg text-white shadow-md">
                   🎯
                 </div>
                 <div>
@@ -177,7 +177,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-purple-400 to-pink-400 transition-all duration-500"
+                    className="h-full rounded-full bg-linear-to-r from-purple-400 to-pink-400 transition-all duration-500"
                     style={{ width: `${clampedScore}%` }}
                   />
                 </div>
@@ -235,7 +235,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                           </div>
                         </div>
 
-                        <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
+                        <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-sm bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
                           Watch Session <ExternalLink size={10} />
                         </span>
                       </a>
@@ -319,8 +319,8 @@ export default function StudentHomeView({ userId }: { userId: string }) {
               </h3>
               <div className="relative h-40 w-32">
                 <div className="absolute inset-0 rounded-full bg-purple-400/20 blur-3xl" />
-                <div className="absolute left-1/2 top-0 z-20 h-4 w-20 -translate-x-1/2 rounded-full bg-gradient-to-b from-purple-600 to-indigo-600 shadow-md" />
-                <div className="absolute top-3 h-36 w-full overflow-hidden rounded-[2.2rem] border-[6px] border-white bg-gradient-to-b from-purple-100/90 to-indigo-200/90 shadow-xl backdrop-blur-md dark:border-purple-500/30 dark:from-purple-900/40 dark:to-indigo-950/50">
+                <div className="absolute left-1/2 top-0 z-20 h-4 w-20 -translate-x-1/2 rounded-full bg-linear-to-b from-purple-600 to-indigo-600 shadow-md" />
+                <div className="absolute top-3 h-36 w-full overflow-hidden rounded-[2.2rem] border-[6px] border-white bg-linear-to-b from-purple-100/90 to-indigo-200/90 shadow-xl backdrop-blur-md dark:border-purple-500/30 dark:from-purple-900/40 dark:to-indigo-950/50">
                   <div className="absolute left-3 top-3 h-20 w-3 rounded-full bg-white/50" />
                   <div className="absolute left-5 top-6 animate-bounce text-xl">
                     ⚙️
@@ -362,7 +362,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
               <div className="pt-3">
                 <Link
                   to="/courses"
-                  className="inline-flex items-center gap-3 rounded-2xl border border-purple-400/30 bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-4 text-sm font-black uppercase tracking-wider text-white shadow-xl shadow-purple-950/30 transition-all hover:scale-105 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98]"
+                  className="inline-flex items-center gap-3 rounded-2xl border border-purple-400/30 bg-linear-to-r from-purple-600 to-indigo-600 px-8 py-4 text-sm font-black uppercase tracking-wider text-white shadow-xl shadow-purple-950/30 transition-all hover:scale-105 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98]"
                 >
                   <span>Continue Learning</span>
                   <Rocket size={18} />

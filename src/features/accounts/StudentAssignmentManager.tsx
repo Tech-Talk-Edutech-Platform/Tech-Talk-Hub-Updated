@@ -161,22 +161,22 @@ export default function StudentAssignmentManager() {
       </button>
       {/* ✅ STATS CARDS */}
       <div className="mb-6 grid grid-cols-4 gap-4">
-        <div className="rounded-xl bg-white p-4 shadow">
+        <div className="rounded-xl bg-white p-4 shadow-sm">
           <p className="text-sm text-gray-500">Total Students</p>
           <h2 className="text-2xl font-bold">{total}</h2>
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow">
+        <div className="rounded-xl bg-white p-4 shadow-sm">
           <p className="text-sm text-gray-500">Course Students</p>
           <h2 className="text-2xl font-bold">{courseCount}</h2>
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow">
+        <div className="rounded-xl bg-white p-4 shadow-sm">
           <p className="text-sm text-gray-500">Trial Students</p>
           <h2 className="text-2xl font-bold">{trialCount}</h2>
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow">
+        <div className="rounded-xl bg-white p-4 shadow-sm">
           <p className="text-sm text-gray-500">Unassigned</p>
           <h2 className="text-2xl font-bold">{unassigned}</h2>
         </div>
