@@ -1,5 +1,5 @@
 // src/pages/Playground.js
-import React, { useState, useEffect, useRef, Suspense } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { python } from '@codemirror/lang-python'
 import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
@@ -53,51 +53,87 @@ const loadSkulpt = (
   setInputPrompt: (prompt: string) => void,
 ) =>
   new Promise<void>((resolve, reject) => {
-    if (window.Sk) return resolve()
+    if (window.Sk) {
+      resolve()
+      return
+    }
+
     const core = document.createElement('script')
     core.src = '/skulpt/skulpt.min.js'
     core.async = true
-    core.onload = () => {
-      const stdlib = document.createElement('script')
-      stdlib.src = '/skulpt/skulpt-stdlib.js'
-      stdlib.async = true
-      stdlib.onload = () => {
-        window.Sk.pre = 'output'
-        window.Sk.configure({
-          output: (text: string) => {
-            const output = document.getElementById('output')
-            if (output) output.innerHTML += text.replace(/\n/g, '<br/>')
-          },
-          read: (x: string) => {
-            if (!window.Sk.builtinFiles?.files[x])
-              throw new Error('File not found: ' + x)
-            return window.Sk.builtinFiles.files[x]
-          },
-          inputfun: async (promptText: string) => {
-            setShowInput(true)
-            setInputPrompt(promptText)
 
-            if (skInputQueue.length === 0) {
-              await new Promise((res) => (skInputResolve = res))
-            }
-            const val = skInputQueue.shift()
+    core.addEventListener(
+      'load',
+      () => {
+        const stdlib = document.createElement('script')
+        stdlib.src = '/skulpt/skulpt-stdlib.js'
+        stdlib.async = true
 
-            const output = document.getElementById('output')
-            if (output) {
-              output.innerHTML += `<span style="color:yellow;">${promptText}</span>`
-              output.innerHTML += `<span style="color:lightblue;">${val}</span><br/>`
-            }
+        stdlib.addEventListener(
+          'load',
+          () => {
+            window.Sk.pre = 'output'
 
-            setShowInput(false)
-            return val
+            window.Sk.configure({
+              output: (text: string) => {
+                const output = document.getElementById('output')
+                if (output) output.innerHTML += text.replace(/\n/g, '<br/>')
+              },
+              read: (x: string) => {
+                const file = window.Sk.builtinFiles?.files[x]
+
+                if (!file) {
+                  throw new Error(`File not found: ${x}`)
+                }
+
+                return file
+              },
+              inputfun: async (promptText: string) => {
+                setShowInput(true)
+                setInputPrompt(promptText)
+
+                if (skInputQueue.length === 0) {
+                  await new Promise<void>((res) => {
+                    skInputResolve = res
+                  })
+                }
+
+                const val = skInputQueue.shift()
+
+                const output = document.getElementById('output')
+
+                if (output) {
+                  output.innerHTML += `<span style="color:yellow;">${promptText}</span>`
+                  output.innerHTML += `<span style="color:lightblue;">${val ?? ''}</span><br/>`
+                }
+
+                setShowInput(false)
+                return val
+              },
+            })
+
+            resolve()
           },
-        })
-        resolve()
-      }
-      stdlib.onerror = () => reject(new Error('Failed to load Skulpt stdlib'))
-      document.body.appendChild(stdlib)
-    }
-    core.onerror = () => reject(new Error('Failed to load Skulpt core'))
+          { once: true },
+        )
+
+        stdlib.addEventListener(
+          'error',
+          () => reject(new Error('Failed to load Skulpt stdlib')),
+          { once: true },
+        )
+
+        document.body.appendChild(stdlib)
+      },
+      { once: true },
+    )
+
+    core.addEventListener(
+      'error',
+      () => reject(new Error('Failed to load Skulpt core')),
+      { once: true },
+    )
+
     document.body.appendChild(core)
   })
 
@@ -114,20 +150,29 @@ export default function Playground({ darkMode }: PlaygroundProps) {
   const [pythonInput, setPythonInput] = useState('')
   const [showInput, setShowInput] = useState(false)
   const [inputPrompt, setInputPrompt] = useState('')
-
-  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [previewDocument, setPreviewDocument] = useState('')
 
   const runPython = async () => {
     try {
       await loadSkulpt(setShowInput, setInputPrompt)
-      document.getElementById('output')!.innerHTML = ''
+
+      const output = document.getElementById('output')
+
+      if (output) {
+        output.innerHTML = ''
+      }
+
       skInputQueue = []
+
       await window.Sk.misceval.asyncToPromise(() =>
         window.Sk.importMainWithBody('<stdin>', false, pythonCode, true),
       )
     } catch (err) {
-      document.getElementById('output')!.innerHTML =
-        `<span style="color:red;">${err.toString()}</span>`
+      const output = document.getElementById('output')
+
+      if (output) {
+        output.textContent = err instanceof Error ? err.message : String(err)
+      }
     }
   }
 
@@ -140,30 +185,51 @@ export default function Playground({ darkMode }: PlaygroundProps) {
 
   // Auto-refresh JS/HTML/CSS preview
   useEffect(() => {
-    if (mode !== 'web') return
-    const timer = setTimeout(() => {
-      const iframe = iframeRef.current
-      if (!iframe) return
-      const doc = iframe.contentDocument || iframe.contentWindow!.document
-      doc.open()
-      doc.write(`
-        <html>
-          <head><style>${cssCode}</style></head>
-          <body>
-            ${htmlCode}
-            <script>
-              console.log = (...args) =>
-                parent.postMessage({ type: 'js-log', message: args.join(' '), isError: false }, '*');
-              window.onerror = (msg, url, line) =>
-                parent.postMessage({ type: 'js-log', message: 'Error: ' + msg + ' at line ' + line, isError: true }, '*');
-              try { ${jsCode} } catch(e) { console.log('Error:', e); }
-            </script>
-          </body>
-        </html>
-      `)
-      doc.close()
+    if (mode !== 'web') {
+      return undefined
+    }
+
+    const timer = window.setTimeout(() => {
+      setPreviewDocument(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>${cssCode}</style>
+        </head>
+        <body>
+          ${htmlCode}
+
+          <script>
+            console.log = (...args) => {
+              parent.postMessage({
+                type: 'js-log',
+                message: args.join(' '),
+                isError: false
+              }, '*');
+            };
+
+            window.onerror = (msg, url, line) => {
+              parent.postMessage({
+                type: 'js-log',
+                message: 'Error: ' + msg + ' at line ' + line,
+                isError: true
+              }, '*');
+            };
+
+            try {
+              ${jsCode}
+            } catch (e) {
+              console.log('Error:', e);
+            }
+          </script>
+        </body>
+      </html>
+    `)
     }, 400)
-    return () => clearTimeout(timer)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [htmlCode, cssCode, jsCode, mode])
 
   // Capture JS console logs
@@ -217,7 +283,7 @@ export default function Playground({ darkMode }: PlaygroundProps) {
               theme={darkMode ? 'dark' : 'light'}
             />
             <button
-              onClick={runPython}
+              onClick={() => void runPython()}
               className="mt-3 rounded-sm bg-primary px-4 py-2 text-white"
             >
               ▶️ Run Python
@@ -234,7 +300,6 @@ export default function Playground({ darkMode }: PlaygroundProps) {
                   }}
                   className="flex-1 rounded-sm border p-2"
                   placeholder={inputPrompt || 'Type input and press Enter...'}
-                  autoFocus
                 />
                 <button
                   onClick={submitInput}
@@ -293,8 +358,9 @@ export default function Playground({ darkMode }: PlaygroundProps) {
               />
             </div>
             <iframe
-              ref={iframeRef}
-              title="preview"
+              title="Code preview"
+              srcDoc={previewDocument}
+              sandbox="allow-scripts"
               className="mt-3 h-64 w-full rounded-sm border"
             />
             <button
