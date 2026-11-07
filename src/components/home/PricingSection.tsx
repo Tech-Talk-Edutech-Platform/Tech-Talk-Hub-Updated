@@ -123,7 +123,7 @@ export function PricingSection() {
               </p>
 
               <Link
-                to="/book-class"
+                to="/book"
                 className="group mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#FF3F7F] transition hover:text-[#E93470]"
               >
                 Book a Free Trial

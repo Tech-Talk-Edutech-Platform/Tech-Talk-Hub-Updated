@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { COMMERCE_PATHS } from '../../data/navigation'
-import { DASHBOARD_URL } from '../../data/site'
 import { useCart } from '../../hooks/useCart'
 import { useFavoriteCount } from '../../hooks/useFavoriteCount'
 import { useScrolled } from '../../hooks/useScrolled'
@@ -86,14 +85,12 @@ export function NavBar() {
 
         {/* Desktop actions */}
         <div className="hidden items-center gap-3 lg:flex">
-          <a
-            href={DASHBOARD_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            to="/login"
             className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
           >
             Login
-          </a>
+          </Link>
 
           {isCommercePage ? (
             <>
@@ -125,7 +122,7 @@ export function NavBar() {
           )}
 
           <Link
-            to="/book-class"
+            to="/book"
             className="rounded-xl bg-secondary px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-secondary/20"
           >
             Book Trial

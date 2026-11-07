@@ -2,7 +2,12 @@ import { Heart, ShoppingCart } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { LEARNING_PATHS } from '../../data/navigation'
-import { DASHBOARD_URL } from '../../data/site'
+
+declare module 'react' {
+  interface HTMLAttributes<T> {
+    inert?: boolean
+  }
+}
 
 type MobileMenuProps = {
   isOpen: boolean
@@ -116,14 +121,13 @@ export function MobileMenu({
 
         <div className="my-2 border-t" />
 
-        <a
-          href={DASHBOARD_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to="/login"
+          onClick={onNavigate}
           className="rounded-xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold"
         >
           Login
-        </a>
+        </Link>
 
         {!isCommercePage && (
           <Link
@@ -136,7 +140,7 @@ export function MobileMenu({
         )}
 
         <Link
-          to="/book-class"
+          to="/book"
           onClick={onNavigate}
           className="rounded-xl bg-secondary px-4 py-3.5 text-center text-sm font-bold text-white"
         >

@@ -1,4 +1,8 @@
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+/* Dashboards toggle dark mode with a `.dark` class on an ancestor. */
+@custom-variant dark (&:is(.dark *));
 
 /* 1. Define base variables in the layer base */
 @layer base {
@@ -359,5 +363,138 @@
   .reaction-float {
     animation-name: fade-out-late !important;
     transform: translate(-50%, -80px) !important;
+  }
+}
+
+/*
+  5. Dashboards (ported from the dashboard app's Tailwind v3 setup)
+  Public site pages set <html data-app="site"> and the classroom sets
+  data-app="classroom"; everything below that is scoped with
+  :where(html:not([data-app])) applies to the dashboards only.
+*/
+@theme {
+  --color-text: #333333;
+  --color-funPop: #ffeb3b;
+
+  --color-dashboard-canvas: #f8fafc;
+  --color-dashboard-night: #0b1020;
+
+  --color-heroGradientStart: #3f51b5;
+  --color-heroGradientMiddle: #ff4081;
+  --color-heroGradientEnd: #00bfa5;
+
+  --animate-smoothPulse: smoothPulse 3s ease-in-out infinite;
+}
+
+/*
+  Tailwind v4 changed the default border colour to `currentcolor`. The
+  dashboards were written for v3's gray-200 default, so keep it for them.
+*/
+@layer base {
+  :where(html:not([data-app]))
+    :where(*, ::after, ::before, ::backdrop, ::file-selector-button) {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  :where(html:not([data-app])) body {
+    background-color: var(--color-gray-50);
+    color: var(--color-gray-900);
+  }
+
+  /*
+    The old website had no `text` colour token, so its `text-text` /
+    `bg-text/5` classes generated nothing and the text inherited its colour.
+    Keep them inert on the website so it renders as it always did.
+  */
+  :where(html[data-app='site']) {
+    --color-text: initial;
+  }
+}
+
+.highlight-slot {
+  background-color: #dcfce7 !important;
+  border: 2px solid #22c55e !important;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rotateSlow {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.8s ease forwards;
+}
+
+.animate-rotate-slow {
+  animation: rotateSlow 20s linear infinite;
+}
+
+.animate-rotate-slow.reverse {
+  animation-direction: reverse;
+}
+
+.animate-float-slow {
+  animation: floatSlow 4s ease-in-out infinite;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
+
+.delay-500 {
+  animation-delay: 0.5s;
+}
+
+.delay-1000 {
+  animation-delay: 1s;
+}
+
+.focus\:ring-gradient-blue-purple:focus {
+  --tw-ring-color: #7f9cf5;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #receipt,
+  #receipt * {
+    visibility: visible;
+  }
+
+  #receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
   }
 }

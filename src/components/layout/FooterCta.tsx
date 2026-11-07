@@ -27,7 +27,7 @@ export function FooterCta() {
         </div>
 
         <Link
-          to="/book-class"
+          to="/book"
           className="group inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#FF3F7F] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-pink-950/20 transition-all hover:-translate-y-0.5 hover:bg-[#E93470]"
         >
           Book a Free Trial

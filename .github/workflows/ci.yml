@@ -29,9 +29,13 @@ jobs:
         with:
           bun-version: 1.4.0
 
+      # server/ is a separate npm package with its own lockfile; typecheck and
+      # build also typecheck it, so it needs its own install.
       - name: Install dependencies
         id: install
-        run: bun install --frozen-lockfile
+        run: |
+          bun install --frozen-lockfile
+          npm ci --prefix server
 
       - name: Check formatting (Prettier)
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}

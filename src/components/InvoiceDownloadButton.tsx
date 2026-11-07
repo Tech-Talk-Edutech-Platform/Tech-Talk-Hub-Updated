@@ -1,0 +1,316 @@
+// InvoiceDownloadButton.js
+import { useState, useEffect } from 'react'
+import {
+  PDFDownloadLink,
+  Page,
+  Text,
+  View,
+  Document,
+  StyleSheet,
+  Image,
+} from '@react-pdf/renderer'
+import { plannedDb } from '../lib/plannedDb'
+import type { PlannedRow } from '../types/plannedTables'
+
+type Invoice = PlannedRow<'invoices'>
+type Customer = PlannedRow<'customers'>
+type InvoiceItem = PlannedRow<'invoice_items'>
+
+// PDF Styles
+const styles = StyleSheet.create({
+  page: { padding: 30, fontSize: 12 },
+  section: { marginBottom: 10 },
+  header: {
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontWeight: 'bold',
+  },
+  table: {
+    width: 'auto',
+    borderStyle: 'solid',
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  tableRow: { flexDirection: 'row' },
+  tableColHeader: {
+    width: '25%',
+    borderStyle: 'solid',
+    borderWidth: 1,
+    backgroundColor: '#f3f3f3',
+    padding: 5,
+    fontWeight: 'bold',
+  },
+  tableCol: { width: '25%', borderStyle: 'solid', borderWidth: 1, padding: 5 },
+  logo: { width: 60, height: 60, marginBottom: 10, alignSelf: 'center' },
+  total: { textAlign: 'right', fontWeight: 'bold', marginTop: 5 },
+  badge: {
+    alignSelf: 'flex-end',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+})
+
+// PDF Document Component
+interface InvoicePDFProps {
+  invoice: Invoice
+  customer: Customer
+  items: InvoiceItem[]
+  logoUrl?: string
+}
+
+const InvoicePDF = ({ invoice, customer, items, logoUrl }: InvoicePDFProps) => {
+  // Determine badge color and text
+  const badgeText = invoice.paid ? 'PAID' : 'UNPAID'
+  const badgeColor = invoice.paid ? '#28a745' : '#dc3545'
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {logoUrl && <Image src={logoUrl} style={styles.logo} />}
+        <Text style={styles.header}>Receipt / Invoice</Text>
+
+        {/* Badge */}
+        <Text style={{ ...styles.badge, backgroundColor: badgeColor }}>
+          {badgeText}
+        </Text>
+
+        {/* Customer Info */}
+        <View style={styles.section}>
+          <Text>Invoice #: {invoice.invoice_number}</Text>
+          <Text>
+            Date: {new Date(invoice.date_created).toLocaleDateString()}
+          </Text>
+          {invoice.due_date && (
+            <Text>
+              Due Date: {new Date(invoice.due_date).toLocaleDateString()}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Customer:</Text>
+          <Text>{customer.name}</Text>
+          <Text>{customer.email}</Text>
+          <Text>{customer.phone}</Text>
+        </View>
+
+        {/* Items Table */}
+        <View style={styles.table}>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableColHeader}>Description</Text>
+            <Text style={styles.tableColHeader}>Qty</Text>
+            <Text style={styles.tableColHeader}>Unit Price</Text>
+            <Text style={styles.tableColHeader}>Total</Text>
+          </View>
+          {items.map((item) => (
+            <View key={item.id} style={styles.tableRow}>
+              <Text style={styles.tableCol}>{item.description}</Text>
+              <Text style={styles.tableCol}>{item.quantity}</Text>
+              <Text style={styles.tableCol}>
+                KES {item.unit_price.toLocaleString()}
+              </Text>
+              <Text style={styles.tableCol}>
+                KES {(item.quantity * item.unit_price).toLocaleString()}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.total}>
+          Grand Total: KES {invoice.total.toLocaleString()}
+        </Text>
+        <Text style={{ marginTop: 20, fontSize: 10, color: '#888' }}>
+          Thank you for your business!
+        </Text>
+      </Page>
+    </Document>
+  )
+}
+
+async function fetchInvoiceData(invoiceId: string) {
+  const { data: inv, error } = await plannedDb
+    .from('invoices')
+    .select('*')
+    .eq('id', invoiceId)
+    .single()
+  if (error) throw error
+
+  const { data: cust } = await plannedDb
+    .from('customers')
+    .select('*')
+    .eq('id', inv.customer_id)
+    .single()
+  const { data: invItems } = await plannedDb
+    .from('invoice_items')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+
+  return { invoice: inv, customer: cust, items: invItems || [] }
+}
+
+interface InvoiceDownloadButtonProps {
+  invoice?: Invoice
+  customer?: Customer
+  items?: InvoiceItem[]
+  logoUrl?: string
+  /** When given, the invoice, customer and items are loaded from the database. */
+  invoiceId?: string
+}
+
+// Main Button Component
+export default function InvoiceDownloadButton({
+  invoice,
+  customer,
+  items,
+  logoUrl,
+  invoiceId,
+}: InvoiceDownloadButtonProps) {
+  const [fetchedInvoice, setFetchedInvoice] = useState(invoice)
+  const [fetchedCustomer, setFetchedCustomer] = useState(customer)
+  const [fetchedItems, setFetchedItems] = useState(items || [])
+
+  // Fetch from Supabase if invoiceId is provided
+  useEffect(() => {
+    if (!invoiceId) return undefined
+
+    let cancelled = false
+    fetchInvoiceData(invoiceId).then(
+      (data) => {
+        if (cancelled) return
+        setFetchedInvoice(data.invoice)
+        setFetchedCustomer(data.customer ?? undefined)
+        setFetchedItems(data.items)
+      },
+      () => undefined, // Leave the loading message up when the invoice isn't found
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [invoiceId])
+
+  if (!fetchedInvoice || !fetchedCustomer) return <p>Loading invoice...</p>
+
+  return (
+    <PDFDownloadLink
+      document={
+        <InvoicePDF
+          invoice={fetchedInvoice}
+          customer={fetchedCustomer}
+          items={fetchedItems}
+          logoUrl={logoUrl}
+        />
+      }
+      fileName={`Invoice-${fetchedInvoice.invoice_number}.pdf`}
+      className="rounded-sm bg-green-600 px-4 py-2 font-bold text-white transition hover:bg-green-700"
+    >
+      {({ loading }) =>
+        loading ? 'Generating PDF...' : 'Download PDF Receipt'
+      }
+    </PDFDownloadLink>
+  )
+}
+// // InvoiceDownloadButton.js
+// import React, { useState, useEffect } from "react";
+// import { PDFDownloadLink, Page, Text, View, Document, StyleSheet, Image } from "@react-pdf/renderer";
+// import { supabase } from "../supabase"; // adjust path if needed
+
+// // PDF Styles
+// const styles = StyleSheet.create({
+//   page: { padding: 30, fontSize: 12 },
+//   section: { marginBottom: 10 },
+//   header: { fontSize: 18, textAlign: "center", marginBottom: 20, fontWeight: "bold" },
+//   table: { display: "table", width: "auto", borderStyle: "solid", borderWidth: 1, marginBottom: 10 },
+//   tableRow: { flexDirection: "row" },
+//   tableColHeader: { width: "25%", borderStyle: "solid", borderWidth: 1, backgroundColor: "#f3f3f3", padding: 5, fontWeight: "bold" },
+//   tableCol: { width: "25%", borderStyle: "solid", borderWidth: 1, padding: 5 },
+//   logo: { width: 60, height: 60, marginBottom: 10, alignSelf: "center" },
+//   total: { textAlign: "right", fontWeight: "bold", marginTop: 5 }
+// });
+
+// // PDF Document Component
+// const InvoicePDF = ({ invoice, customer, items, logoUrl }) => (
+//   <Document>
+//     <Page size="A4" style={styles.page}>
+//       {logoUrl && <Image src={logoUrl} style={styles.logo} />}
+//       <Text style={styles.header}>Receipt / Invoice</Text>
+
+//       {/* Customer Info */}
+//       <View style={styles.section}>
+//         <Text>Invoice #: {invoice.invoice_number}</Text>
+//         <Text>Date: {new Date(invoice.date_created).toLocaleDateString()}</Text>
+//         {invoice.due_date && <Text>Due Date: {new Date(invoice.due_date).toLocaleDateString()}</Text>}
+//       </View>
+
+//       <View style={styles.section}>
+//         <Text style={{ fontWeight: "bold", marginBottom: 5 }}>Customer:</Text>
+//         <Text>{customer.name}</Text>
+//         <Text>{customer.email}</Text>
+//         <Text>{customer.phone}</Text>
+//       </View>
+
+//       {/* Items Table */}
+//       <View style={styles.table}>
+//         <View style={styles.tableRow}>
+//           <Text style={styles.tableColHeader}>Description</Text>
+//           <Text style={styles.tableColHeader}>Qty</Text>
+//           <Text style={styles.tableColHeader}>Unit Price</Text>
+//           <Text style={styles.tableColHeader}>Total</Text>
+//         </View>
+//         {items.map((item, i) => (
+//           <View key={i} style={styles.tableRow}>
+//             <Text style={styles.tableCol}>{item.description}</Text>
+//             <Text style={styles.tableCol}>{item.quantity}</Text>
+//             <Text style={styles.tableCol}>KES {item.unit_price.toLocaleString()}</Text>
+//             <Text style={styles.tableCol}>KES {(item.quantity * item.unit_price).toLocaleString()}</Text>
+//           </View>
+//         ))}
+//       </View>
+
+//       <Text style={styles.total}>Grand Total: KES {invoice.total.toLocaleString()}</Text>
+//       <Text style={{ marginTop: 20, fontSize: 10, color: "#888" }}>Thank you for your business!</Text>
+//     </Page>
+//   </Document>
+// );
+
+// // Main Button Component
+// export default function InvoiceDownloadButton({ invoice, customer, items, logoUrl, invoiceId }) {
+//   const [fetchedInvoice, setFetchedInvoice] = useState(invoice);
+//   const [fetchedCustomer, setFetchedCustomer] = useState(customer);
+//   const [fetchedItems, setFetchedItems] = useState(items || []);
+
+//   // fetch from Supabase if invoiceId is provided
+//   useEffect(() => {
+//     if (!invoiceId) return;
+
+//     const fetchInvoiceData = async () => {
+//       const { data: inv } = await supabase.from("invoices").select("*").eq("id", invoiceId).single();
+//       if (!inv) return;
+
+//       const { data: cust } = await supabase.from("customers").select("*").eq("id", inv.customer_id).single();
+//       const { data: invItems } = await supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId);
+
+//       setFetchedInvoice(inv);
+//       setFetchedCustomer(cust);
+//       setFetchedItems(invItems || []);
+//     };
+
+//     fetchInvoiceData();
+//   }, [invoiceId]);
+
+//   if (!fetchedInvoice || !fetchedCustomer) return <p>Loading invoice...</p>;
+
+//   return (
+//     <PDFDownloadLink
+//       document={<InvoicePDF invoice={fetchedInvoice} customer={fetchedCustomer} items={fetchedItems} logoUrl={logoUrl} />}
+//       fileName={`Invoice-${fetchedInvoice.invoice_number}.pdf`}
+//       className="bg-green-600 text-white px-4 py-2 rounded-sm font-bold hover:bg-green-700 transition"
+//     >
+//       {({ loading }) => (loading ? "Generating PDF..." : "Download PDF Receipt")}
+//     </PDFDownloadLink>
+//   );
+// }

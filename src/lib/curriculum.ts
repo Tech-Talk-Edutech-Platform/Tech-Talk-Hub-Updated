@@ -14,5 +14,5 @@ export function getLevelHref(title: string | null): string {
     return '/courses/tech-professionals'
   }
 
-  return '/book-class'
+  return '/book'
 }

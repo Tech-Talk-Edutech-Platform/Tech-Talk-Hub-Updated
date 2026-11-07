@@ -1,0 +1,831 @@
+// import React, { useEffect, useState, useCallback, useRef } from "react";
+// import FullCalendar from "@fullcalendar/react";
+// import dayGridPlugin from "@fullcalendar/daygrid";
+// import timeGridPlugin from "@fullcalendar/timegrid";
+// import interactionPlugin from "@fullcalendar/interaction";
+// import { supabase } from "../supabase";
+// import { useNavigate } from "react-router-dom";
+// import { ArrowLeft, X, ChevronDown } from "lucide-react";
+// import toast, { Toaster } from "react-hot-toast";
+// import "../../src/fullcalendar.css";
+
+// // Utility to check if two time ranges overlap
+// const timesOverlap = (start1, end1, start2, end2) => {
+//   return new Date(start1) < new Date(end2) && new Date(end1) > new Date(start2);
+// };
+
+// export default function FullCalendarView() {
+//   const navigate = useNavigate();
+//   const calendarRef = useRef(null);
+
+//   const [reassignEvent, setReassignEvent] = useState(null);
+//   const [selectedNewTutor, setSelectedNewTutor] = useState("");
+//   const [events, setEvents] = useState([]);
+//   const [students, setStudents] = useState([]);
+//   const [trialLeads, setTrialLeads] = useState([]);
+//   const [tutors, setTutors] = useState([]);
+//   const [sidebarOpen, setSidebarOpen] = useState(false);
+//   const [showTrial, setShowTrial] = useState(true);
+//   const [currentUser, setCurrentUser] = useState(null);
+//   const [userRole, setUserRole] = useState(null);
+//   const [loading, setLoading] = useState(false);
+
+//   const isAdminRole = (role) => ["owner", "tech_admin", "operations_admin"].includes(role);
+
+//   const getTutorColor = (id) => {
+//     const colors = ["#eab308", "#3b82f6", "#10b981", "#8b5cf6", "#ee692c", "#f472b6"];
+//     return id ? colors[id.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length] : colors[0];
+//   };
+
+//   const fetchUser = useCallback(async () => {
+//     const { data: { user } } = await supabase.auth.getUser();
+//     if (!user) return;
+//     setCurrentUser(user);
+//     const { data: profile } = await supabase
+//       .from("users")
+//       .select("id, role, full_name")
+//       .eq("id", user.id)
+//       .single();
+//     setUserRole(profile?.role);
+//   }, []);
+
+//   const fetchData = useCallback(async () => {
+//     const { data: tutorsData } = await supabase.from("users").select("id, full_name, personal_meet_link").in("role", ["tutor"]);
+//     setTutors(tutorsData || []);
+
+//     const { data: studentsData } = await supabase.from("students").select("id, full_name, assigned_tutor_id, preferred_time, preferred_date");
+//     setStudents(studentsData || []);
+
+//     const { data: leadsData } = await supabase.from("leads").select("id, student_name, assigned_tutor_id, class_date, class_time");
+//     setTrialLeads(leadsData || []);
+
+//     const { data: calendarData } = await supabase.from("calendar_events").select(`
+//       id, start_time, end_time, tutor_id, meet_link, event_type, title, event_attendance(student_id, students(full_name))
+//     `);
+
+//     const mappedEvents = (calendarData || []).map((e) => {
+//       const studentNames = e.event_attendance?.map(a => a.students?.full_name) || [];
+//       const isFree = studentNames.length === 0 && e.event_type !== 'trial';
+//       const tutorName = tutorsData?.find(t => t.id === e.tutor_id)?.full_name;
+//       const tutorColor = getTutorColor(e.tutor_id);
+
+//       if (userRole === "tutor" && e.tutor_id !== currentUser?.id) return null;
+
+//       const breakEvents = [];
+//       const endTime = new Date(e.end_time);
+//       const breakStart = new Date(endTime);
+//       const breakEnd = new Date(breakStart.getTime() + 15 * 60 * 1000);
+//       breakEvents.push({
+//         id: "break-" + e.id,
+//         start: breakStart,
+//         end: breakEnd,
+//         display: "background",
+//         backgroundColor: "#f3f4f6",
+//         extendedProps: { isTempBreak: true },
+//       });
+
+//       return [
+//         {
+//           id: e.id,
+//           title: isFree ? `Free - ${tutorName}` : (e.title || studentNames.join(", ")),
+//           start: e.start_time,
+//           end: e.end_time,
+//           backgroundColor: isFree ? "#f1f5f9" : tutorColor,
+//           borderColor: tutorColor,
+//           textColor: isFree ? "#334155" : "#fff",
+//           extendedProps: {
+//             tutorId: e.tutor_id,
+//             tutorName,
+//             assigned: !isFree,
+//             type: e.event_type || "course",
+//             meet_link: e.meet_link
+//           },
+//         },
+//         ...breakEvents
+//       ];
+//     }).flat().filter(Boolean);
+
+//     setEvents(mappedEvents);
+//   }, [currentUser, userRole]);
+
+//   useEffect(() => { fetchUser(); }, [fetchUser]);
+//   useEffect(() => { if (currentUser) fetchData(); }, [fetchData, currentUser]);
+
+//   const handleAssign = async (studentId, tutorId, type) => {
+//     if (!tutorId) return;
+//     setLoading(true);
+
+//     try {
+//       const { data: tutor } = await supabase.from("users").select("personal_meet_link, full_name").eq("id", tutorId).single();
+
+//       if (!tutor?.personal_meet_link) {
+//         toast.error("Tutor has no company meeting link set!");
+//         setLoading(false);
+//         return;
+//       }
+
+//       if (type === "trial") {
+//         const lead = trialLeads.find(l => l.id === studentId);
+//         const start = new Date(`${lead.class_date}T${lead.class_time}`);
+
+//         await supabase.from("calendar_events").insert({
+//           tutor_id: tutorId,
+//           start_time: start.toISOString(),
+//           end_time: new Date(start.getTime() + 3600000).toISOString(),
+//           meet_link: tutor.personal_meet_link,
+//           event_type: 'trial',
+//           title: `Trial: ${lead.student_name}`
+//         });
+//         await supabase.from("leads").update({ assigned_tutor_id: tutorId }).eq("id", studentId);
+//       } else {
+//         const slot = events.find(e => e.extendedProps.tutorId === tutorId && !e.extendedProps.assigned && !e.extendedProps.isTempBreak);
+//         if (!slot) { toast.error("No free slot available."); return; }
+
+//         await supabase.from("calendar_events").update({
+//           meet_link: tutor.personal_meet_link,
+//           event_type: 'regular'
+//         }).eq("id", slot.id);
+//         await supabase.from("event_attendance").insert({ student_id: studentId, event_id: slot.id });
+//         await supabase.from("students").update({ assigned_tutor_id: tutorId }).eq("id", studentId);
+//       }
+
+//       toast.success("Booking Confirmed!");
+//       fetchData();
+//     } catch (err) {
+//       toast.error("Booking failed");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const getFreeTutorsForStudent = (student) => {
+//     const sDate = student.class_date || student.preferred_date;
+//     const sTime = student.class_time || student.preferred_time;
+//     if (!sDate || !sTime) return tutors;
+
+//     const desiredStart = new Date(`${sDate}T${sTime}`);
+//     const desiredEnd = new Date(desiredStart.getTime() + 3600000);
+
+//     return tutors.filter(t => {
+//       const hasConflict = events.some(e =>
+//         e.extendedProps.tutorId === t.id &&
+//         e.extendedProps.assigned &&
+//         timesOverlap(desiredStart, desiredEnd, e.start, e.end)
+//       );
+//       return !hasConflict;
+//     });
+//   };
+
+//   const tutorSummary = tutors.map(t => {
+//     const booked = events.filter(e => e.extendedProps.tutorId === t.id && e.extendedProps.assigned).length;
+//     const free = events.filter(e => e.extendedProps.tutorId === t.id && !e.extendedProps.assigned && !e.extendedProps.isTempBreak).length;
+//     return { ...t, booked, free, color: getTutorColor(t.id) };
+//   });
+
+//   const handleSelect = async (info) => {
+//     if (userRole !== "tutor") return;
+//     const start = info.start;
+//     const end = new Date(start.getTime() + 3600000);
+
+//     const hasConflict = events.some(e =>
+//       e.extendedProps?.tutorId === currentUser.id &&
+//       !e.extendedProps?.isTempBreak &&
+//       timesOverlap(start, end, e.start, e.end)
+//     );
+
+//     if (hasConflict) {
+//       toast.error("Time conflict detected");
+//       return;
+//     }
+
+//     const { error } = await supabase.from("calendar_events").insert({
+//       title: "Free Slot",
+//       start_time: start.toISOString(),
+//       end_time: end.toISOString(),
+//       tutor_id: currentUser.id,
+//       event_type: 'regular'
+//     });
+
+//     if (error) toast.error("Failed to create slot");
+//     else { toast.success("Slot Created"); fetchData(); }
+//   };
+
+//   const availableStudents = showTrial ? trialLeads.filter(l => !l.assigned_tutor_id) : students.filter(s => !s.assigned_tutor_id);
+
+//   return (
+//     <div className="flex min-h-screen bg-slate-50 relative">
+//       <Toaster />
+
+//       {sidebarOpen && isAdminRole(userRole) && (
+//         <div className="absolute left-0 top-0 bottom-0 w-80 bg-white p-4 border-r shadow-lg z-50 overflow-y-auto">
+//           <div className="flex justify-between mb-4">
+//             <h2 className="font-bold">Students</h2>
+//             <button onClick={() => setSidebarOpen(false)}><X size={18} /></button>
+//           </div>
+//           <div className="flex gap-2 mb-4">
+//             <button className={`flex-1 py-2 rounded-sm font-bold ${showTrial ? "bg-blue-600 text-white" : "bg-slate-100"}`} onClick={() => setShowTrial(true)}>Trials</button>
+//             <button className={`flex-1 py-2 rounded-sm font-bold ${!showTrial ? "bg-blue-600 text-white" : "bg-slate-100"}`} onClick={() => setShowTrial(false)}>Courses</button>
+//           </div>
+
+//           {availableStudents.map((s) => {
+//             const freeTutors = getFreeTutorsForStudent(s);
+//             return (
+//               <div key={s.id} className="p-4 mb-3 rounded-2xl border bg-white shadow-xs">
+//                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.preferred_date || s.class_date} @ {s.preferred_time || s.class_time}</div>
+//                 <div className="font-bold text-slate-900 mb-3">{showTrial ? s.student_name : s.full_name}</div>
+//                 <select className="w-full p-2 border rounded-xl text-sm outline-hidden focus:ring-2 focus:ring-blue-500" onChange={e => handleAssign(s.id, e.target.value, showTrial ? "trial" : "course")} defaultValue="">
+//                   <option value="" disabled>{freeTutors.length ? "Assign Tutor" : "No Tutors Free"}</option>
+//                   {freeTutors.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+//                 </select>
+//               </div>
+//             )
+//           })}
+//         </div>
+//       )}
+
+//       {!sidebarOpen && isAdminRole(userRole) && <button onClick={() => setSidebarOpen(true)} className="absolute left-0 top-20 z-40 bg-slate-900 text-white px-4 py-3 rounded-r-2xl font-bold shadow-lg">Students</button>}
+
+//       <div className={`flex-1 p-6 transition-all ${sidebarOpen ? "ml-80" : ""}`}>
+//         <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+//           {tutorSummary.map((t, i) => (
+//             <div key={i} className="p-4 rounded-2xl shadow-xs text-white" style={{ backgroundColor: t.color }}>
+//               <div className="font-black text-lg">{t.full_name}</div>
+//               <div className="text-xs opacity-80 font-bold uppercase tracking-tighter">Free: {t.free} | Booked: {t.booked}</div>
+//             </div>
+//           ))}
+//         </div>
+
+//         <div className="flex items-center justify-between mb-6">
+//           <div className="flex items-center gap-4">
+//             <button onClick={() => navigate(-1)} className="p-3 bg-white border rounded-2xl hover:bg-slate-50 transition-colors"><ArrowLeft size={20} /></button>
+//             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Global Schedule</h1>
+//           </div>
+//         </div>
+
+//         <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xs">
+//           <FullCalendar
+//             ref={calendarRef}
+//             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+//             initialView="timeGridWeek"
+//             events={events}
+//             editable={userRole === "tutor"}
+//             selectable={userRole === "tutor"}
+//             select={handleSelect}
+//             headerToolbar={{ left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' }}
+//             allDaySlot={false}
+//             nowIndicator
+//             eventClick={async (info) => {
+//               const isBooked = info.event.extendedProps.assigned;
+//               const { meet_link, type } = info.event.extendedProps;
+
+//               if (isBooked && meet_link) {
+//                 if (window.confirm(`Join ${type} class now?`)) {
+//                   window.open(meet_link, "_blank");
+//                   return;
+//                 }
+//               }
+
+//               if (userRole === "tutor" && !isBooked) {
+//                 if (window.confirm("Delete this free slot?")) {
+//                   await supabase.from("calendar_events").delete().eq("id", info.event.id);
+//                   toast.success("Slot deleted");
+//                   fetchData();
+//                 }
+//               }
+
+//               if (isAdminRole(userRole) && isBooked) {
+//                 setReassignEvent(info.event);
+//                 setSelectedNewTutor(info.event.extendedProps.tutorId);
+//               }
+//             }}
+//           />
+//         </div>
+//       </div>
+
+//       {reassignEvent && (
+//         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-100 p-4">
+//           <div className="bg-white p-8 rounded-[32px] w-full max-w-md shadow-2xl">
+//             <h2 className="text-xl font-black mb-6">Reassign Class</h2>
+//             <select value={selectedNewTutor} onChange={(e) => setSelectedNewTutor(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl font-bold mb-6 outline-hidden">
+//               {tutors.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+//             </select>
+//             <div className="flex gap-3">
+//               <button onClick={() => setReassignEvent(null)} className="flex-1 py-4 bg-slate-100 rounded-2xl font-bold">Cancel</button>
+//               <button onClick={async () => {
+//                 await supabase.from("calendar_events").update({ tutor_id: selectedNewTutor }).eq("id", reassignEvent.id);
+//                 toast.success("Reassigned");
+//                 setReassignEvent(null);
+//                 fetchData();
+//               }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black">Save Change</button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// // }
+import { useEffect, useState } from 'react'
+import FullCalendar from '@fullcalendar/react'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import type { DateSelectArg, EventClickArg } from '@fullcalendar/core'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '../../supabase'
+import { isAdminRole } from '../../types/roles'
+import type { Database, Tables } from '../../types/database'
+import { queryKeys } from '../../lib/queryClient'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, X } from 'lucide-react'
+import { toast, Toaster } from 'react-hot-toast'
+import '../../../src/fullcalendar.css'
+
+type UserRole = Database['public']['Enums']['user_role']
+type ClassType = Database['public']['Enums']['class_type']
+type TutorOption = Pick<Tables<'users'>, 'id' | 'full_name'>
+type StudentOption = Pick<
+  Tables<'users'>,
+  'id' | 'full_name' | 'subscription_tier'
+>
+type TrialLead = Pick<
+  Tables<'leads'>,
+  'id' | 'student_name' | 'assigned_tutor_id' | 'class_date' | 'class_time'
+>
+
+interface ScheduleEvent {
+  id: string
+  title?: string
+  start: string
+  end: string
+  display?: 'background'
+  backgroundColor: string
+  borderColor?: string
+  textColor?: string
+  extendedProps: {
+    tutorId?: string | null
+    assigned?: boolean
+    type?: ClassType | null
+    meet_link?: string | null
+    isTempBreak?: boolean
+  }
+}
+
+interface ScheduleData {
+  tutors: TutorOption[]
+  students: StudentOption[]
+  trialLeads: TrialLead[]
+  events: ScheduleEvent[]
+}
+
+interface Viewer {
+  id: string
+  role: UserRole | null
+}
+
+const EMPTY_SCHEDULE: ScheduleData = {
+  tutors: [],
+  students: [],
+  trialLeads: [],
+  events: [],
+}
+
+const TUTOR_COLORS = [
+  '#eab308',
+  '#3b82f6',
+  '#10b981',
+  '#8b5cf6',
+  '#ee692c',
+  '#f472b6',
+] as const
+
+function getTutorColor(id: string | null): string {
+  return id
+    ? TUTOR_COLORS[
+        id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) %
+          TUTOR_COLORS.length
+      ]
+    : TUTOR_COLORS[0]
+}
+
+async function loadSchedule(viewer: Viewer): Promise<ScheduleData> {
+  const [
+    { data: tutorsData },
+    { data: subscribedData },
+    { data: leadsData },
+    { data: calendarData },
+  ] = await Promise.all([
+    supabase.from('users').select('id, full_name').in('role', ['tutor']),
+    supabase
+      .from('users')
+      .select('id, full_name, subscription_tier')
+      .eq('role', 'student'),
+    supabase
+      .from('leads')
+      .select('id, student_name, assigned_tutor_id, class_date, class_time'),
+    supabase
+      .from('calendar_events')
+      .select(
+        'id, start_time, end_time, tutor_id, meet_link, class_type, title, event_attendance(student_id)',
+      ),
+  ])
+
+  const tutors = tutorsData ?? []
+
+  const events = (calendarData ?? []).flatMap((e): ScheduleEvent[] => {
+    // Logic: Admins see everything. Tutors only see their own slots.
+    if (viewer.role === 'tutor' && e.tutor_id !== viewer.id) return []
+
+    const isBooked = e.event_attendance.length > 0
+    const tutorName =
+      tutors.find((t) => t.id === e.tutor_id)?.full_name || 'Tutor'
+    const tutorColor = getTutorColor(e.tutor_id)
+
+    const mainEvent: ScheduleEvent = {
+      id: e.id,
+      title: isBooked ? e.title || 'Booked Class' : `Free - ${tutorName}`,
+      start: e.start_time, // FullCalendar reads ISO strings directly
+      end: e.end_time,
+      backgroundColor: isBooked ? tutorColor : '#f1f5f9',
+      borderColor: tutorColor,
+      textColor: isBooked ? '#fff' : '#334155',
+      extendedProps: {
+        tutorId: e.tutor_id,
+        assigned: isBooked,
+        type: e.class_type,
+        meet_link: e.meet_link,
+      },
+    }
+
+    // Add the 15-minute break visual
+    const breakEvent: ScheduleEvent = {
+      id: `break-${e.id}`,
+      start: e.end_time,
+      end: new Date(
+        new Date(e.end_time).getTime() + 15 * 60 * 1000,
+      ).toISOString(),
+      display: 'background',
+      backgroundColor: '#f3f4f6',
+      extendedProps: { isTempBreak: true },
+    }
+
+    return [mainEvent, breakEvent]
+  })
+
+  return {
+    tutors,
+    students: subscribedData ?? [],
+    trialLeads: leadsData ?? [],
+    events,
+  }
+}
+
+export default function FullCalendarView() {
+  const navigate = useNavigate()
+  const [reassignEventId, setReassignEventId] = useState<string | null>(null)
+  const [selectedNewTutor, setSelectedNewTutor] = useState('')
+
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showTrial, setShowTrial] = useState(true)
+  const [viewer, setViewer] = useState<Viewer | null>(null)
+
+  useEffect(() => {
+    const loadViewer = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setViewer(null)
+        return
+      }
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      setViewer({ id: user.id, role: profile?.role ?? null })
+    }
+
+    void loadViewer()
+  }, [])
+
+  const userRole = viewer?.role ?? null
+
+  const scheduleQuery = useQuery({
+    queryKey: queryKeys.schedule.calendar(viewer?.id ?? null, userRole),
+    queryFn: () => (viewer ? loadSchedule(viewer) : EMPTY_SCHEDULE),
+    enabled: viewer !== null,
+  })
+  const { tutors, students, trialLeads, events } =
+    scheduleQuery.data ?? EMPTY_SCHEDULE
+  const refreshSchedule = () => void scheduleQuery.refetch()
+
+  const handleSelect = async (info: DateSelectArg) => {
+    if (userRole !== 'tutor' || !viewer) return
+
+    const start = info.startStr
+    const end = new Date(
+      new Date(info.startStr).getTime() + 3600000,
+    ).toISOString()
+
+    const { error } = await supabase.from('calendar_events').insert({
+      title: 'Free Slot',
+      start_time: start,
+      end_time: end,
+      tutor_id: viewer.id,
+    })
+
+    if (error) {
+      toast.error('Failed to create slot')
+    } else {
+      toast.success('Slot created')
+      refreshSchedule()
+    }
+  }
+
+  const handleAssign = async (
+    studentId: string,
+    tutorId: string,
+    type: ClassType,
+  ) => {
+    if (!tutorId) return
+    try {
+      const { data: tutor } = await supabase
+        .from('users')
+        .select('personal_meet_link, full_name')
+        .eq('id', tutorId)
+        .single()
+      if (!tutor?.personal_meet_link) {
+        toast.error('Tutor has no meet link!')
+        return
+      }
+
+      if (type === 'trial') {
+        const lead = trialLeads.find((l) => l.id === studentId)
+        if (!lead) return
+        const start = `${lead.class_date}T${lead.class_time}`
+        const { data: newEv, error } = await supabase
+          .from('calendar_events')
+          .insert({
+            tutor_id: tutorId,
+            start_time: start,
+            end_time: new Date(
+              new Date(start).getTime() + 3600000,
+            ).toISOString(),
+            meet_link: tutor.personal_meet_link,
+            class_type: 'trial',
+            title: `Trial: ${lead.student_name}`,
+          })
+          .select()
+          .single()
+        if (error) throw error
+        await supabase
+          .from('leads')
+          .update({ assigned_tutor_id: tutorId })
+          .eq('id', studentId)
+        await supabase
+          .from('event_attendance')
+          .insert({ student_id: studentId, event_id: newEv.id })
+      } else {
+        const slot = events.find(
+          (e) =>
+            e.extendedProps.tutorId === tutorId &&
+            !e.extendedProps.assigned &&
+            !e.extendedProps.isTempBreak,
+        )
+        if (!slot) {
+          toast.error('No free slot available.')
+          return
+        }
+        const sName = students.find((s) => s.id === studentId)?.full_name
+        await supabase
+          .from('calendar_events')
+          .update({
+            meet_link: tutor.personal_meet_link,
+            class_type: 'regular',
+            title: `Class: ${sName}`,
+          })
+          .eq('id', slot.id)
+        await supabase
+          .from('event_attendance')
+          .insert({ student_id: studentId, event_id: slot.id })
+      }
+      toast.success('Assigned!')
+      refreshSchedule()
+    } catch {
+      toast.error('Error')
+    }
+  }
+
+  const handleEventClick = async ({ event }: EventClickArg) => {
+    const scheduled = events.find((e) => e.id === event.id)
+    if (!scheduled || scheduled.extendedProps.isTempBreak) return
+
+    const { assigned: isBooked, meet_link: meetLink } = scheduled.extendedProps
+    if (isBooked && meetLink) {
+      if (window.confirm('Join class?')) window.open(meetLink, '_blank')
+    } else if (userRole === 'tutor' && window.confirm('Delete slot?')) {
+      await supabase.from('calendar_events').delete().eq('id', event.id)
+      refreshSchedule()
+    } else if (isAdminRole(userRole) && isBooked) {
+      setReassignEventId(event.id)
+      setSelectedNewTutor(scheduled.extendedProps.tutorId ?? '')
+    }
+  }
+
+  const saveReassignment = async () => {
+    if (!reassignEventId) return
+    await supabase
+      .from('calendar_events')
+      .update({ tutor_id: selectedNewTutor })
+      .eq('id', reassignEventId)
+    setReassignEventId(null)
+    refreshSchedule()
+  }
+
+  const tutorSummary = tutors.map((t) => ({
+    id: t.id,
+    full_name: t.full_name,
+    booked: events.filter(
+      (e) => e.extendedProps.tutorId === t.id && e.extendedProps.assigned,
+    ).length,
+    free: events.filter(
+      (e) =>
+        e.extendedProps.tutorId === t.id &&
+        !e.extendedProps.assigned &&
+        !e.extendedProps.isTempBreak,
+    ).length,
+    color: getTutorColor(t.id),
+  }))
+
+  const sidebarEntries = showTrial
+    ? trialLeads
+        .filter((l) => !l.assigned_tutor_id)
+        .map((l) => ({ id: l.id, name: l.student_name, tag: 'Trial' }))
+    : students.map((s) => ({
+        id: s.id,
+        name: s.full_name,
+        tag: s.subscription_tier,
+      }))
+
+  return (
+    <div className="relative flex min-h-screen bg-slate-50">
+      <Toaster />
+
+      {sidebarOpen && isAdminRole(userRole) && (
+        <div className="absolute top-0 bottom-0 left-0 z-50 w-80 overflow-y-auto border-r bg-white p-4 shadow-lg">
+          <div className="mb-4 flex justify-between">
+            <h2 className="font-bold">Students</h2>
+            <button
+              type="button"
+              aria-label="Close students panel"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="mb-4 flex gap-2">
+            <button
+              type="button"
+              className={`flex-1 rounded-sm px-3 py-1 ${showTrial ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              onClick={() => setShowTrial(true)}
+            >
+              Trials
+            </button>
+            <button
+              type="button"
+              className={`flex-1 rounded-sm px-3 py-1 ${!showTrial ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              onClick={() => setShowTrial(false)}
+            >
+              Subscribers
+            </button>
+          </div>
+          {sidebarEntries.map((s) => (
+            <div
+              key={s.id}
+              className="mb-3 rounded-sm border bg-gray-50 p-3 shadow-xs"
+            >
+              <div className="mb-1 flex items-start justify-between">
+                <span className="text-sm font-bold">{s.name}</span>
+                <span className="rounded-sm bg-blue-100 px-2 text-[10px]">
+                  {s.tag}
+                </span>
+              </div>
+              <select
+                aria-label={`Assign a tutor to ${s.name ?? 'this student'}`}
+                className="mt-2 w-full rounded-sm border p-1 text-xs"
+                onChange={(e) =>
+                  void handleAssign(
+                    s.id,
+                    e.target.value,
+                    showTrial ? 'trial' : 'regular',
+                  )
+                }
+                defaultValue=""
+              >
+                <option value="" disabled>
+                  Select Tutor
+                </option>
+                {tutors.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className={`flex-1 p-4 ${sidebarOpen ? 'ml-80' : ''}`}>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+          {tutorSummary.map((t) => (
+            <div
+              key={t.id}
+              className="rounded-xl p-3 text-white shadow-sm"
+              style={{ backgroundColor: t.color }}
+            >
+              <span className="font-bold">{t.full_name}</span>
+              <div className="text-xs">
+                Free: {t.free} | Booked: {t.booked}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-4 flex items-center gap-3">
+          {!sidebarOpen && isAdminRole(userRole) && (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-sm bg-purple-600 px-3 py-2 text-white shadow-sm"
+            >
+              Students
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label="Go back"
+            onClick={() => void navigate(-1)}
+            className="rounded-sm border bg-white p-2"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-xl font-bold">Global Schedule</h1>
+        </div>
+
+        <div className="rounded-xl border bg-white p-4 shadow-xs">
+          <FullCalendar
+            key={`${userRole}-${events.length}`} // Forces re-render when data or role changes
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            events={events}
+            nowIndicator={true}
+            allDaySlot={false}
+            height="auto"
+            slotMinTime="07:00:00"
+            editable={userRole === 'tutor'}
+            selectable={userRole === 'tutor'}
+            select={(info) => void handleSelect(info)}
+            eventClick={(info) => void handleEventClick(info)}
+          />
+        </div>
+      </div>
+
+      {reassignEventId && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40">
+          <div className="w-96 rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="mb-4 font-bold">Reassign Tutor</h2>
+            <select
+              aria-label="New tutor"
+              value={selectedNewTutor}
+              onChange={(e) => setSelectedNewTutor(e.target.value)}
+              className="mb-4 w-full rounded-sm border p-2"
+            >
+              {tutors.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.full_name}
+                </option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setReassignEventId(null)}
+                className="rounded-sm bg-gray-200 px-4 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveReassignment()}
+                className="rounded-sm bg-purple-600 px-4 py-2 text-white"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

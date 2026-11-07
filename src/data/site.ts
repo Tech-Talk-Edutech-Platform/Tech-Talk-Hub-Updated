@@ -1,7 +1,5 @@
 /** Contact details and external URLs shared across the site. */
 
-export const DASHBOARD_URL = 'https://dashboard.techtalk-hub.com'
-
 export const WHATSAPP_URL = 'https://wa.me/254704494504'
 
 export const PHONE = {

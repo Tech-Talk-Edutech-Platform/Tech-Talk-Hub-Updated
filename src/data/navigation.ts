@@ -60,7 +60,7 @@ export const FOOTER_RESOURCE_LINKS: NavLinkItem[] = [
   { label: 'Student Projects', href: '/#projects' },
   { label: 'Parent Testimonials', href: '/#testimonials' },
   { label: 'Learning Resources', href: '/shop' },
-  { label: 'Book a Free Trial', href: '/book-class' },
+  { label: 'Book a Free Trial', href: '/book' },
 ]
 
 export const FOOTER_LEGAL_LINKS: NavLinkItem[] = [

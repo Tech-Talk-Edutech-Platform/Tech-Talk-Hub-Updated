@@ -1,4 +1,5 @@
-import { useEffect, useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { Button } from './Button'
 
 type ModalProps = {
   title: string
@@ -11,50 +12,49 @@ type ModalProps = {
 /** Centred dialog over a blurred backdrop. Closes on backdrop click, × or Escape. */
 export function Modal({ title, closeLabel, onClose, children }: ModalProps) {
   const titleId = useId()
+  const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onClose()
-      }
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) dialog.showModal()
+    return () => {
+      if (dialog?.open) dialog.close()
     }
-
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [])
 
   return (
-    <div
-      role="presentation"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop click to close; Escape (onCancel) is the keyboard equivalent
+    <dialog
+      ref={dialogRef}
+      aria-modal="true"
+      aria-labelledby={titleId}
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-3xl border-0 bg-white p-8 text-slate-900 shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose()
         }
       }}
     >
-      <dialog
-        open
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="relative w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl"
-      >
-        <button
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <h2 id={titleId} className="text-xl font-bold">
+          {title}
+        </h2>
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onClose}
           aria-label={closeLabel}
-          className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full text-2xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="-mt-2 -mr-2 shrink-0 rounded-full text-slate-400"
         >
           &times;
-        </button>
-
-        <h3 id={titleId} className="mb-4 text-xl font-bold text-slate-900">
-          {title}
-        </h3>
-
-        {children}
-      </dialog>
-    </div>
+        </Button>
+      </div>
+      {children}
+    </dialog>
   )
 }

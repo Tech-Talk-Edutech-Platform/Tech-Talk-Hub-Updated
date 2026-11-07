@@ -16,14 +16,14 @@ export function StudentProjects() {
             <Sparkles size={14} /> Student Showcase
           </div>
 
-          <h2 className="text-text text-3xl font-black tracking-tight sm:text-5xl">
+          <h2 className="text-3xl font-black tracking-tight text-text sm:text-5xl">
             See Amazing Projects{' '}
             <span className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-secondary text-transparent">
               Created By Our Students
             </span>
           </h2>
 
-          <p className="text-text/70 mt-4 text-base sm:text-lg">
+          <p className="mt-4 text-base text-text/70 sm:text-lg">
             From interactive games to full web applications, see what young
             minds build after joining our hands-on coding classes.
           </p>

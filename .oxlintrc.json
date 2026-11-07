@@ -13,7 +13,12 @@
     "suspicious": "error",
     "perf": "warn"
   },
-  "ignorePatterns": ["dist/**", "coverage/**"],
+  "ignorePatterns": [
+    "dist/**",
+    "coverage/**",
+    "public/skulpt/**",
+    "src/types/database.ts"
+  ],
   "rules": {
     "react/react-in-jsx-scope": "off",
     "react/rules-of-hooks": "error",
@@ -31,7 +36,10 @@
     "import/no-cycle": "error",
     "import/no-duplicates": "error",
     "import/no-self-import": "error",
-    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+    "import/no-unassigned-import": [
+      "error",
+      { "allow": ["**/*.css", "dotenv/config"] }
+    ],
 
     "no-console": ["error", { "allow": ["warn", "error"] }],
     "eqeqeq": ["error", "always", { "null": "ignore" }],
@@ -45,6 +53,13 @@
     ]
   },
   "overrides": [
+    {
+      "files": [
+        "src/features/commerce/Sales/Marketers.ts",
+        "supabase/functions/send-push/index.ts"
+      ],
+      "rules": { "unicorn/no-empty-file": "off" }
+    },
     {
       "files": ["*.config.ts", "*.config.js", "scripts/**"],
       "env": { "node": true }

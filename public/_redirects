@@ -1,0 +1,3 @@
+# SPA fallback for Netlify / Cloudflare Pages. Prerendered pages and assets are
+# served first; every other path loads the app shell.
+/*  /app.html  200

@@ -1,0 +1,257 @@
+/* --- Global Calendar Modernization --- */
+
+/* Remove the header borders for a cleaner look */
+/* .fc-theme-standard td, .fc-theme-standard th {
+  border: 1px solid #f1f5f9 !important;  */
+/* Very light slate */
+/* } */
+
+/* .fc-theme-standard .fc-scrollgrid {
+  border: none !important;
+} */
+
+/* --- Event "Chip" Styling --- */
+/* .fc-v-event {
+  border-radius: 8px !important;  */
+/* Rounded corners like Image 2 */
+/* padding: 2px 4px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  border-width: 0 0 0 4px !important;  */
+/* Adds a thick left-border accent */
+/* } */
+
+/* Style for "Free" slots (Light yellow background) */
+/* .fc-event[style*="background-color: rgb(254, 252, 232)"] {
+  border-left: 4px solid #eab308 !important;  */
+/* Yellow accent */
+/* } */
+
+/* --- Time & Grid Labels --- */
+/* .fc-timegrid-slot-label-cushion {
+  font-size: 11px !important;
+  text-transform: uppercase;
+  color: #64748b !important;
+  font-weight: 600;
+} */
+
+/* Current time indicator line */
+/* .fc-timegrid-now-indicator-line {
+  border-color: #ef4444 !important;
+  border-width: 2px 0 0 !important;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  border-color: #ef4444 !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+} */
+
+/* --- Header Styling --- */
+/* .fc-col-header-cell-cushion {
+  padding: 10px 0 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  text-decoration: none !important;
+} */
+
+/* Today's column highlight */
+/* .fc-day-today {
+  background-color: rgba(241, 245, 249, 0.5) !important;
+} */
+
+/* --- Buttons & Toolbar --- */
+/* .fc-button-primary {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  text-transform: capitalize !important;
+}
+
+.fc-button-primary:hover {
+  background-color: #f8fafc !important;
+}
+
+.fc-button-active {
+  background-color: #334155 !important;
+  color: white !important;
+  border-color: #334155 !important;
+} */
+/* --- Global Calendar Modernization --- */
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border: 1px solid #f1f5f9 !important;
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  border: none !important;
+}
+
+/* --- Modern Event "Chip" Styling --- */
+.fc-v-event {
+  border-radius: 8px !important;
+  padding: 2px 4px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  border-width: 0 0 0 4px !important; /* Thick left-border accent */
+  margin-bottom: 1px !important;
+}
+
+/* Adjust text inside events */
+.fc-event-main {
+  padding: 0 2px !important;
+}
+
+/* --- Time & Grid Labels --- */
+.fc-timegrid-slot-label-cushion {
+  font-size: 11px !important;
+  text-transform: uppercase;
+  color: #64748b !important;
+  font-weight: 600;
+}
+
+/* Red line for current time */
+.fc-timegrid-now-indicator-line {
+  border-color: #ef4444 !important;
+  border-width: 2px 0 0 !important;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  border-color: #ef4444 !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+}
+
+/* --- Toolbar Buttons --- */
+.fc-button-primary {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  text-transform: capitalize !important;
+  transition: all 0.2s ease !important;
+}
+
+.fc-button-primary:hover {
+  background-color: #f8fafc !important;
+}
+
+.fc-button-active {
+  background-color: #334155 !important;
+  color: white !important;
+  border-color: #334155 !important;
+}
+
+/* Header (Mon 2/8, etc) */
+.fc-col-header-cell-cushion {
+  padding: 10px 0 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  text-decoration: none !important;
+}
+
+.fc-day-today {
+  background-color: rgba(241, 245, 249, 0.5) !important;
+}
+
+/*added TODAY*/
+
+/* Force FullCalendar header to be smaller in your component */
+.fc .fc-toolbar-title {
+  font-size: 0.75rem !important; /* Makes it 12px */
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Optional: Shrink the day headers too */
+.fc .fc-col-header-cell-cushion {
+  font-size: 0.6rem !important;
+}
+
+/* Keep the header but shrink it significantly */
+.fc .fc-toolbar.fc-header-toolbar {
+  margin-bottom: 0.25rem !important; /* Tightens the space under the title */
+  gap: 0.5rem;
+}
+
+/* Make the title small and bold */
+.fc .fc-toolbar-title {
+  font-size: 0.85rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+}
+
+/* Shrink the navigation buttons (prev/next) */
+.fc .fc-button-primary {
+  padding: 2px 8px !important;
+  font-size: 0.75rem !important;
+}
+
+/* Remove extra padding from the calendar body to stop the stretching */
+.fc .fc-view-harness {
+  margin-top: 0 !important;
+}
+/* Make events look like modern "chips" */
+/* .fc-v-event {
+  border-radius: 6px !important;
+  border: none !important;
+  margin-bottom: 1px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.fc-timegrid-event {
+  margin-right: 2px !important;
+} */
+
+/* Adjust the font size of the time labels on the left */
+/* .fc-timegrid-slot-label-cushion {
+  font-size: 0.8rem;
+  color: #64748b;
+} */
+/* ========================== */
+/* fullcalendar-custom.css */
+
+/* Red Time Line Styles */
+/* .fc-timegrid-now-indicator-line {
+  border-color: #ef4444 !important;
+  border-width: 2px !important;
+  z-index: 10;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  border-color: #ef4444 !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+} */
+
+/* Button Styling */
+/* .fc .fc-button-primary {
+  @apply bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50 capitalize !important;
+}
+
+.fc .fc-button-active {
+  @apply bg-slate-900 border-slate-900 text-white !important;
+} */
+
+/* Ensure FullCalendar injected colors are shown */
+/* .fc-event,
+.fc-event:hover {
+  background-color: unset !important;
+  border-color: unset !important;
+} */
+/* 
+.fc .fc-event-main-frame {
+  background-color: var(--fc-event-bg-color) !important;
+  color: var(--fc-event-text-color) !important;
+}
+
+.fc-event {
+  border-color: var(--fc-event-border-color) !important;
+} */
+
+/* .fc .fc-event-main-frame {
+  background-color: var(--fc-event-bg-color) !important;
+  color: var(--fc-event-text-color) !important;
+} */
