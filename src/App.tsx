@@ -64,6 +64,7 @@ import { TermsPage } from './pages/TermsPage'
 import { PROGRAM_SLUGS } from './data/programs'
 import { staticPageMeta } from './data/seo'
 import { useScrollToHash } from './hooks/useScrollToHash'
+import { useAuthRedirectError } from './hooks/useAuthRedirectError'
 
 const ClassroomRoutes = lazy(() =>
   import('./pages/classroom/ClassroomRoutes').then((module) => ({
@@ -74,6 +75,12 @@ const ClassroomRoutes = lazy(() =>
 /** Scrolls to `/#section` targets on the landing page; must render inside the router. */
 function ScrollToHash() {
   useScrollToHash()
+  return null
+}
+
+/** Sends failed Google / email-link sign-ins to the login page with a message. */
+function AuthRedirectErrorHandler() {
+  useAuthRedirectError()
   return null
 }
 
@@ -174,6 +181,7 @@ function DashboardApp() {
 
   return (
     <BrowserRouter>
+      <AuthRedirectErrorHandler />
       <ScrollToHash />
       <Routes>
         <Route element={<SiteLayout />}>

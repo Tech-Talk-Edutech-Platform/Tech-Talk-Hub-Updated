@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
 import { supabase } from '../supabase'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast, Toaster } from 'react-hot-toast'
+import { authErrorFromState } from '../lib/authRedirectError'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
@@ -16,6 +17,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [authChecking, setAuthChecking] = useState(true)
   const navigate = useNavigate()
+  const location = useLocation()
+  // Set when a Google / email-link sign-in failed and redirected here.
+  const [redirectError, setRedirectError] = useState(() =>
+    authErrorFromState(location.state),
+  )
   const {
     register,
     handleSubmit,
@@ -70,8 +76,16 @@ export default function Login() {
     }
   }, [navigate])
 
+  // Clear the message from history so refreshing the page doesn't show it again.
+  useEffect(() => {
+    if (authErrorFromState(location.state)) {
+      void navigate(location.pathname, { replace: true })
+    }
+  }, [location.state, location.pathname, navigate])
+
   // 2️⃣ Email/password login
   const handleLogin = async ({ email, password }: LoginValues) => {
+    setRedirectError(null)
     setLoading(true)
 
     const {
@@ -112,6 +126,7 @@ export default function Login() {
 
   // 3️⃣ Google OAuth login (forces account selection)
   const handleGoogleLogin = async () => {
+    setRedirectError(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -148,6 +163,15 @@ export default function Login() {
             African Tech Talk
           </p>
         </div>
+
+        {redirectError && (
+          <p
+            role="alert"
+            className="mb-6 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm font-bold text-red-700"
+          >
+            {redirectError}
+          </p>
+        )}
 
         <button
           onClick={handleGoogleLogin}
