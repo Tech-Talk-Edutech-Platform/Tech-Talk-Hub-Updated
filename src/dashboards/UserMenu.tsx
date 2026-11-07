@@ -1,4 +1,3 @@
-import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase' // adjust path as needed
 import { LogOut } from 'lucide-react'
@@ -22,7 +21,8 @@ export default function UserMenu({ user }: UserMenuProps) {
         {user?.email || 'Account'}
       </span>
       <button
-        onClick={handleSignOut}
+        type="button"
+        onClick={() => void handleSignOut()}
         title="Sign Out"
         className="rounded-xl bg-gray-100 p-2 text-gray-600 transition hover:bg-red-500 hover:text-white dark:bg-white/10 dark:text-gray-300"
       >

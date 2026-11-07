@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import {
   Users2,
   Ticket,
@@ -7,94 +8,110 @@ import {
   Trash2,
   ArrowLeft,
 } from 'lucide-react'
-import { supabase } from '../../../supabase'
+import { plannedDb } from '../../../lib/plannedDb'
 import { StatCard } from '../../../components/dashboard/ui/StatCard'
 import { toast } from 'react-hot-toast'
 
+async function loadReferralData() {
+  // Fetch only necessary data
+  const [mRes, aRes, uRes] = await Promise.all([
+    plannedDb.from('marketer_profiles').select('*').order('full_name'),
+    plannedDb.from('referral_attributions').select('*, users(full_name)'),
+    plannedDb
+      .from('users')
+      .select('id, full_name')
+      .eq('role', 'marketer')
+      .order('full_name'),
+  ])
+
+  const marketers = mRes.data || []
+  const attributions = aRes.data || []
+  const marketerIds = new Set(marketers.map((m) => m.id))
+
+  const totalRevenue = attributions.reduce(
+    (acc, curr) => acc + Number(curr.sale_amount),
+    0,
+  )
+  const pendingComm = attributions
+    .filter((a) => a.status === 'approved')
+    .reduce((acc, curr) => acc + Number(curr.calculated_commission), 0)
+
+  return {
+    marketers,
+    attributions,
+    allUsers: (uRes.data || []).filter((user) => !marketerIds.has(user.id)),
+    stats: {
+      totalSales: totalRevenue,
+      pendingPayouts: pendingComm,
+      activeMarketers: marketers.length,
+    },
+  }
+}
+
+type ReferralData = Awaited<ReturnType<typeof loadReferralData>>
+type Marketer = ReferralData['marketers'][number]
+
 export default function ReferralDashboard() {
-  const [marketers, setMarketers] = useState([])
-  const [attributions, setAttributions] = useState([])
-  const [allUsers, setAllUsers] = useState([])
-  const [selectedMarketer, setSelectedMarketer] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({
+  const [marketers, setMarketers] = useState<Marketer[]>([])
+  const [attributions, setAttributions] = useState<
+    ReferralData['attributions']
+  >([])
+  const [allUsers, setAllUsers] = useState<ReferralData['allUsers']>([])
+  const [selectedMarketer, setSelectedMarketer] = useState<Marketer | null>(
+    null,
+  )
+  const [stats, setStats] = useState<ReferralData['stats']>({
     totalSales: 0,
     pendingPayouts: 0,
     activeMarketers: 0,
   })
-  const [editingMarketer, setEditingMarketer] = useState(null)
+  const [editingMarketer, setEditingMarketer] = useState<string | null>(null)
   // Form State
   const [selectedUserId, setSelectedUserId] = useState('')
   const [newCode, setNewCode] = useState('')
   const [newRate, setNewRate] = useState(10)
 
   useEffect(() => {
-    fetchReferralData()
+    let cancelled = false
+    loadReferralData().then(
+      (data) => {
+        if (cancelled) return
+        setMarketers(data.marketers)
+        setAttributions(data.attributions)
+        setAllUsers(data.allUsers)
+        setStats(data.stats)
+      },
+      () => {
+        if (!cancelled) toast.error('Data pipeline error.')
+      },
+    )
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const fetchReferralData = async () => {
-    setLoading(true)
     try {
-      // Fetch only necessary data
-      const [mRes, aRes, uRes] = await Promise.all([
-        supabase.from('marketer_profiles').select('*').order('full_name'),
-        supabase.from('referral_attributions').select('*, users(full_name)'),
-        supabase
-          .from('users')
-          .select('id, full_name')
-          .eq('role', 'marketer')
-          .order('full_name'),
-      ])
-
-      setMarketers(mRes.data || [])
-      setAttributions(aRes.data || [])
-      // setAllUsers(uRes.data || []);
-      const marketerIds = new Set((mRes.data || []).map((m) => m.id))
-
-      setAllUsers((uRes.data || []).filter((user) => !marketerIds.has(user.id)))
-
-      const totalRevenue = (aRes.data || []).reduce(
-        (acc, curr) => acc + Number(curr.sale_amount),
-        0,
-      )
-      const pendingComm = (aRes.data || [])
-        .filter((a) => a.status === 'approved')
-        .reduce((acc, curr) => acc + Number(curr.calculated_commission), 0)
-
-      setStats({
-        totalSales: totalRevenue,
-        pendingPayouts: pendingComm,
-        activeMarketers: (mRes.data || []).length,
-      })
-    } catch (err) {
+      const data = await loadReferralData()
+      setMarketers(data.marketers)
+      setAttributions(data.attributions)
+      setAllUsers(data.allUsers)
+      setStats(data.stats)
+    } catch {
       toast.error('Data pipeline error.')
-    } finally {
-      setLoading(false)
     }
   }
 
-  // const generateMarketerCode = async (e) => {
-  //   e.preventDefault();
-  //   if (!selectedUserId || !newCode) return toast.error("Select user and code.");
-
-  //   const { error } = await supabase.from("marketer_profiles").insert([{
-  //     id: selectedUserId,
-  //     full_name: allUsers.find(u => u.id === selectedUserId)?.full_name,
-  //     referral_code: newCode.toUpperCase().replace(/\s+/g, ""),
-  //     commission_rate_pct: newRate
-  //   }]);
-
-  //   if (error) return toast.error("Error: User may already be a marketer.");
-  //   toast.success("Marketer node activated.");
-  //   fetchReferralData();
-  // };
-  const generateMarketerCode = async (e) => {
+  const generateMarketerCode = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (!selectedUserId || !newCode) return toast.error('Select user and code.')
+    if (!selectedUserId || !newCode) {
+      toast.error('Select user and code.')
+      return
+    }
 
     if (editingMarketer) {
-      const { error } = await supabase
+      const { error } = await plannedDb
         .from('marketer_profiles')
         .update({
           referral_code: newCode.toUpperCase().replace(/\s+/g, ''),
@@ -102,20 +119,27 @@ export default function ReferralDashboard() {
         })
         .eq('id', editingMarketer)
 
-      if (error) return toast.error(error.message)
+      if (error) {
+        toast.error(error.message)
+        return
+      }
 
       toast.success('Marketer updated.')
     } else {
-      const { error } = await supabase.from('marketer_profiles').insert([
+      const { error } = await plannedDb.from('marketer_profiles').insert([
         {
           id: selectedUserId,
-          full_name: allUsers.find((u) => u.id === selectedUserId)?.full_name,
+          full_name:
+            allUsers.find((u) => u.id === selectedUserId)?.full_name ?? null,
           referral_code: newCode.toUpperCase().replace(/\s+/g, ''),
           commission_rate_pct: newRate,
         },
       ])
 
-      if (error) return toast.error(error.message)
+      if (error) {
+        toast.error(error.message)
+        return
+      }
 
       toast.success('Marketer created.')
     }
@@ -125,15 +149,23 @@ export default function ReferralDashboard() {
     setNewCode('')
     setNewRate(10)
 
-    fetchReferralData()
+    await fetchReferralData()
   }
 
-  const deleteMarketer = async (id, e) => {
-    e.stopPropagation()
+  const deleteMarketer = async (id: string) => {
     if (!window.confirm('Delete this marketer?')) return
-    await supabase.from('marketer_profiles').delete().eq('id', id)
+    await plannedDb.from('marketer_profiles').delete().eq('id', id)
     if (selectedMarketer?.id === id) setSelectedMarketer(null)
-    fetchReferralData()
+    await fetchReferralData()
+  }
+
+  const selectMarketer = (m: Marketer) => {
+    setSelectedMarketer(m)
+
+    setEditingMarketer(m.id)
+    setSelectedUserId(m.id)
+    setNewCode(m.referral_code)
+    setNewRate(m.commission_rate_pct)
   }
 
   const filteredAttributions = selectedMarketer
@@ -145,24 +177,25 @@ export default function ReferralDashboard() {
     ? {
         totalCustomers: filteredAttributions.length,
         totalSales: filteredAttributions.reduce(
-          (sum, a) => sum + Number(a.sale_amount || 0),
+          (sum, a) => sum + (a.sale_amount ?? 0),
           0,
         ),
         totalCommission: filteredAttributions.reduce(
-          (sum, a) => sum + Number(a.calculated_commission || 0),
+          (sum, a) => sum + (a.calculated_commission ?? 0),
           0,
         ),
         approvedCommission: filteredAttributions
           .filter((a) => a.status === 'approved')
-          .reduce((sum, a) => sum + Number(a.calculated_commission || 0), 0),
+          .reduce((sum, a) => sum + (a.calculated_commission ?? 0), 0),
         paidCommission: filteredAttributions
           .filter((a) => a.status === 'paid')
-          .reduce((sum, a) => sum + Number(a.calculated_commission || 0), 0),
+          .reduce((sum, a) => sum + (a.calculated_commission ?? 0), 0),
       }
     : null
   return (
     <div className="mx-auto min-h-screen max-w-[1600px] space-y-8 bg-slate-950 p-6 text-slate-100">
       <button
+        type="button"
         onClick={() => window.history.back()}
         className="mb-4 flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs hover:bg-slate-800"
       >
@@ -193,12 +226,16 @@ export default function ReferralDashboard() {
       <div className="grid grid-cols-12 gap-8">
         <div className="col-span-12 space-y-8 lg:col-span-5">
           <div className="rounded-[24px] border border-slate-800 bg-slate-900 p-6">
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-black uppercase text-white">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-black text-white uppercase">
               <Ticket size={16} className="text-indigo-400" /> Provision
               Referral Code
             </h3>
-            <form onSubmit={generateMarketerCode} className="space-y-4">
+            <form
+              onSubmit={(e) => void generateMarketerCode(e)}
+              className="space-y-4"
+            >
               <select
+                aria-label="User"
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-white"
@@ -217,12 +254,14 @@ export default function ReferralDashboard() {
               </select>
               <div className="grid grid-cols-2 gap-4">
                 <input
+                  aria-label="Referral code"
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value)}
                   placeholder="CODE20"
                   className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm uppercase"
                 />
                 <input
+                  aria-label="Commission rate (%)"
                   value={newRate}
                   onChange={(e) => setNewRate(Number(e.target.value))}
                   type="number"
@@ -241,44 +280,47 @@ export default function ReferralDashboard() {
                     setNewCode('')
                     setNewRate(10)
                   }}
-                  className="mb-3 w-full rounded-xl bg-slate-800 py-3 text-xs font-bold uppercase text-white"
+                  className="mb-3 w-full rounded-xl bg-slate-800 py-3 text-xs font-bold text-white uppercase"
                 >
                   ← Back To Create Mode
                 </button>
               )}
-              <button className="w-full rounded-xl bg-indigo-600 py-3 text-xs font-bold uppercase text-white">
+              <button
+                type="submit"
+                className="w-full rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white uppercase"
+              >
                 {editingMarketer ? 'Update Marketer' : 'Commit Node'}
               </button>
             </form>
           </div>
 
           <div className="rounded-[24px] border border-slate-800 bg-slate-900 p-6">
-            <h3 className="mb-4 text-sm font-black uppercase text-white">
+            <h3 className="mb-4 text-sm font-black text-white uppercase">
               Active Marketers (Click to Filter)
             </h3>
             <div className="max-h-[300px] space-y-2 overflow-y-auto">
               {marketers.map((m) => (
                 <div
                   key={m.id}
-                  onClick={() => {
-                    setSelectedMarketer(m)
-
-                    setEditingMarketer(m.id)
-                    setSelectedUserId(m.id)
-                    setNewCode(m.referral_code)
-                    setNewRate(m.commission_rate_pct)
-                  }}
-                  className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 ${selectedMarketer?.id === m.id ? 'border-indigo-500 bg-indigo-900' : 'border-slate-800 bg-slate-950'}`}
+                  className={`relative flex items-center justify-between rounded-xl border p-3 ${selectedMarketer?.id === m.id ? 'border-indigo-500 bg-indigo-900' : 'border-slate-800 bg-slate-950'}`}
                 >
-                  <div>
+                  <button
+                    type="button"
+                    aria-label={`Filter by ${m.full_name ?? m.referral_code}`}
+                    onClick={() => selectMarketer(m)}
+                    className="absolute inset-0 z-0 cursor-pointer rounded-xl"
+                  />
+                  <div className="pointer-events-none relative z-10">
                     <p className="text-xs font-bold">{m.full_name}</p>
                     <p className="text-[10px] text-indigo-400">
                       {m.referral_code}
                     </p>
                   </div>
                   <button
-                    onClick={(e) => deleteMarketer(m.id, e)}
-                    className="text-red-400"
+                    type="button"
+                    aria-label={`Delete ${m.full_name ?? m.referral_code}`}
+                    onClick={() => void deleteMarketer(m.id)}
+                    className="relative z-10 text-red-400"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -287,6 +329,7 @@ export default function ReferralDashboard() {
             </div>
             {selectedMarketer && (
               <button
+                type="button"
                 onClick={() => setSelectedMarketer(null)}
                 className="mt-4 text-[10px] text-slate-400 underline"
               >
@@ -296,7 +339,7 @@ export default function ReferralDashboard() {
           </div>
         </div>
         <div className="col-span-12 rounded-[24px] border border-slate-800 bg-slate-900 p-6 lg:col-span-7">
-          {selectedMarketer && (
+          {selectedMarketer && marketerStats && (
             <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
               <div className="rounded-xl bg-slate-950 p-3">
                 <p className="text-[10px] text-slate-400">Referral Code</p>
@@ -338,7 +381,7 @@ export default function ReferralDashboard() {
             </div>
           )}
 
-          <h3 className="mb-4 border-b border-slate-800 pb-3 text-sm font-black uppercase text-white">
+          <h3 className="mb-4 border-b border-slate-800 pb-3 text-sm font-black text-white uppercase">
             {selectedMarketer
               ? `Attribution Log: ${selectedMarketer.full_name}`
               : 'All Referral Activity'}

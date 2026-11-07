@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Copy,
   Check,
@@ -10,75 +10,101 @@ import {
   LogOut,
 } from 'lucide-react'
 import { supabase } from '../../../supabase'
+import { plannedDb } from '../../../lib/plannedDb'
 import { StatCard } from '../../../components/dashboard/ui/StatCard'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 
-export default function MarketerDashboard({ currentMarketerId }) {
-  const [profile, setProfile] = useState(null)
-  const [myConversions, setMyConversions] = useState([])
-  const [leaderboard, setLeaderboard] = useState([])
+interface LeaderboardEntry {
+  id: string
+  name: string
+  count: number
+}
+
+async function loadMarketerData(marketerId: string) {
+  const { data: profile, error: profErr } = await plannedDb
+    .from('marketer_profiles')
+    .select('*')
+    .eq('id', marketerId)
+    .single()
+
+  if (profErr) throw new Error('Marketer not found')
+
+  const { data: conversions, error: convErr } = await plannedDb
+    .from('referral_attributions')
+    .select('*, users:lead_or_student_id(full_name)')
+    .eq('marketer_id', marketerId)
+    .order('created_at', { ascending: false })
+
+  if (convErr) throw convErr
+
+  const { data: leaderboardData } = await plannedDb
+    .from('referral_attributions')
+    .select('marketer_id, marketer_profiles(full_name)')
+
+  const counts = new Map<string, LeaderboardEntry>()
+  for (const row of leaderboardData ?? []) {
+    const entry = counts.get(row.marketer_id) ?? {
+      id: row.marketer_id,
+      name: row.marketer_profiles?.full_name || 'Anonymous',
+      count: 0,
+    }
+    entry.count += 1
+    counts.set(row.marketer_id, entry)
+  }
+
+  return {
+    profile,
+    conversions,
+    leaderboard: [...counts.values()].slice(0, 5),
+  }
+}
+
+type MarketerData = Awaited<ReturnType<typeof loadMarketerData>>
+
+export default function MarketerDashboard({
+  currentMarketerId,
+}: {
+  currentMarketerId: string
+}) {
+  const [profile, setProfile] = useState<MarketerData['profile'] | null>(null)
+  const [myConversions, setMyConversions] = useState<
+    MarketerData['conversions']
+  >([])
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (currentMarketerId) fetchMarketerData()
-  }, [currentMarketerId])
-
-  const fetchMarketerData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const { data: profData, error: profErr } = await supabase
-        .from('marketer_profiles')
-        .select('*')
-        .eq('id', currentMarketerId)
-        .single()
-
-      if (profErr || !profData) throw new Error('Marketer not found')
-      setProfile(profData)
-
-      const { data: convData, error: convErr } = await supabase
-        .from('referral_attributions')
-        .select('*, users:lead_or_student_id(full_name)')
-        .eq('marketer_id', currentMarketerId)
-        .order('created_at', { ascending: false })
-
-      if (convErr) throw convErr
-      setMyConversions(convData || [])
-
-      const { data: leaderboardData } = await supabase
-        .from('referral_attributions')
-        .select('marketer_id, marketer_profiles(full_name)')
-
-      const counts = (leaderboardData || []).reduce((acc, curr) => {
-        const id = curr.marketer_id
-        const name = curr.marketer_profiles?.full_name || 'Anonymous'
-        if (!acc[id]) acc[id] = { name, count: 0 }
-        acc[id].count++
-        return acc
-      }, {})
-
-      setLeaderboard(Object.values(counts).slice(0, 5))
-    } catch (err) {
-      setError(err.message)
-      toast.error('Failed to load dashboard')
-    } finally {
-      setLoading(false)
+    let cancelled = false
+    loadMarketerData(currentMarketerId).then(
+      (data) => {
+        if (cancelled) return
+        setProfile(data.profile)
+        setMyConversions(data.conversions)
+        setLeaderboard(data.leaderboard)
+        setLoading(false)
+      },
+      () => {
+        if (cancelled) return
+        toast.error('Failed to load dashboard')
+        setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
     }
-  }
+  }, [currentMarketerId])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     void navigate('/login', { replace: true })
   }
 
-  const copyReferralLink = (code) => {
+  const copyReferralLink = (code: string) => {
     const link = `https://www.techtalk-hub.com/book-class?ref=${code}`
-    navigator.clipboard.writeText(link)
+    void navigator.clipboard.writeText(link)
     setCopied(true)
     toast.success('Referral link copied')
     setTimeout(() => setCopied(false), 2000)
@@ -99,10 +125,10 @@ export default function MarketerDashboard({ currentMarketerId }) {
   const totalConversions = myConversions.length
   const totalEarned = myConversions
     .filter((c) => c.status === 'paid')
-    .reduce((s, c) => s + Number(c.calculated_commission || 0), 0)
+    .reduce((s, c) => s + (c.calculated_commission ?? 0), 0)
   const pending = myConversions
     .filter((c) => c.status !== 'paid')
-    .reduce((s, c) => s + Number(c.calculated_commission || 0), 0)
+    .reduce((s, c) => s + (c.calculated_commission ?? 0), 0)
   const eligible = totalConversions >= 4
 
   return (
@@ -110,7 +136,7 @@ export default function MarketerDashboard({ currentMarketerId }) {
       {/* HEADER */}
       <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 p-5">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+          <p className="text-xs font-bold tracking-wider text-indigo-400 uppercase">
             Marketer Portal
           </p>
           <h1 className="text-xl font-bold">{profile.full_name}</h1>
@@ -118,6 +144,7 @@ export default function MarketerDashboard({ currentMarketerId }) {
 
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={() => copyReferralLink(profile.referral_code)}
             className="flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm transition-colors hover:bg-slate-700"
           >
@@ -130,7 +157,9 @@ export default function MarketerDashboard({ currentMarketerId }) {
           </button>
 
           <button
-            onClick={handleLogout}
+            type="button"
+            aria-label="Logout"
+            onClick={() => void handleLogout()}
             className="rounded-lg bg-slate-800 p-2.5 text-rose-400 transition-all hover:bg-rose-900/30"
             title="Logout"
           >
@@ -179,9 +208,9 @@ export default function MarketerDashboard({ currentMarketerId }) {
             <p className="mb-3 flex items-center gap-2 font-bold">
               <Award size={14} /> Top Marketers
             </p>
-            {leaderboard.map((m, i) => (
+            {leaderboard.map((m) => (
               <div
-                key={i}
+                key={m.id}
                 className="flex justify-between border-b border-slate-800 py-2 text-xs last:border-0"
               >
                 <span>{m.name}</span>

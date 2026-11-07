@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import type { ReactNode } from 'react'
 import { supabase } from '../../supabase'
 import {
   PhoneCall,
   TrendingUp,
-  Plus,
   MessageCircle,
   X,
   LayoutGrid,
@@ -20,7 +20,7 @@ interface LoadingProps {
 interface ModalShellProps {
   title: string
   icon?: LucideIcon
-  children: React.ReactNode
+  children: ReactNode
   onClose: () => void
 }
 
@@ -35,6 +35,56 @@ const TAB_TYPES = {
   TODAY: 'today',
   UPCOMING: 'upcoming',
 }
+
+/** Where a lead's next follow-up falls, worked out when the leads load. */
+interface FollowUp {
+  overdue: boolean
+  today: boolean
+  upcoming: boolean
+  badge: { label: string; color: string }
+}
+
+type PipelineLead = Tables<'leads'> & { followUp: FollowUp | null }
+
+function classifyFollowUp(
+  nextFollowUpAt: string | null,
+  now: Date,
+): FollowUp | null {
+  if (!nextFollowUpAt) return null
+
+  const start = new Date(now)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(now)
+  end.setHours(23, 59, 59, 999)
+  const date = new Date(nextFollowUpAt)
+
+  const overdue = date < now
+  const today = date >= start && date <= end
+  const badge = overdue
+    ? { label: 'Overdue', color: 'bg-red-500' }
+    : today
+      ? { label: 'Today', color: 'bg-blue-500' }
+      : { label: 'Upcoming', color: 'bg-green-500' }
+
+  return { overdue, today, upcoming: date > end, badge }
+}
+
+async function loadLeads(): Promise<PipelineLead[]> {
+  const { data } = await supabase
+    .from('leads')
+    .select('*')
+    .order('next_follow_up_at', { ascending: true })
+
+  const now = new Date()
+  return (data || []).map((lead) =>
+    Object.assign({}, lead, {
+      followUp: classifyFollowUp(lead.next_follow_up_at, now),
+    }),
+  )
+}
+
+const whatsappLink = (phone: string) =>
+  `https://wa.me/${phone.replace(/\D/g, '')}`
 
 const Loading = ({ label }: LoadingProps) => (
   <div className="animate-pulse p-20 text-center font-black text-slate-400">
@@ -56,6 +106,8 @@ const ModalShell = ({
           {title}
         </h2>
         <button
+          type="button"
+          aria-label="Close"
           onClick={onClose}
           className="rounded-2xl p-3 hover:bg-slate-100"
         >
@@ -71,80 +123,58 @@ export default function SalesPipelineModal({
   isOpen,
   onClose,
 }: SalesPipelineModalProps) {
-  const [leads, setLeads] = useState<Tables<'leads'>[]>([])
+  const [leads, setLeads] = useState<PipelineLead[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(TAB_TYPES.ALL)
   const [viewMode, setViewMode] = useState('grid') // "grid" | "list"
 
-  const [showAddLead, setShowAddLead] = useState(false)
-  const [errors, setErrors] = useState({})
-  const [newLead, setNewLead] = useState({
-    parent_name: '',
-    phone: '',
-    email: '',
-    country: '',
-    grade: '',
-    class_date: '',
-    class_time: '',
-    next_follow_up_at: '',
-  })
-
   useEffect(() => {
-    if (!isOpen) return
-    const fetchLeads = async () => {
-      setLoading(true)
-      const { data } = await supabase
-        .from('leads')
-        .select('*')
-        .order('next_follow_up_at', { ascending: true })
-      setLeads(data || [])
-      setLoading(false)
+    if (!isOpen) return undefined
+
+    let cancelled = false
+    loadLeads().then(
+      (rows) => {
+        if (cancelled) return
+        setLeads(rows)
+        setLoading(false)
+      },
+      () => {
+        if (!cancelled) setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
     }
-    fetchLeads()
   }, [isOpen])
 
-  const getFollowUpBadge = (next_follow_up_at: string | null) => {
-    if (!next_follow_up_at) return null
-    const now = new Date()
-    const date = new Date(next_follow_up_at)
-    if (date < now) return { label: 'Overdue', color: 'bg-red-500', icon: '⚠️' }
-    if (date.toDateString() === now.toDateString())
-      return { label: 'Today', color: 'bg-blue-500', icon: '📅' }
-    return { label: 'Upcoming', color: 'bg-green-500', icon: '⏳' }
-  }
+  const filteredLeads = useMemo(
+    () =>
+      leads.filter((l) => {
+        if (activeTab === TAB_TYPES.ALL) return true
+        if (!l.followUp) return false
+        if (activeTab === TAB_TYPES.OVERDUE) return l.followUp.overdue
+        if (activeTab === TAB_TYPES.TODAY) return l.followUp.today
+        if (activeTab === TAB_TYPES.UPCOMING) return l.followUp.upcoming
+        return true
+      }),
+    [leads, activeTab],
+  )
 
-  const filteredLeads = useMemo(() => {
-    const now = new Date()
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    const end = new Date()
-    end.setHours(23, 59, 59, 999)
-    const filtered = leads.filter((l) => {
-      if (activeTab === TAB_TYPES.ALL) return true
-      if (!l.next_follow_up_at) return false
-      const d = new Date(l.next_follow_up_at)
-      if (activeTab === TAB_TYPES.OVERDUE) return d < now
-      if (activeTab === TAB_TYPES.TODAY) return d >= start && d <= end
-      if (activeTab === TAB_TYPES.UPCOMING) return d > end
-      return true
-    })
-    return filtered
-  }, [leads, activeTab])
-
-  const whatsappLink = (phone: string) =>
-    `https://wa.me/${phone.replace(/\D/g, '')}`
   const updateStatus = async (id: string, status: string) => {
     const { data } = await supabase
       .from('leads')
       .update({
         status,
-        last_contacted_at: status === 'contacted' ? new Date() : null,
+        last_contacted_at:
+          status === 'contacted' ? new Date().toISOString() : null,
       })
       .eq('id', id)
       .select()
       .single()
     if (data)
-      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...data } : l)))
+      setLeads((prev) =>
+        prev.map((l) => (l.id === id ? Object.assign({}, l, data) : l)),
+      )
   }
 
   if (!isOpen) return null
@@ -159,6 +189,7 @@ export default function SalesPipelineModal({
         <div className="flex gap-2">
           {Object.values(TAB_TYPES).map((tab) => (
             <button
+              type="button"
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`rounded-full px-4 py-2 font-bold ${activeTab === tab ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
@@ -169,6 +200,8 @@ export default function SalesPipelineModal({
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
+            aria-label={viewMode === 'grid' ? 'Show as list' : 'Show as grid'}
             onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
             className="rounded-full p-2 hover:bg-gray-100"
           >
@@ -177,12 +210,6 @@ export default function SalesPipelineModal({
             ) : (
               <LayoutGrid size={20} />
             )}
-          </button>
-          <button
-            onClick={() => setShowAddLead(true)}
-            className="flex items-center gap-2 rounded-full bg-black px-4 py-2 font-bold text-white"
-          >
-            <Plus size={16} /> Add Lead
           </button>
         </div>
       </div>
@@ -200,11 +227,11 @@ export default function SalesPipelineModal({
                 <span className="rounded-sm bg-slate-100 px-2 py-1 text-[10px] font-black uppercase">
                   {l.status || 'NEW'}
                 </span>
-                {getFollowUpBadge(l.next_follow_up_at) && (
+                {l.followUp && (
                   <span
-                    className={`rounded-full px-2 py-1 text-[10px] text-white ${getFollowUpBadge(l.next_follow_up_at).color}`}
+                    className={`rounded-full px-2 py-1 text-[10px] text-white ${l.followUp.badge.color}`}
                   >
-                    {getFollowUpBadge(l.next_follow_up_at).label}
+                    {l.followUp.badge.label}
                   </span>
                 )}
               </div>
@@ -219,10 +246,11 @@ export default function SalesPipelineModal({
                     : 'None'}
                 </p>
               </div>
-              <CallCost phone={l.phone} />
+              <CallCost />
               <div className="mt-2 flex gap-2">
                 <a
-                  href={whatsappLink(l.phone)}
+                  aria-label={`WhatsApp ${l.parent_name}`}
+                  href={whatsappLink(l.phone ?? '')}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-xl bg-green-100 p-2 text-green-600"
@@ -230,13 +258,15 @@ export default function SalesPipelineModal({
                   <MessageCircle size={16} />
                 </a>
                 <a
-                  href={`tel:${l.phone}`}
+                  aria-label={`Call ${l.parent_name}`}
+                  href={`tel:${l.phone ?? ''}`}
                   className="rounded-xl bg-yellow-100 p-2 text-yellow-800"
                 >
                   <PhoneCall size={16} />
                 </a>
                 <button
-                  onClick={() => updateStatus(l.id, 'contacted')}
+                  type="button"
+                  onClick={() => void updateStatus(l.id, 'contacted')}
                   className="flex-1 rounded-xl bg-blue-50 py-2 text-xs font-bold text-blue-600"
                 >
                   Contacted
@@ -248,7 +278,7 @@ export default function SalesPipelineModal({
       ) : (
         <div className="overflow-hidden rounded-3xl border">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
                 <th className="p-4">Name</th>
                 <th className="p-4">Contact</th>
@@ -274,7 +304,8 @@ export default function SalesPipelineModal({
                   </td>
                   <td className="flex gap-2 p-4">
                     <button
-                      onClick={() => updateStatus(l.id, 'contacted')}
+                      type="button"
+                      onClick={() => void updateStatus(l.id, 'contacted')}
                       className="rounded-full bg-blue-100 px-3 py-1 text-xs"
                     >
                       Contacted

@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase'
+import { plannedDb } from '../../lib/plannedDb'
 
 export type CourseOption = { id: string; title: string }
 export type TopicOption = { id: string; title: string }
@@ -25,7 +26,7 @@ export async function fetchTopicsByCourse(
   courseId: string,
   signal?: AbortSignal,
 ): Promise<TopicOption[]> {
-  let query = supabase
+  let query = plannedDb
     .from('topics')
     .select('id, title')
     .eq('course_id', courseId)
@@ -40,7 +41,7 @@ export async function fetchNotesByTopic(
   topicId: string,
   signal?: AbortSignal,
 ): Promise<NoteSummary[]> {
-  let query = supabase
+  let query = plannedDb
     .from('notes')
     .select('id, title')
     .eq('topic_id', topicId)
@@ -60,14 +61,14 @@ export async function createTopic(input: {
   title: string
   courseId: string
 }): Promise<void> {
-  const { error } = await supabase
+  const { error } = await plannedDb
     .from('topics')
     .insert([{ title: input.title, course_id: input.courseId }])
   if (error) throw error
 }
 
 export async function createNote(note: NewNote): Promise<void> {
-  const { error } = await supabase.from('notes').insert([note])
+  const { error } = await plannedDb.from('notes').insert([note])
   if (error) throw error
 }
 

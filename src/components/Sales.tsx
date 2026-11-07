@@ -1,30 +1,30 @@
-import React from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 
-export default function Receipt() {
-  const receipt = {
-    receipt_number: 'TTH-1042',
-    created_at: new Date(),
-    customer_name: 'John Doe',
-    phone: '0700 000000',
-    items: [
-      { description: 'Tuition Fee', qty: 1, amount: 3000 },
-      { description: 'Curriculum', qty: 1, amount: 2000 },
-      { description: 'LMS Access', qty: 1, amount: 5000 },
-    ],
-    discount: 2000,
-    total_paid: 8000,
-    payment_method: 'M-Pesa',
-    transaction_code: 'QGH72KLM',
-    status: 'PAID',
-    served_by: 'Justin',
-    email: 'admin@techtalk-hub.com',
-  }
+const SAMPLE_RECEIPT = {
+  receipt_number: 'TTH-1042',
+  created_at: new Date(),
+  customer_name: 'John Doe',
+  phone: '0700 000000',
+  items: [
+    { description: 'Tuition Fee', qty: 1, amount: 3000 },
+    { description: 'Curriculum', qty: 1, amount: 2000 },
+    { description: 'LMS Access', qty: 1, amount: 5000 },
+  ],
+  discount: 2000,
+  total_paid: 8000,
+  payment_method: 'M-Pesa',
+  transaction_code: 'QGH72KLM',
+  status: 'PAID',
+  served_by: 'Justin',
+  email: 'admin@techtalk-hub.com',
+}
 
+const printReceipt = () => window.print()
+
+export default function Receipt() {
+  const receipt = SAMPLE_RECEIPT
   const subtotal = receipt.items.reduce((sum, i) => sum + i.amount * i.qty, 0)
   const qrLink = `https://techtalkhub.com/verify/${receipt.receipt_number}`
-
-  const printReceipt = () => window.print()
 
   return (
     <div
@@ -53,8 +53,8 @@ export default function Receipt() {
         <span className="text-right">AMOUNT</span>
       </div>
 
-      {receipt.items.map((item, i) => (
-        <div key={i} className="grid grid-cols-3 border-b py-1">
+      {receipt.items.map((item) => (
+        <div key={item.description} className="grid grid-cols-3 border-b py-1">
           <span>{item.description}</span>
           <span className="text-center">{item.qty}</span>
           <span className="text-right">{item.amount.toLocaleString()}</span>
@@ -99,6 +99,7 @@ export default function Receipt() {
       <p className="text-center text-sm">{receipt.phone}</p>
 
       <button
+        type="button"
         onClick={printReceipt}
         className="mt-4 w-full rounded-lg bg-green-600 py-2 text-white hover:bg-green-700"
       >

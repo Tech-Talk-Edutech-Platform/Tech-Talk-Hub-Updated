@@ -604,23 +604,133 @@
 //     </div>
 //   );
 // }
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../../supabase'
+import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import {
   materialDark,
   vscDarkPlus,
 } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { plannedDb } from '../../lib/plannedDb'
+import type { PlannedRow } from '../../types/plannedTables'
+import { HighlightedCode } from '../ui/HighlightedCode'
 
-// Set darkMode fallback to true right inside the component contract
-export default function NotesPanel({ darkMode = true, courseId }) {
-  const [topics, setTopics] = useState([])
-  const [selectedTopic, setSelectedTopic] = useState(null)
-  const [notes, setNotes] = useState([])
-  const [selectedNote, setSelectedNote] = useState(null)
-  const [loading, setLoading] = useState(false)
+type Topic = PlannedRow<'topics'>
+type Note = PlannedRow<'notes'>
+
+interface NotesPanelProps {
+  darkMode?: boolean
+  courseId?: string
+}
+
+async function fetchTopics(courseId: string): Promise<Topic[]> {
+  const { data, error } = await plannedDb
+    .from('topics')
+    .select('*')
+    .eq('course_id', courseId)
+  if (error) throw error
+  return data
+}
+
+async function fetchNotes(topicId: string): Promise<Note[]> {
+  const { data, error } = await plannedDb
+    .from('notes')
+    .select('*')
+    .eq('topic_id', topicId)
+  if (error) throw error
+  return data
+}
+
+async function fetchNote(noteId: string): Promise<Note> {
+  const { data, error } = await plannedDb
+    .from('notes')
+    .select('*')
+    .eq('id', noteId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+// Custom markdown document styles (no prose dependency)
+function noteComponents(theme: Record<string, CSSProperties>): Components {
+  return {
+    p: ({ children }) => (
+      <p className="mb-4 leading-relaxed text-slate-800 dark:text-slate-200">
+        {children}
+      </p>
+    ),
+    h1: ({ children }) => (
+      <h1 className="mt-6 mb-3 border-b border-slate-100 pb-1 text-2xl font-bold text-slate-900 dark:border-slate-800 dark:text-white">
+        {children}
+      </h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="mt-5 mb-2 text-xl font-bold text-slate-900 dark:text-white">
+        {children}
+      </h2>
+    ),
+    h3: ({ children }) => (
+      <h3 className="mt-4 mb-2 text-lg font-bold text-slate-900 dark:text-white">
+        {children}
+      </h3>
+    ),
+    ul: ({ children }) => (
+      <ul className="mb-4 list-disc space-y-1 pl-6 text-slate-800 dark:text-slate-200">
+        {children}
+      </ul>
+    ),
+    ol: ({ children }) => (
+      <ol className="mb-4 list-decimal space-y-1 pl-6 text-slate-800 dark:text-slate-200">
+        {children}
+      </ol>
+    ),
+    li: ({ children }) => <li className="pl-1">{children}</li>,
+    a: ({ href, children }) => (
+      <a
+        href={href}
+        className="text-blue-600 underline hover:text-blue-700 dark:text-blue-400"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {children}
+      </a>
+    ),
+    blockquote: ({ children }) => (
+      <blockquote className="my-4 border-l-4 border-slate-300 pl-4 text-slate-500 italic dark:border-slate-700 dark:text-slate-400">
+        {children}
+      </blockquote>
+    ),
+    code: ({ className, children }) => (
+      <HighlightedCode
+        className={className}
+        theme={theme}
+        inlineClassName="rounded-sm border border-slate-200/60 bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-pink-600 dark:border-slate-700/50 dark:bg-slate-800 dark:text-emerald-400"
+        blockClassName="my-4 rounded-xl border border-slate-200 text-sm shadow-inner dark:border-slate-800"
+        blockStyle={{ padding: '1rem', margin: '1rem 0' }}
+      >
+        {children}
+      </HighlightedCode>
+    ),
+  }
+}
+
+const NOTE_COMPONENTS = {
+  dark: noteComponents(materialDark),
+  light: noteComponents(vscDarkPlus),
+}
+
+// darkMode falls back to true: dark is the app default
+export default function NotesPanel({
+  darkMode = true,
+  courseId,
+}: NotesPanelProps) {
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null)
+  const [notes, setNotes] = useState<Note[]>([])
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
+  const [loading, setLoading] = useState(Boolean(courseId))
 
   // CRITICAL: Forces dark mode as the app default immediately upon layout mount
   useEffect(() => {
@@ -628,9 +738,9 @@ export default function NotesPanel({ darkMode = true, courseId }) {
 
     // Check if user has explicitly saved a preference, otherwise default to dark (true)
     const savedTheme = localStorage.getItem('theme')
-    const shoulderThemeDark = savedTheme ? savedTheme === 'dark' : true
+    const shouldUseDark = savedTheme ? savedTheme === 'dark' : true
 
-    if (shoulderThemeDark) {
+    if (shouldUseDark) {
       rootWindow.classList.add('dark')
       localStorage.setItem('theme', 'dark')
     } else {
@@ -641,43 +751,58 @@ export default function NotesPanel({ darkMode = true, courseId }) {
 
   // Fetch topics
   useEffect(() => {
-    if (!courseId) return
-    setLoading(true)
-    const fetchTopics = async () => {
-      const { data, error } = await supabase
-        .from('topics')
-        .select('*')
-        .eq('course_id', courseId)
-      if (!error) setTopics(data || [])
-      setLoading(false)
+    if (!courseId) return undefined
+
+    let cancelled = false
+    fetchTopics(courseId).then(
+      (rows) => {
+        if (cancelled) return
+        setTopics(rows)
+        setLoading(false)
+      },
+      () => {
+        if (!cancelled) setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
     }
-    fetchTopics()
   }, [courseId])
 
   // Fetch notes
   useEffect(() => {
-    if (!selectedTopic) return
-    setLoading(true)
-    const fetchNotes = async () => {
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('topic_id', selectedTopic.id)
-      if (!error) setNotes(data || [])
-      setLoading(false)
+    if (!selectedTopic) return undefined
+
+    let cancelled = false
+    fetchNotes(selectedTopic.id).then(
+      (rows) => {
+        if (cancelled) return
+        setNotes(rows)
+        setLoading(false)
+      },
+      () => {
+        if (!cancelled) setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
     }
-    fetchNotes()
   }, [selectedTopic])
 
-  const openNote = async (noteId) => {
+  const selectTopic = (topic: Topic) => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('id', noteId)
-      .single()
-    if (!error) setSelectedNote(data)
-    setLoading(false)
+    setSelectedTopic(topic)
+  }
+
+  const openNote = (noteId: string) => {
+    setLoading(true)
+    fetchNote(noteId).then(
+      (note) => {
+        setSelectedNote(note)
+        setLoading(false)
+      },
+      () => setLoading(false),
+    )
   }
 
   return (
@@ -709,11 +834,12 @@ export default function NotesPanel({ darkMode = true, courseId }) {
         <div className="grid grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2">
           {topics.map((t) => (
             <button
+              type="button"
               key={t.id}
-              onClick={() => setSelectedTopic(t)}
+              onClick={() => selectTopic(t)}
               className="group rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xs transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500"
             >
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+              <div className="mb-1 text-xs font-semibold tracking-wider text-blue-600 uppercase dark:text-blue-400">
                 Topic
               </div>
               <div className="font-semibold text-slate-800 group-hover:text-blue-600 dark:text-slate-200 dark:group-hover:text-blue-400">
@@ -728,6 +854,7 @@ export default function NotesPanel({ darkMode = true, courseId }) {
       {!loading && selectedTopic && !selectedNote && (
         <div className="flex h-full flex-col overflow-y-auto">
           <button
+            type="button"
             onClick={() => setSelectedTopic(null)}
             className="mb-4 self-start text-xs font-semibold text-slate-500 hover:text-blue-600 dark:text-slate-400"
           >
@@ -736,6 +863,7 @@ export default function NotesPanel({ darkMode = true, courseId }) {
           <div className="flex flex-col gap-2">
             {notes.map((n) => (
               <button
+                type="button"
                 key={n.id}
                 onClick={() => openNote(n.id)}
                 className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xs transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500"
@@ -753,6 +881,7 @@ export default function NotesPanel({ darkMode = true, courseId }) {
       {!loading && selectedNote && (
         <div className="flex h-full flex-col overflow-y-auto">
           <button
+            type="button"
             onClick={() => setSelectedNote(null)}
             className="mb-4 self-start text-xs font-semibold text-slate-500 hover:text-blue-600 dark:text-slate-400"
           >
@@ -767,74 +896,9 @@ export default function NotesPanel({ darkMode = true, courseId }) {
           <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-800 shadow-xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              components={{
-                p: ({ children }) => (
-                  <p className="mb-4 leading-relaxed text-slate-800 dark:text-slate-200">
-                    {children}
-                  </p>
-                ),
-                h1: ({ children }) => (
-                  <h1 className="mb-3 mt-6 border-b border-slate-100 pb-1 text-2xl font-bold text-slate-900 dark:border-slate-800 dark:text-white">
-                    {children}
-                  </h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="mb-2 mt-5 text-xl font-bold text-slate-900 dark:text-white">
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="mb-2 mt-4 text-lg font-bold text-slate-900 dark:text-white">
-                    {children}
-                  </h3>
-                ),
-                ul: ({ children }) => (
-                  <ul className="mb-4 list-disc space-y-1 pl-6 text-slate-800 dark:text-slate-200">
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="mb-4 list-decimal space-y-1 pl-6 text-slate-800 dark:text-slate-200">
-                    {children}
-                  </ol>
-                ),
-                li: ({ children }) => <li className="pl-1">{children}</li>,
-                a: ({ href, children }) => (
-                  <a
-                    href={href}
-                    className="text-blue-600 underline hover:text-blue-700 dark:text-blue-400"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {children}
-                  </a>
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote className="my-4 border-l-4 border-slate-300 pl-4 italic text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    {children}
-                  </blockquote>
-                ),
-
-                // Code block renderer with corrected array string mapping index fix
-                code({ node, inline, className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || '')
-                  return !inline && match ? (
-                    <SyntaxHighlighter
-                      style={darkMode ? materialDark : vscDarkPlus}
-                      language={match[1]}
-                      PreTag="div"
-                      className="my-4 rounded-xl border border-slate-200 text-sm shadow-inner dark:border-slate-800"
-                      customStyle={{ padding: '1rem', margin: '1rem 0' }}
-                    >
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>
-                  ) : (
-                    <code className="rounded-sm border border-slate-200/60 bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-pink-600 dark:border-slate-700/50 dark:bg-slate-800 dark:text-emerald-400">
-                      {children}
-                    </code>
-                  )
-                },
-              }}
+              components={
+                darkMode ? NOTE_COMPONENTS.dark : NOTE_COMPONENTS.light
+              }
             >
               {selectedNote.content || '*Empty document.*'}
             </ReactMarkdown>

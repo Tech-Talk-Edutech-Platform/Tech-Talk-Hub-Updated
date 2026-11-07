@@ -1,11 +1,100 @@
 // SalesDashboard.js
-import React, { useState, useEffect } from 'react'
-import { supabase } from '../../supabase'
+import { useState, useEffect } from 'react'
+import { plannedDb } from '../../lib/plannedDb'
 // import Loading from "../../dashboards/views/Loading";
+
+interface FollowupRate {
+  due: number
+  completed: number
+}
+
+interface LeaderboardRow {
+  agent_id: string
+  calls: number
+  talk_time: number
+}
+
+interface SalesKpis {
+  callsToday: number
+  callsWeek: number
+  talkTimeToday: number
+  talkTimeWeek: number
+  leadsProgressedToday: number
+  leadsProgressedWeek: number
+  followupRateToday: FollowupRate
+  followupRateWeek: FollowupRate
+  leaderboardToday: LeaderboardRow[]
+  leaderboardWeek: LeaderboardRow[]
+}
+
+async function loadSalesKpis(): Promise<SalesKpis> {
+  const now = new Date()
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  const endOfToday = new Date()
+  endOfToday.setHours(23, 59, 59, 999)
+
+  const startOfWeek = new Date()
+  startOfWeek.setDate(now.getDate() - now.getDay()) // Sunday start
+  startOfWeek.setHours(0, 0, 0, 0)
+  const endOfWeek = new Date()
+  endOfWeek.setHours(23, 59, 59, 999)
+
+  const today = {
+    from_date: startOfToday.toISOString(),
+    to_date: endOfToday.toISOString(),
+  }
+  const week = {
+    from_date: startOfWeek.toISOString(),
+    to_date: endOfWeek.toISOString(),
+  }
+
+  const [
+    callsToday,
+    callsWeek,
+    talkTimeToday,
+    talkTimeWeek,
+    leadsToday,
+    leadsWeek,
+    followupToday,
+    followupWeek,
+    leaderboardToday,
+    leaderboardWeek,
+  ] = await Promise.all([
+    // Calls
+    plannedDb.rpc('calls_count', today),
+    plannedDb.rpc('calls_count', week),
+    // Talk Time
+    plannedDb.rpc('total_talk_time', today),
+    plannedDb.rpc('total_talk_time', week),
+    // Leads progressed
+    plannedDb.rpc('leads_progressed', today),
+    plannedDb.rpc('leads_progressed', week),
+    // Follow-up completion
+    plannedDb.rpc('followup_completion_rate', today),
+    plannedDb.rpc('followup_completion_rate', week),
+    // Leaderboard
+    plannedDb.rpc('agent_call_leaderboard', today),
+    plannedDb.rpc('agent_call_leaderboard', week),
+  ])
+
+  return {
+    callsToday: callsToday.data || 3,
+    callsWeek: callsWeek.data || 4,
+    talkTimeToday: talkTimeToday.data || 15,
+    talkTimeWeek: talkTimeWeek.data || 36,
+    leadsProgressedToday: leadsToday.data || 6,
+    leadsProgressedWeek: leadsWeek.data || 17,
+    followupRateToday: followupToday.data?.at(0) || { due: 3, completed: 8 },
+    followupRateWeek: followupWeek.data?.at(0) || { due: 6, completed: 9 },
+    leaderboardToday: leaderboardToday.data || [],
+    leaderboardWeek: leaderboardWeek.data || [],
+  }
+}
 
 export default function SalesDashboard() {
   // const [loading, setLoading] = useState(true);
-  const [kpis, setKpis] = useState({
+  const [kpis, setKpis] = useState<SalesKpis>({
     callsToday: 3,
     callsWeek: 4,
     talkTimeToday: 15,
@@ -19,89 +108,18 @@ export default function SalesDashboard() {
   })
 
   useEffect(() => {
-    const fetchKpis = async () => {
-      // setLoading(true);
-      const now = new Date()
-      const startOfToday = new Date()
-      startOfToday.setHours(0, 0, 0, 0)
-      const endOfToday = new Date()
-      endOfToday.setHours(23, 59, 59, 999)
-
-      const startOfWeek = new Date()
-      startOfWeek.setDate(now.getDate() - now.getDay()) // Sunday start
-      startOfWeek.setHours(0, 0, 0, 0)
-      const endOfWeek = new Date()
-      endOfWeek.setHours(23, 59, 59, 999)
-
-      // Calls
-      const callsToday = await supabase.rpc('calls_count', {
-        from_date: startOfToday.toISOString(),
-        to_date: endOfToday.toISOString(),
-      })
-
-      const callsWeek = await supabase.rpc('calls_count', {
-        from_date: startOfWeek.toISOString(),
-        to_date: endOfWeek.toISOString(),
-      })
-
-      // Talk Time
-      const talkTimeToday = await supabase.rpc('total_talk_time', {
-        from_date: startOfToday.toISOString(),
-        to_date: endOfToday.toISOString(),
-      })
-
-      const talkTimeWeek = await supabase.rpc('total_talk_time', {
-        from_date: startOfWeek.toISOString(),
-        to_date: endOfWeek.toISOString(),
-      })
-
-      // Leads progressed
-      const leadsToday = await supabase.rpc('leads_progressed', {
-        from_date: startOfToday.toISOString(),
-        to_date: endOfToday.toISOString(),
-      })
-      const leadsWeek = await supabase.rpc('leads_progressed', {
-        from_date: startOfWeek.toISOString(),
-        to_date: endOfWeek.toISOString(),
-      })
-
-      // Follow-up completion
-      const followupToday = await supabase.rpc('followup_completion_rate', {
-        from_date: startOfToday.toISOString(),
-        to_date: endOfToday.toISOString(),
-      })
-      const followupWeek = await supabase.rpc('followup_completion_rate', {
-        from_date: startOfWeek.toISOString(),
-        to_date: endOfWeek.toISOString(),
-      })
-
-      // Leaderboard
-      const leaderboardToday = await supabase.rpc('agent_call_leaderboard', {
-        from_date: startOfToday.toISOString(),
-        to_date: endOfToday.toISOString(),
-      })
-      const leaderboardWeek = await supabase.rpc('agent_call_leaderboard', {
-        from_date: startOfWeek.toISOString(),
-        to_date: endOfWeek.toISOString(),
-      })
-
-      setKpis({
-        callsToday: callsToday.data || 3,
-        callsWeek: callsWeek.data || 4,
-        talkTimeToday: talkTimeToday.data || 15,
-        talkTimeWeek: talkTimeWeek.data || 36,
-        leadsProgressedToday: leadsToday.data || 6,
-        leadsProgressedWeek: leadsWeek.data || 17,
-        followupRateToday: followupToday.data?.[0] || { due: 3, completed: 8 },
-        followupRateWeek: followupWeek.data?.[0] || { due: 6, completed: 9 },
-        leaderboardToday: leaderboardToday.data || [],
-        leaderboardWeek: leaderboardWeek.data || [],
-      })
-
-      // setLoading(false);
+    let cancelled = false
+    loadSalesKpis().then(
+      (next) => {
+        if (!cancelled) setKpis(next)
+      },
+      (error: unknown) => {
+        if (!cancelled) console.error('Failed to load sales KPIs', error)
+      },
+    )
+    return () => {
+      cancelled = true
     }
-
-    fetchKpis()
   }, [])
 
   // if (loading) return <Loading label="Loading Dashboard..." />;

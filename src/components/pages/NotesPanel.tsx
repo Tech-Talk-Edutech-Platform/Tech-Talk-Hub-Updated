@@ -1,69 +1,143 @@
 // src/components/NotesPanel.js
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../../supabase'
+import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import {
   materialDark,
   vscDarkPlus,
 } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { plannedDb } from '../../lib/plannedDb'
+import type { PlannedRow } from '../../types/plannedTables'
+import { HighlightedCode } from '../ui/HighlightedCode'
 
-export default function NotesPanel({ darkMode, courseId }) {
-  const [topics, setTopics] = useState([])
-  const [selectedTopic, setSelectedTopic] = useState(null)
-  const [notes, setNotes] = useState([])
-  const [selectedNote, setSelectedNote] = useState(null)
+type Topic = PlannedRow<'topics'>
+type Note = PlannedRow<'notes'>
+
+interface NotesPanelProps {
+  darkMode?: boolean
+  courseId?: string
+}
+
+async function fetchTopics(courseId: string): Promise<Topic[]> {
+  const { data, error } = await plannedDb
+    .from('topics')
+    .select('*')
+    .eq('course_id', courseId)
+    .order('title')
+  if (error) throw error
+  return data
+}
+
+async function fetchNotes(topicId: string): Promise<Note[]> {
+  const { data, error } = await plannedDb
+    .from('notes')
+    .select('*')
+    .eq('topic_id', topicId)
+    .order('title')
+  if (error) throw error
+  return data
+}
+
+async function fetchNote(noteId: string): Promise<Note> {
+  const { data, error } = await plannedDb
+    .from('notes')
+    .select('*')
+    .eq('id', noteId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+function noteComponents(theme: Record<string, CSSProperties>): Components {
+  return {
+    h1: ({ children }) => (
+      <h1 className="mb-4 text-3xl font-bold text-primary">{children}</h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="mb-3 text-xl font-bold text-secondary">{children}</h2>
+    ),
+    p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
+    code: ({ className, children }) => (
+      <HighlightedCode
+        className={className}
+        theme={theme}
+        inlineClassName="rounded-sm bg-gray-200 px-2 py-1 text-pink-500 dark:bg-gray-800"
+      >
+        {children}
+      </HighlightedCode>
+    ),
+  }
+}
+
+const NOTE_COMPONENTS = {
+  dark: noteComponents(materialDark),
+  light: noteComponents(vscDarkPlus),
+}
+
+export default function NotesPanel({ darkMode, courseId }: NotesPanelProps) {
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null)
+  const [notes, setNotes] = useState<Note[]>([])
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Fetch topics
   useEffect(() => {
-    if (!courseId) return
+    if (!courseId) return undefined
 
-    const fetchTopics = async () => {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('topics')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('title')
-
-      if (!error) setTopics(data || [])
-      setLoading(false)
+    let cancelled = false
+    fetchTopics(courseId).then(
+      (rows) => {
+        if (cancelled) return
+        setTopics(rows)
+        setLoading(false)
+      },
+      () => {
+        if (!cancelled) setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
     }
-
-    fetchTopics()
   }, [courseId])
 
   // Fetch notes
   useEffect(() => {
-    if (!selectedTopic) return
+    if (!selectedTopic) return undefined
 
-    const fetchNotes = async () => {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('topic_id', selectedTopic.id)
-        .order('title')
-
-      if (!error) setNotes(data || [])
-      setLoading(false)
+    let cancelled = false
+    fetchNotes(selectedTopic.id).then(
+      (rows) => {
+        if (cancelled) return
+        setNotes(rows)
+        setLoading(false)
+      },
+      () => {
+        if (!cancelled) setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
     }
-
-    fetchNotes()
   }, [selectedTopic])
 
-  const openNote = async (noteId) => {
+  const selectTopic = (topic: Topic) => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('id', noteId)
-      .single()
+    setSelectedTopic(topic)
+    setSelectedNote(null)
+  }
 
-    if (!error) setSelectedNote(data)
-    setLoading(false)
+  const openNote = (noteId: string) => {
+    setLoading(true)
+    fetchNote(noteId).then(
+      (note) => {
+        setSelectedNote(note)
+        setLoading(false)
+      },
+      () => setLoading(false),
+    )
   }
 
   if (loading && !selectedNote) {
@@ -83,11 +157,9 @@ export default function NotesPanel({ darkMode, courseId }) {
           <div className="space-y-2">
             {topics.map((t) => (
               <button
+                type="button"
                 key={t.id}
-                onClick={() => {
-                  setSelectedTopic(t)
-                  setSelectedNote(null)
-                }}
+                onClick={() => selectTopic(t)}
                 className={`w-full rounded-xl px-4 py-3 text-left font-semibold transition-all ${
                   darkMode
                     ? 'bg-gray-800 hover:bg-primary hover:text-white'
@@ -104,6 +176,7 @@ export default function NotesPanel({ darkMode, courseId }) {
         {selectedTopic && !selectedNote && (
           <div>
             <button
+              type="button"
               onClick={() => setSelectedTopic(null)}
               className="mb-3 text-sm text-secondary hover:underline"
             >
@@ -113,6 +186,7 @@ export default function NotesPanel({ darkMode, courseId }) {
             <div className="space-y-2">
               {notes.map((n) => (
                 <button
+                  type="button"
                   key={n.id}
                   onClick={() => openNote(n.id)}
                   className={`w-full rounded-xl px-4 py-3 text-left transition-all ${
@@ -140,6 +214,7 @@ export default function NotesPanel({ darkMode, courseId }) {
         {selectedNote && (
           <div className="mx-auto max-w-4xl">
             <button
+              type="button"
               onClick={() => setSelectedNote(null)}
               className="mb-4 text-sm text-secondary hover:underline"
             >
@@ -155,38 +230,9 @@ export default function NotesPanel({ darkMode, courseId }) {
             >
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                components={{
-                  h1: ({ children }) => (
-                    <h1 className="mb-4 text-3xl font-bold text-primary">
-                      {children}
-                    </h1>
-                  ),
-                  h2: ({ children }) => (
-                    <h2 className="mb-3 text-xl font-bold text-secondary">
-                      {children}
-                    </h2>
-                  ),
-                  p: ({ children }) => (
-                    <p className="mb-4 leading-relaxed">{children}</p>
-                  ),
-                  code({ inline, className, children, ...props }) {
-                    const match = /language-(\w+)/.exec(className || '')
-                    return !inline && match ? (
-                      <SyntaxHighlighter
-                        style={darkMode ? materialDark : vscDarkPlus}
-                        language={match[1]}
-                        PreTag="div"
-                        {...props}
-                      >
-                        {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
-                    ) : (
-                      <code className="rounded-sm bg-gray-200 px-2 py-1 text-pink-500 dark:bg-gray-800">
-                        {children}
-                      </code>
-                    )
-                  },
-                }}
+                components={
+                  darkMode ? NOTE_COMPONENTS.dark : NOTE_COMPONENTS.light
+                }
               >
                 {selectedNote.content}
               </ReactMarkdown>

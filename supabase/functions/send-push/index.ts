@@ -1,3 +1,6 @@
+// Parked: a push-notification sender, kept commented out until web push is set up.
+// .oxlintrc.json lets this file be comment-only.
+
 // import express from "express";
 // import bodyParser from "body-parser";
 // import WebPush from "web-push";

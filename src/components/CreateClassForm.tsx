@@ -61,7 +61,7 @@ export default function CreateClassForm() {
       setStudents(s || [])
       setTutors(t || [])
     }
-    fetchData()
+    void fetchData()
   }, [])
 
   const handleCreateClass = async (formData: CreateClassValues) => {
@@ -78,27 +78,39 @@ export default function CreateClassForm() {
       .select()
       .single()
 
-    if (classErr) return alert(classErr.message)
+    if (classErr) {
+      alert(classErr.message)
+      return
+    }
 
     // 2. Create the Calendar Event
     const end = new Date(
       new Date(formData.start_time).getTime() + formData.duration * 60000,
     )
 
-    await supabase.from('calendar_events').insert([
-      {
-        title: formData.title,
-        tutor_id: formData.tutor_id,
-        class_id: classRecord.id,
-        start_time: formData.start_time,
-        end_time: end.toISOString(),
-      },
-    ])
+    const { data: eventRecord, error: eventErr } = await supabase
+      .from('calendar_events')
+      .insert([
+        {
+          title: formData.title,
+          tutor_id: formData.tutor_id,
+          class_id: classRecord.id,
+          start_time: formData.start_time,
+          end_time: end.toISOString(),
+        },
+      ])
+      .select('id')
+      .single()
+
+    if (eventErr) {
+      alert(eventErr.message)
+      return
+    }
 
     // 3. Register Attendance so the student can see it
     await supabase.from('event_attendance').insert([
       {
-        event_id: classRecord.id, // Or map to the new event ID
+        event_id: eventRecord.id,
         student_id: formData.student_id,
       },
     ])
@@ -108,13 +120,14 @@ export default function CreateClassForm() {
 
   return (
     <form
-      onSubmit={handleSubmit(handleCreateClass)}
+      onSubmit={(event) => void handleSubmit(handleCreateClass)(event)}
       noValidate
       className="max-w-md rounded-sm bg-white p-6 shadow-md"
     >
       <h2 className="mb-4 text-xl font-bold">Schedule New Class</h2>
 
       <select
+        aria-label="Student"
         {...register('student_id')}
         className="mb-3 w-full border p-2"
         aria-invalid={Boolean(errors.student_id)}
@@ -128,6 +141,7 @@ export default function CreateClassForm() {
       </select>
 
       <select
+        aria-label="Tutor"
         {...register('tutor_id')}
         className="mb-3 w-full border p-2"
         aria-invalid={Boolean(errors.tutor_id)}
@@ -141,6 +155,7 @@ export default function CreateClassForm() {
       </select>
 
       <input
+        aria-label="Class date and time"
         type="datetime-local"
         {...register('start_time')}
         className="mb-3 w-full border p-2"

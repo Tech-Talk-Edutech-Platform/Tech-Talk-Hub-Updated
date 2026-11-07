@@ -3,8 +3,6 @@
 //   return <UploadNote />;
 // }
 // // src/pages/Scratch.js
-import React from 'react'
-
 export default function Scratch() {
   return (
     <div style={{ width: '100%', height: '100%' }}>
@@ -17,7 +15,11 @@ export default function Scratch() {
           border: "none",
         }}
       /> */}
-      <iframe src="https://turbowarp.org/embed" />
+      {/* oxlint-disable-next-line react/iframe-missing-sandbox -- the TurboWarp editor needs scripts and same-origin storage to load and keep projects, which a sandbox would block */}
+      <iframe
+        src="https://turbowarp.org/embed"
+        title="TurboWarp Scratch editor"
+      />
       {/* <button onClick={saveProject}>
         SAVE PROJECT
       </button> */}

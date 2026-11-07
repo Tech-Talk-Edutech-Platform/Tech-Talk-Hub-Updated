@@ -54,6 +54,13 @@
   },
   "overrides": [
     {
+      "files": [
+        "src/features/commerce/Sales/Marketers.ts",
+        "supabase/functions/send-push/index.ts"
+      ],
+      "rules": { "unicorn/no-empty-file": "off" }
+    },
+    {
       "files": ["*.config.ts", "*.config.js", "scripts/**"],
       "env": { "node": true }
     }

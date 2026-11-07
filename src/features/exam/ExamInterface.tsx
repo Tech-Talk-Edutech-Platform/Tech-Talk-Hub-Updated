@@ -1,12 +1,5 @@
 import React, { useState } from 'react'
-import {
-  Clock,
-  Flag,
-  CheckCircle,
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
+import { Clock, Flag } from 'lucide-react'
 
 const examData = {
   questions: Array.from({ length: 15 }, (_, i) => ({

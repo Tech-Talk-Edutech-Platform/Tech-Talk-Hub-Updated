@@ -1,9 +1,29 @@
 // src/components/UploadNote.js
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import { supabase } from '../../supabase'
+import { plannedDb } from '../../lib/plannedDb'
+
+type Option = { id: string; title: string }
+
+async function fetchCourses(): Promise<Option[]> {
+  const { data, error } = await supabase.from('courses').select('id, title')
+  if (error) throw error
+  return data
+}
+
+async function fetchTopics(courseId: string): Promise<Option[]> {
+  const { data, error } = await plannedDb
+    .from('topics')
+    .select('id, title')
+    .eq('course_id', courseId)
+  if (error) throw error
+  return data
+}
+
 export default function UploadNote() {
-  const [courses, setCourses] = useState([])
-  const [topics, setTopics] = useState([])
+  const [courses, setCourses] = useState<Option[]>([])
+  const [topics, setTopics] = useState<Option[]>([])
   const [selectedCourse, setSelectedCourse] = useState('')
   const [selectedTopic, setSelectedTopic] = useState('')
   const [noteTitle, setNoteTitle] = useState('')
@@ -12,35 +32,44 @@ export default function UploadNote() {
 
   // Fetch all courses
   useEffect(() => {
-    const fetchCourses = async () => {
-      const { data, error } = await supabase.from('courses').select('*')
-      if (!error) setCourses(data || [])
-      else console.error('Error fetching courses:', error)
+    let cancelled = false
+    fetchCourses().then(
+      (rows) => {
+        if (!cancelled) setCourses(rows)
+      },
+      (error: unknown) => console.error('Error fetching courses:', error),
+    )
+    return () => {
+      cancelled = true
     }
-    fetchCourses()
   }, [])
 
   // Fetch topics for selected course
   useEffect(() => {
-    if (!selectedCourse) {
-      setTopics([])
-      setSelectedTopic('')
-      return
-    }
+    if (!selectedCourse) return undefined
 
-    const fetchTopics = async () => {
-      const { data, error } = await supabase
-        .from('topics')
-        .select('*')
-        .eq('course_id', selectedCourse)
-      if (!error) setTopics(data || [])
-      else console.error('Error fetching topics:', error)
+    let cancelled = false
+    fetchTopics(selectedCourse).then(
+      (rows) => {
+        if (!cancelled) setTopics(rows)
+      },
+      (error: unknown) => console.error('Error fetching topics:', error),
+    )
+    return () => {
+      cancelled = true
     }
-    fetchTopics()
   }, [selectedCourse])
 
+  const selectCourse = (courseId: string) => {
+    setSelectedCourse(courseId)
+    if (!courseId) {
+      setTopics([])
+      setSelectedTopic('')
+    }
+  }
+
   // Upload note
-  const handleUpload = async (e) => {
+  const handleUpload = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedCourse || !selectedTopic || !noteTitle || !content) {
       setStatus('⚠️ Fill all fields.')
@@ -49,7 +78,7 @@ export default function UploadNote() {
 
     const noteId = noteTitle.toLowerCase().replace(/\s+/g, '_')
 
-    const { error } = await supabase.from('notes').insert([
+    const { error } = await plannedDb.from('notes').insert([
       {
         id: noteId,
         course_id: selectedCourse,
@@ -75,10 +104,14 @@ export default function UploadNote() {
       <h2 className="mb-4 text-xl font-bold text-text dark:text-gray-100">
         Upload a New Note
       </h2>
-      <form onSubmit={handleUpload} className="flex flex-col gap-3">
+      <form
+        onSubmit={(e) => void handleUpload(e)}
+        className="flex flex-col gap-3"
+      >
         <select
+          aria-label="Course"
           value={selectedCourse}
-          onChange={(e) => setSelectedCourse(e.target.value)}
+          onChange={(e) => selectCourse(e.target.value)}
           className="rounded-sm border p-2 dark:bg-gray-800 dark:text-white"
         >
           <option value="">Select Course</option>
@@ -90,6 +123,7 @@ export default function UploadNote() {
         </select>
 
         <select
+          aria-label="Topic"
           value={selectedTopic}
           onChange={(e) => setSelectedTopic(e.target.value)}
           className="rounded-sm border p-2 dark:bg-gray-800 dark:text-white"
@@ -105,6 +139,7 @@ export default function UploadNote() {
 
         <input
           type="text"
+          aria-label="Note title"
           placeholder="Note Title"
           value={noteTitle}
           onChange={(e) => setNoteTitle(e.target.value)}
@@ -112,8 +147,9 @@ export default function UploadNote() {
         />
 
         <textarea
+          aria-label="Content"
           placeholder="Content"
-          rows="6"
+          rows={6}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="rounded-sm border p-2 dark:bg-gray-800 dark:text-white"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Shield,
   Clock,
@@ -10,40 +10,42 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../../../supabase'
 import { toast, Toaster } from 'react-hot-toast'
+import { loadAttendanceLogs } from '../../../lib/attendanceLogs'
+import type { AttendanceLog } from '../../../lib/attendanceLogs'
+
+const LOG_LIMIT = 200 // Performance cap
 
 export default function AdminLogsPage() {
-  const [logs, setLogs] = useState([])
+  const [logs, setLogs] = useState<AttendanceLog[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState('all')
 
   useEffect(() => {
-    fetchLiveAuditLogs()
+    let cancelled = false
+    loadAttendanceLogs({ limit: LOG_LIMIT }).then(
+      (rows) => {
+        if (cancelled) return
+        setLogs(rows)
+        setLoading(false)
+      },
+      () => {
+        if (cancelled) return
+        toast.error('Failed to interface with Supabase audit systems.')
+        setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const fetchLiveAuditLogs = async () => {
     setLoading(true)
     try {
-      // Direct pipeline fetch into your relational system attendance logs
-      const { data, error } = await supabase
-        .from('event_attendance')
-        .select(
-          `
-          id, 
-          status, 
-          created_at,
-          students(full_name),
-          calendar_events(title, start_time, tutors:tutor_id(full_name))
-        `,
-        )
-        .order('created_at', { ascending: false })
-        .limit(200) // Performance cap
-
-      if (error) throw error
-      setLogs(data || [])
-    } catch (err) {
+      setLogs(await loadAttendanceLogs({ limit: LOG_LIMIT }))
+    } catch {
       toast.error('Failed to interface with Supabase audit systems.')
     } finally {
       setLoading(false)
@@ -93,9 +95,10 @@ export default function AdminLogsPage() {
 
         <div>
           <button
-            onClick={fetchLiveAuditLogs}
+            type="button"
+            onClick={() => void fetchLiveAuditLogs()}
             disabled={loading}
-            className="shadow-2xs flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-2xs transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />{' '}
             Refresh Pipeline
@@ -104,15 +107,16 @@ export default function AdminLogsPage() {
       </div>
 
       {/* SEARCH AND INTERACTION ROUTERS */}
-      <div className="shadow-2xs mx-auto mb-6 flex max-w-7xl flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 md:flex-row">
+      <div className="mx-auto mb-6 flex max-w-7xl flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs md:flex-row">
         <div className="relative w-full md:w-96">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
+            aria-label="Filter logs"
             placeholder="Filter by student, class name, or tutor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm font-medium transition focus:border-indigo-500 focus:outline-hidden focus:ring-4 focus:ring-indigo-500/10"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm font-medium transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-hidden"
           />
         </div>
 
@@ -124,9 +128,10 @@ export default function AdminLogsPage() {
             { id: 'absent', label: 'Absent / Pending' },
           ].map((btn) => (
             <button
+              type="button"
               key={btn.id}
               onClick={() => setActiveFilter(btn.id)}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+              className={`rounded-md px-3 py-1.5 text-xs font-bold tracking-wider whitespace-nowrap uppercase transition ${
                 activeFilter === btn.id
                   ? 'bg-indigo-600 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -139,11 +144,11 @@ export default function AdminLogsPage() {
       </div>
 
       {/* CORE MATRIX RENDER ENGINE */}
-      <div className="shadow-2xs mx-auto max-w-7xl overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
         {loading ? (
           <div className="flex flex-col items-center justify-center space-y-3 p-24 text-center">
             <RefreshCw className="h-8 w-8 animate-spin text-indigo-600" />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+            <p className="text-xs font-black tracking-widest text-slate-400 uppercase">
               Polling Supabase Clusters...
             </p>
           </div>
@@ -151,7 +156,7 @@ export default function AdminLogsPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold tracking-wider text-slate-500 uppercase">
                   <th className="p-4">Timestamp</th>
                   <th className="p-4">Log Token ID</th>
                   <th className="p-4">Enrolled Student</th>
@@ -167,17 +172,19 @@ export default function AdminLogsPage() {
                       key={log.id}
                       className="transition hover:bg-slate-50/50"
                     >
-                      <td className="whitespace-nowrap p-4 font-mono text-xs text-slate-500">
+                      <td className="p-4 font-mono text-xs whitespace-nowrap text-slate-500">
                         <span className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-slate-400" />
-                          {new Date(log.created_at).toLocaleString('en-KE', {
-                            dateStyle: 'short',
-                            timeStyle: 'short',
-                          })}
+                          {log.created_at
+                            ? new Date(log.created_at).toLocaleString('en-KE', {
+                                dateStyle: 'short',
+                                timeStyle: 'short',
+                              })
+                            : ''}
                         </span>
                       </td>
                       <td className="p-4 font-mono text-xs font-bold text-slate-400">
-                        #{String(log.id).slice(0, 8)}
+                        #{log.id.slice(0, 8)}
                       </td>
                       <td className="p-4 font-bold text-slate-900">
                         {log.students?.full_name || 'Corrupted Record Name'}
@@ -191,9 +198,9 @@ export default function AdminLogsPage() {
                         {log.calendar_events?.tutors?.full_name ||
                           'System Base Node'}
                       </td>
-                      <td className="whitespace-nowrap p-4 text-right">
+                      <td className="p-4 text-right whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wider ${
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-black tracking-wider uppercase ${
                             log.status === 'present'
                               ? 'border border-emerald-200/60 bg-emerald-50 text-emerald-700'
                               : 'border border-amber-200/60 bg-amber-50 text-amber-700'
@@ -212,8 +219,8 @@ export default function AdminLogsPage() {
                 ) : (
                   <tr>
                     <td
-                      colSpan="6"
-                      className="p-16 text-center font-bold italic text-slate-400"
+                      colSpan={6}
+                      className="p-16 text-center font-bold text-slate-400 italic"
                     >
                       No matching historical tracking instances recorded in this
                       scope pipeline.

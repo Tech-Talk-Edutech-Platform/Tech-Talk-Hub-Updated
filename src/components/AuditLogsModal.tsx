@@ -1,64 +1,38 @@
-import React, { useState, useEffect } from 'react'
-import { supabase } from '../supabase'
-import { X, Search, FileText, CheckCircle2, Clock, User } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Search, FileText, CheckCircle2, Clock } from 'lucide-react'
+import { loadAttendanceLogs } from '../lib/attendanceLogs'
+import type { AttendanceLog } from '../lib/attendanceLogs'
 
 interface AuditLogsModalProps {
   isOpen: boolean
   onClose: () => void
 }
 
-interface AuditLog {
-  id: string
-  status: string | null
-  created_at: string
-  students: { full_name: string } | null
-  calendar_events: {
-    title: string
-    start_time: string
-    tutors: { full_name: string } | null
-  } | null
-}
-
 export default function AuditLogsModal({
   isOpen,
   onClose,
 }: AuditLogsModalProps) {
-  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [logs, setLogs] = useState<AttendanceLog[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return undefined
 
     const controller = new AbortController()
     let active = true
 
-    const fetchLogs = async () => {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('event_attendance')
-        .select(
-          `
-          id,
-          status,
-          created_at,
-          students ( full_name ),
-          calendar_events (
-            title,
-            start_time,
-            tutors ( full_name )
-          )
-        `,
-        )
-        .order('created_at', { ascending: false })
-        .abortSignal(controller.signal)
+    loadAttendanceLogs({ signal: controller.signal }).then(
+      (rows) => {
+        if (!active) return
+        setLogs(rows)
+        setLoading(false)
+      },
+      () => {
+        if (active) setLoading(false)
+      },
+    )
 
-      if (!active) return
-      if (!error) setLogs(data ?? [])
-      setLoading(false)
-    }
-
-    void fetchLogs()
     return () => {
       active = false
       controller.abort()
@@ -86,7 +60,7 @@ export default function AuditLogsModal({
             <h2 className="flex items-center gap-2 text-2xl font-black text-slate-900">
               <FileText className="text-blue-600" /> Audit Class Logs
             </h2>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+            <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
               Historical Attendance & Session Records
             </p>
           </div>
@@ -102,13 +76,13 @@ export default function AuditLogsModal({
         <div className="border-b border-slate-100 bg-white p-6">
           <div className="relative">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400"
               size={18}
             />
             <input
               type="text"
               placeholder="Search by student, class, or tutor..."
-              className="w-full rounded-2xl border border-transparent bg-slate-50 py-4 pl-12 pr-4 font-bold outline-hidden transition-all focus:border-blue-500"
+              className="w-full rounded-2xl border border-transparent bg-slate-50 py-4 pr-4 pl-12 font-bold outline-hidden transition-all focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -141,7 +115,7 @@ export default function AuditLogsModal({
                     <h4 className="text-sm font-black text-slate-900">
                       {log.students?.full_name}
                     </h4>
-                    <p className="text-[10px] font-bold uppercase text-slate-400">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">
                       {log.calendar_events?.title} •{' '}
                       {log.calendar_events?.tutors?.full_name}
                     </p>
@@ -150,16 +124,20 @@ export default function AuditLogsModal({
 
                 <div className="text-right">
                   <p className="text-xs font-black text-slate-900">
-                    {new Date(
-                      log.calendar_events?.start_time,
-                    ).toLocaleDateString()}
+                    {log.calendar_events
+                      ? new Date(
+                          log.calendar_events.start_time,
+                        ).toLocaleDateString()
+                      : ''}
                   </p>
-                  <p className="text-[9px] font-bold uppercase italic text-slate-400">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase italic">
                     Logged:{' '}
-                    {new Date(log.created_at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {log.created_at
+                      ? new Date(log.created_at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : ''}
                   </p>
                 </div>
               </div>

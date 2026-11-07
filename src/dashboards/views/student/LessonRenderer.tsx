@@ -1,19 +1,25 @@
-function LessonRenderer({ content }: { content: string }) {
+import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+
+const REMARK_PLUGINS = [remarkGfm]
+
+// Keep normal h2 and h3 standard, and selectively handle custom styles
+const LESSON_COMPONENTS: Components = {
+  h2: ({ children }) => renderByteHeading(children, 'h2'),
+  h3: ({ children }) => renderByteHeading(children, 'h3'),
+  p: ({ children }) => (
+    <p className="mb-4 text-base leading-7 text-gray-700 dark:text-gray-300">
+      {children}
+    </p>
+  ),
+}
+
+export default function LessonRenderer({ content }: { content: string }) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        // Keep normal h2 and h3 standard, and selectively handle custom styles
-        h2: ({ children }: { children?: React.ReactNode }) =>
-          renderByteHeading(children, 'h2'),
-        h3: ({ children }: { children?: React.ReactNode }) =>
-          renderByteHeading(children, 'h3'),
-        p: ({ children }: { children?: React.ReactNode }) => (
-          <p className="mb-4 text-base leading-7 text-gray-700 dark:text-gray-300">
-            {children}
-          </p>
-        ),
-      }}
+      remarkPlugins={REMARK_PLUGINS}
+      components={LESSON_COMPONENTS}
     >
       {content}
     </ReactMarkdown>
@@ -50,13 +56,13 @@ function renderByteHeading(children: unknown, level: 'h2' | 'h3') {
   if (!matchedKey) {
     if (level === 'h2') {
       return (
-        <h2 className="mb-4 mt-8 border-b pb-2 text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 className="mt-8 mb-4 border-b pb-2 text-2xl font-bold text-gray-900 dark:text-white">
           {rawTitle}
         </h2>
       )
     }
     return (
-      <h3 className="mb-2 mt-6 text-xl font-bold text-gray-900 dark:text-white">
+      <h3 className="mt-6 mb-2 text-xl font-bold text-gray-900 dark:text-white">
         {rawTitle}
       </h3>
     )
@@ -70,12 +76,13 @@ function renderByteHeading(children: unknown, level: 'h2' | 'h3') {
       className={`my-6 rounded-2xl border ${borderColor} ${boxBg} p-5 dark:border-white/10 dark:bg-white/2`}
     >
       <h3
-        className={`${badgeBg} mb-3 inline-flex rounded-r-full px-4 py-2 text-sm font-black uppercase text-white shadow-xs`}
+        className={`${badgeBg} mb-3 inline-flex rounded-r-full px-4 py-2 text-sm font-black text-white uppercase shadow-xs`}
       >
         {rawTitle}
       </h3>
       {isByteAsks && (
         <textarea
+          aria-label={`Your answer: ${rawTitle}`}
           placeholder="Type your answer here..."
           className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white p-4 text-sm text-gray-900 outline-hidden focus:ring-2 focus:ring-amber-400 dark:bg-white/4 dark:text-white"
         />

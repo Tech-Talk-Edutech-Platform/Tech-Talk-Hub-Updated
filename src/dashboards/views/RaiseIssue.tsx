@@ -1,13 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../supabase'
-import {
-  Send,
-  Clock,
-  CheckCircle,
-  ChevronLeft,
-  Edit3,
-  Save,
-} from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { plannedDb } from '../../lib/plannedDb'
+import { ChevronLeft, Edit3, Save } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
@@ -19,15 +12,32 @@ const issueSchema = z.object({
 })
 type IssueFormValues = z.infer<typeof issueSchema>
 
-export default function RaiseIssue({ user, fetchAll, isLocked }) {
-  if (isLocked) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-700">
-        Ticket is {status}. Please wait for a resolution before opening a new
-        one.
-      </div>
-    )
-  }
+interface RaiseIssueProps {
+  user: { id: string } | null
+  /** Called after a ticket is raised, e.g. to refresh an admin list. */
+  fetchAll?: () => unknown
+  isLocked?: boolean
+}
+
+async function fetchTicketHistory(userId: string) {
+  const { data, error } = await plannedDb
+    .from('issues')
+    .select('id, title, description, status, created_at, priority')
+    .eq('reported_by', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+type Ticket = Awaited<ReturnType<typeof fetchTicketHistory>>[number]
+
+export default function RaiseIssue({
+  user,
+  fetchAll,
+  isLocked,
+}: RaiseIssueProps) {
+  const userId = user?.id
   const {
     register,
     handleSubmit: submitWithValidation,
@@ -37,36 +47,42 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
     resolver: zodResolver(issueSchema),
     defaultValues: { title: '', description: '', priority: 'normal' },
   })
-  const [history, setHistory] = useState([])
+  const [history, setHistory] = useState<Ticket[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [selectedTicket, setSelectedTicket] = useState(null)
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [showAll, setShowAll] = useState(false)
 
-  const fetchHistory = useCallback(async () => {
-    if (!user?.id) return
-    const { data } = await supabase
-      .from('issues')
-      .select('id, title, description, status, created_at, priority')
-      .eq('reported_by', user.id)
-      .order('created_at', { ascending: false })
-    if (data) setHistory(data)
-  }, [user?.id])
-
   useEffect(() => {
-    fetchHistory()
-  }, [fetchHistory])
+    if (!userId) return undefined
 
-  // const handleUpdate = async () => {
-  //   const { error } = await supabase
-  //     .from("issues")
-  //     .update({ title: selectedTicket.title, description: selectedTicket.description })
-  //     .eq("id", selectedTicket.id);
-  //   if (error) alert(error.message);
-  //   else { setIsEditing(false); fetchHistory(); }
-  // };
+    let cancelled = false
+    fetchTicketHistory(userId).then(
+      (rows) => {
+        if (!cancelled) setHistory(rows)
+      },
+      (error: unknown) => {
+        if (!cancelled) console.error('Error fetching tickets:', error)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  const fetchHistory = async () => {
+    if (!userId) return
+    try {
+      setHistory(await fetchTicketHistory(userId))
+    } catch (error) {
+      console.error('Error fetching tickets:', error)
+    }
+  }
+
   const handleUpdate = async () => {
+    if (!selectedTicket) return
+
     // 1. Check if the specific ticket is already resolved or in progress
     if (selectedTicket.status !== 'open') {
       alert('You cannot edit a ticket that is already in progress or resolved.')
@@ -74,7 +90,7 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
       return
     }
 
-    const { error } = await supabase
+    const { error } = await plannedDb
       .from('issues')
       .update({
         title: selectedTicket.title,
@@ -86,7 +102,7 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
       alert(error.message)
     } else {
       setIsEditing(false)
-      fetchHistory()
+      await fetchHistory()
     }
   }
 
@@ -95,17 +111,28 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
     description,
     priority,
   }: IssueFormValues) => {
+    if (!userId) return
+
     setIsSubmitting(true)
-    const { error } = await supabase
+    const { error } = await plannedDb
       .from('issues')
-      .insert([{ title, description, priority, reported_by: user.id }])
+      .insert([{ title, description, priority, reported_by: userId }])
     if (error) alert(error.message)
     else {
       reset()
-      fetchHistory()
-      if (fetchAll) fetchAll()
+      await fetchHistory()
+      if (fetchAll) await fetchAll()
     }
     setIsSubmitting(false)
+  }
+
+  if (isLocked) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-700">
+        Your last ticket is still open. Please wait for a resolution before
+        opening a new one.
+      </div>
+    )
   }
 
   return (
@@ -113,6 +140,7 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
       {selectedTicket ? (
         <div className="animate-in fade-in space-y-4 duration-200">
           <button
+            type="button"
             onClick={() => {
               setSelectedTicket(null)
               setIsEditing(false)
@@ -127,6 +155,7 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
             <div className="mb-3 flex items-start justify-between">
               {isEditing ? (
                 <input
+                  aria-label="Ticket title"
                   className="w-full border-b text-sm font-bold"
                   value={selectedTicket.title}
                   onChange={(e) =>
@@ -143,9 +172,12 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
               )}
               {selectedTicket.status === 'open' && (
                 <button
-                  onClick={() =>
-                    isEditing ? handleUpdate() : setIsEditing(true)
-                  }
+                  type="button"
+                  aria-label={isEditing ? 'Save ticket' : 'Edit ticket'}
+                  onClick={() => {
+                    if (isEditing) void handleUpdate()
+                    else setIsEditing(true)
+                  }}
                   className="text-blue-600"
                 >
                   {isEditing ? <Save size={16} /> : <Edit3 size={16} />}
@@ -155,8 +187,9 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
 
             {isEditing ? (
               <textarea
+                aria-label="Ticket description"
                 className="w-full rounded-sm border p-2 text-xs text-slate-500"
-                value={selectedTicket.description}
+                value={selectedTicket.description ?? ''}
                 onChange={(e) =>
                   setSelectedTicket({
                     ...selectedTicket,
@@ -174,11 +207,12 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
       ) : (
         /* Form View */
         <form
-          onSubmit={submitWithValidation(handleSubmit)}
+          onSubmit={(event) => void submitWithValidation(handleSubmit)(event)}
           noValidate
           className="space-y-3"
         >
           <input
+            aria-label="Ticket title"
             className="w-full rounded-xl border-none bg-slate-50 p-2.5 text-sm"
             placeholder="Title"
             {...register('title')}
@@ -190,6 +224,7 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
             </p>
           )}
           <textarea
+            aria-label="Ticket description"
             className="min-h-[80px] w-full rounded-xl border-none bg-slate-50 p-2.5 text-sm"
             placeholder="Description..."
             {...register('description')}
@@ -204,7 +239,8 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
             <option value="high">High priority</option>
           </select>
           <button
-            disabled={isLocked}
+            type="submit"
+            disabled={isSubmitting}
             className="w-full rounded-xl bg-red-500 p-2.5 text-sm font-bold text-white"
           >
             Send Ticket
@@ -214,12 +250,13 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
 
       {!selectedTicket && (
         <div className="border-t border-slate-100 pt-4">
-          <h4 className="mb-3 text-left text-[10px] font-black uppercase text-slate-400">
+          <h4 className="mb-3 text-left text-[10px] font-black text-slate-400 uppercase">
             Recent Tickets
           </h4>
           <div className="space-y-2">
             {(showAll ? history : history.slice(0, 3)).map((h) => (
               <button
+                type="button"
                 key={h.id}
                 onClick={() => setSelectedTicket(h)}
                 className="flex w-full items-center justify-between rounded-lg border bg-slate-50 p-2 text-left hover:bg-blue-50"
@@ -236,8 +273,9 @@ export default function RaiseIssue({ user, fetchAll, isLocked }) {
             ))}
             {history.length > 3 && (
               <button
+                type="button"
                 onClick={() => setShowAll(!showAll)}
-                className="w-full py-2 text-left text-[10px] font-bold uppercase text-blue-600"
+                className="w-full py-2 text-left text-[10px] font-bold text-blue-600 uppercase"
               >
                 {showAll ? 'Show Less' : 'View More'}
               </button>

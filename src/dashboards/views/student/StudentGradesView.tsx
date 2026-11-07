@@ -1,24 +1,40 @@
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../../../supabase'
-import { Award, CheckCircle, Clock, Loader2, BarChart2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { plannedDb } from '../../../lib/plannedDb'
+import { Award, Clock, Loader2, BarChart2 } from 'lucide-react'
 
-export default function StudentGradesView({ userId }) {
-  const [attempts, setAttempts] = useState([])
+async function loadGradedAttempts(userId: string) {
+  const { data, error } = await plannedDb
+    .from('attempts')
+    .select('*, exams(title, duration_minutes)')
+    .eq('student_id', userId)
+    .not('end_time', 'is', null)
+    .order('end_time', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+type GradedAttempt = Awaited<ReturnType<typeof loadGradedAttempts>>[number]
+
+export default function StudentGradesView({ userId }: { userId: string }) {
+  const [attempts, setAttempts] = useState<GradedAttempt[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!userId) return
-
-    supabase
-      .from('attempts')
-      .select('*, exams(title, duration_minutes)')
-      .eq('student_id', userId)
-      .not('end_time', 'is', null)
-      .order('end_time', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error) setAttempts(data || [])
+    let cancelled = false
+    loadGradedAttempts(userId).then(
+      (rows) => {
+        if (cancelled) return
+        setAttempts(rows)
         setLoading(false)
-      })
+      },
+      () => {
+        if (!cancelled) setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
   }, [userId])
 
   if (loading)
@@ -67,7 +83,9 @@ export default function StudentGradesView({ userId }) {
                 </h3>
                 <p className="mt-1 flex items-center gap-2 text-xs text-slate-400">
                   <Clock size={12} /> Finished:{' '}
-                  {new Date(att.end_time).toLocaleDateString()}
+                  {att.end_time
+                    ? new Date(att.end_time).toLocaleDateString()
+                    : ''}
                 </p>
               </div>
               <div className="flex items-center gap-3">

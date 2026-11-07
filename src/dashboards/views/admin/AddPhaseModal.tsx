@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { FormProvider, useForm, type SubmitHandler } from 'react-hook-form'
 import { Plus, Sparkles } from 'lucide-react'
 import { supabase } from '../../../supabase'
@@ -40,9 +40,7 @@ export default function AddPhaseModal({
         .order('phase_number', { ascending: false })
         .limit(1)
 
-      const nextPhaseNumber = existingPhases?.length
-        ? existingPhases[0].phase_number + 1
-        : 1
+      const nextPhaseNumber = (existingPhases?.at(0)?.phase_number ?? 0) + 1
 
       const { data: phaseData, error: phaseError } = await supabase
         .from('course_phases')
@@ -59,25 +57,31 @@ export default function AddPhaseModal({
 
       if (phaseError) throw phaseError
 
-      for (let i = 1; i <= lessonCount; i++) {
-        const lessonTitle = `Lesson ${i}: Core Concept & Practice`
-        const { data: lessonData } = await supabase
-          .from('course_lessons')
-          .insert([{ phase_id: phaseData.id, title: lessonTitle, position: i }])
-          .select()
-          .single()
+      const { data: lessons, error: lessonsError } = await supabase
+        .from('course_lessons')
+        .insert(
+          Array.from({ length: lessonCount }, (_, index) => ({
+            phase_id: phaseData.id,
+            title: `Lesson ${index + 1}: Core Concept & Practice`,
+            position: index + 1,
+          })),
+        )
+        .select()
 
-        if (lessonData) {
-          await supabase.from('notes').insert([
-            {
-              course_id: courseId,
-              title: lessonTitle,
-              content: `Welcome to ${lessonTitle}. Focus: ${phaseFocus || 'Practical implementation'}.`,
-              lesson_order: i,
-            },
-          ])
-        }
-      }
+      if (lessonsError) throw lessonsError
+
+      // One starter note per lesson
+      const { error: notesError } = await supabase.from('notes').insert(
+        lessons.map((lesson) => ({
+          course_id: courseId,
+          lesson_id: lesson.id,
+          title: lesson.title,
+          content: `Welcome to ${lesson.title}. Focus: ${phaseFocus || 'Practical implementation'}.`,
+          lesson_order: lesson.position,
+        })),
+      )
+
+      if (notesError) throw notesError
 
       toast.success(`Phase added with ${lessonCount} lessons & notes!`)
       form.reset()
@@ -96,7 +100,7 @@ export default function AddPhaseModal({
     <>
       <Button
         onClick={() => setIsOpen(true)}
-        className="rounded-2xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-wider shadow-md hover:bg-blue-700 focus-visible:ring-blue-500"
+        className="rounded-2xl bg-blue-600 px-5 py-3 text-xs font-black tracking-wider uppercase shadow-md hover:bg-blue-700 focus-visible:ring-blue-500"
       >
         <Plus size={16} /> Add Structured Phase
       </Button>
@@ -122,9 +126,11 @@ export default function AddPhaseModal({
 
             <FormProvider {...form}>
               <form
-                onSubmit={form.handleSubmit(
-                  handleCreatePhaseWithLessonsAndNotes,
-                )}
+                onSubmit={(event) =>
+                  void form.handleSubmit(handleCreatePhaseWithLessonsAndNotes)(
+                    event,
+                  )
+                }
                 className="space-y-4"
               >
                 <FormTextField<PhaseFormValues>

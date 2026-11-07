@@ -1,6 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../../../supabase'
 import {
   Clock,
   Flag,
@@ -11,153 +10,89 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import type { User } from '@supabase/supabase-js'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
+import {
+  examOptions,
+  loadExamSession,
+  saveExamAnswer,
+  submitExamAttempt,
+} from '../../../features/assessments/exams/examSession'
+import type {
+  Exam,
+  ExamAttempt,
+  ExamQuestion,
+} from '../../../features/assessments/exams/examSession'
 
-export default function ExamPage({ user }) {
+interface ExamPageProps {
+  user: User | null
+}
+
+export default function ExamPage({ user }: ExamPageProps) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const userId = user?.id
 
   // Core Data States
-  const [exam, setExam] = useState(null)
-  const [questions, setQuestions] = useState([])
-  const [attempt, setAttempt] = useState(null)
+  const [exam, setExam] = useState<Exam | null>(null)
+  const [questions, setQuestions] = useState<ExamQuestion[]>([])
+  const [attempt, setAttempt] = useState<ExamAttempt | null>(null)
 
   // UI Engine States
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [answers, setAnswers] = useState({})
-  const [flags, setFlags] = useState({})
+  const [answers, setAnswers] = useState<Record<string, string | undefined>>({})
+  const [flags, setFlags] = useState<Record<string, boolean | undefined>>({})
 
   const [timeLeft, setTimeLeft] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isEmpty, setIsEmpty] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
+  // Bumped by the Retry button to run the loader again
+  const [loadRequest, setLoadRequest] = useState(0)
 
-  const fetchTimeoutRef = useRef(null)
-
-  // 1. Core Fetcher Framework with Safety Timeout
-  const fetchExamAndInitialize = useCallback(async () => {
-    if (!id) {
-      setLoading(false)
-      return
-    }
-
-    const isMounted = true
-    try {
-      setLoading(true)
-      setTimedOut(false)
-
-      // Set a 10-second safety timeout to prevent infinite hanging
-      fetchTimeoutRef.current = setTimeout(() => {
-        if (isMounted) {
-          setTimedOut(true)
-          setLoading(false)
-          toast.error('Network synchronization took too long.')
-        }
-      }, 10000)
-
-      // Fetch Exam Configuration
-      const { data: examData, error: examErr } = await supabase
-        .from('exams')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (examErr || !examData)
-        throw new Error('Exam context could not be located.')
-
-      if (!isMounted) return
-      setExam(examData)
-      setTimeLeft(examData.duration_minutes * 60)
-
-      // Fetch Targeted Questions
-      const { data: qData, error: qErr } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('exam_id', examData.id)
-
-      if (qErr) throw qErr
-
-      const fetchedQuestions = qData || []
-      if (!isMounted) return
-      setQuestions(fetchedQuestions)
-
-      // CRITICAL STOP: Short-circuit completely if no questions exist
-      if (fetchedQuestions.length === 0) {
-        setIsEmpty(true)
-        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
-        setLoading(false)
-        return
-      }
-
-      // Initialize or Retrieve Active Session Attempt
-      const { data: attemptData, error: attemptErr } = await supabase
-        .from('attempts')
-        .select('*')
-        .eq('exam_id', examData.id)
-        .eq('student_id', user?.id)
-        .is('end_time', null)
-        .order('start_time', { ascending: false })
-        .limit(1)
-
-      if (attemptErr) throw attemptErr
-
-      let activeAttempt = attemptData?.[0]
-
-      if (!activeAttempt) {
-        const { data: newAttempt, error: createErr } = await supabase
-          .from('attempts')
-          .insert({
-            exam_id: examData.id,
-            student_id: user?.id,
-            start_time: new Date().toISOString(),
-          })
-          .select()
-          .single()
-
-        if (createErr) throw createErr
-        activeAttempt = newAttempt
-      } else {
-        const { data: savedAnswers, error: answersErr } = await supabase
-          .from('answers')
-          .select('question_id, answer')
-          .eq('attempt_id', activeAttempt.id)
-
-        if (!answersErr && savedAnswers) {
-          const recoveredAnswers = {}
-          savedAnswers.forEach((row) => {
-            recoveredAnswers[row.question_id] = row.answer
-          })
-          setAnswers(recoveredAnswers)
-        }
-      }
-
-      if (isMounted) {
-        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
-        setAttempt(activeAttempt)
-        setLoading(false)
-      }
-    } catch (err) {
-      console.error(err)
-      if (isMounted) {
-        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
-        toast.error(err.message || 'Initialization error occurred.')
-        setLoading(false)
-      }
-    }
-  }, [id, user])
-
+  // 1. Core Fetcher Framework
   useEffect(() => {
-    let isMounted = true
-    if (id && user) {
-      fetchExamAndInitialize()
-    } else if (!id) {
+    if (!id || !userId) return undefined
+
+    let cancelled = false
+    // A 10-second safety timeout so a stalled network doesn't hang the page
+    const timeout = setTimeout(() => {
+      if (cancelled) return
+      setTimedOut(true)
       setLoading(false)
-    }
+      toast.error('Network synchronization took too long.')
+    }, 10000)
+
+    loadExamSession(id, userId).then(
+      (session) => {
+        if (cancelled) return
+        clearTimeout(timeout)
+        setTimedOut(false)
+        setExam(session.exam)
+        setTimeLeft(session.exam.duration_minutes * 60)
+        setQuestions(session.questions)
+        setIsEmpty(session.questions.length === 0)
+        setAttempt(session.attempt)
+        setAnswers(session.answers)
+        setLoading(false)
+      },
+      (err: unknown) => {
+        if (cancelled) return
+        clearTimeout(timeout)
+        setTimedOut(false)
+        console.error(err)
+        toast.error(getErrorMessage(err, 'Initialization error occurred.'))
+        setLoading(false)
+      },
+    )
+
     return () => {
-      isMounted = false
-      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
+      cancelled = true
+      clearTimeout(timeout)
     }
-  }, [id, user, fetchExamAndInitialize])
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- loadRequest is the Retry trigger: bumping it re-runs this load
+  }, [id, userId, loadRequest])
 
   // 2. Evaluation Engine & Submission Handler
   const submitExam = useCallback(async () => {
@@ -165,39 +100,13 @@ export default function ExamPage({ user }) {
     setIsSubmitting(true)
 
     try {
-      const { data: databaseAnswers } = await supabase
-        .from('answers')
-        .select('*')
-        .eq('attempt_id', attempt.id)
-
-      let computedScore = 0
-      databaseAnswers?.forEach((savedAns) => {
-        const matchingQuestion = questions.find(
-          (q) => q.id === savedAns.question_id,
-        )
-        if (
-          matchingQuestion?.type === 'mcq' &&
-          savedAns.answer === matchingQuestion.correct_answer
-        ) {
-          computedScore += matchingQuestion.marks || 1
-        }
-      })
-
-      const { error: updateError } = await supabase
-        .from('attempts')
-        .update({
-          score: computedScore,
-          end_time: new Date().toISOString(),
-        })
-        .eq('id', attempt.id)
-
-      if (updateError) throw updateError
+      const computedScore = await submitExamAttempt(attempt.id, questions)
 
       toast.success('Exam submitted safely!')
       alert(`Exam complete! Your recorded score is: ${computedScore}`)
-      navigate(-1)
+      void navigate(-1)
     } catch (err) {
-      toast.error(`Submission failed: ${err.message}`)
+      toast.error(`Submission failed: ${getErrorMessage(err, 'Unknown error')}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -205,7 +114,9 @@ export default function ExamPage({ user }) {
 
   // 3. Timer Heartbeat Hook
   useEffect(() => {
-    if (!attempt || !exam || isSubmitting || questions.length === 0) return
+    if (!attempt || !exam || isSubmitting || questions.length === 0) {
+      return undefined
+    }
 
     const interval = setInterval(() => {
       const elapsedSeconds =
@@ -219,7 +130,7 @@ export default function ExamPage({ user }) {
         toast.error('Time is up! Submitting answers immediately...', {
           duration: 5000,
         })
-        submitExam()
+        void submitExam()
       }
     }, 1000)
 
@@ -227,28 +138,27 @@ export default function ExamPage({ user }) {
   }, [attempt, exam, submitExam, isSubmitting, questions.length])
 
   // 4. Persistence Mutator for Database State Upserts
-  const saveAnswerToDB = async (questionId, responseValue) => {
+  const saveAnswerToDB = async (questionId: string, responseValue: string) => {
     if (!attempt) return
 
     setAnswers((prev) => ({ ...prev, [questionId]: responseValue }))
 
-    const { error } = await supabase.from('answers').upsert(
-      {
-        attempt_id: attempt.id,
-        question_id: questionId,
-        answer: responseValue,
-      },
-      { onConflict: 'attempt_id,question_id' },
-    )
-
-    if (error) {
+    try {
+      await saveExamAnswer(attempt.id, questionId, responseValue)
+    } catch (error) {
       console.error('Answer failed to sync: ', error)
       toast.error('Network sync lag detected.')
     }
   }
 
-  const toggleFlag = (qId) =>
+  const toggleFlag = (qId: string) =>
     setFlags((prev) => ({ ...prev, [qId]: !prev[qId] }))
+
+  const retryLoad = () => {
+    setTimedOut(false)
+    setLoading(true)
+    setLoadRequest((n) => n + 1)
+  }
 
   // Guard: Handle missing ID
   if (!id)
@@ -264,7 +174,7 @@ export default function ExamPage({ user }) {
           </p>
         </div>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => void navigate(-1)}
           className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
         >
           Go Back
@@ -298,13 +208,13 @@ export default function ExamPage({ user }) {
         </div>
         <div className="mt-2 flex gap-3">
           <button
-            onClick={fetchExamAndInitialize}
+            onClick={retryLoad}
             className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
           >
             <RefreshCw size={16} /> Retry
           </button>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => void navigate(-1)}
             className="rounded-xl bg-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-300 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
           >
             Go Back
@@ -328,7 +238,7 @@ export default function ExamPage({ user }) {
           </p>
         </div>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => void navigate(-1)}
           className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white/10 dark:hover:bg-white/20"
         >
           Go Back
@@ -363,7 +273,7 @@ export default function ExamPage({ user }) {
       </div>
     )
 
-  const currentQuestion = questions[currentIdx] || {}
+  const currentQuestion = questions[currentIdx]
 
   return (
     <div className="flex h-screen bg-slate-50 text-gray-900 dark:bg-dashboard-night dark:text-white">
@@ -375,14 +285,14 @@ export default function ExamPage({ user }) {
               if (
                 confirm('Abandon exam? Progress saves but timer keeps running!')
               )
-                navigate(-1)
+                void navigate(-1)
             }}
-            className="mb-6 flex items-center gap-2 text-xs font-bold uppercase text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            className="mb-6 flex items-center gap-2 text-xs font-bold text-slate-500 uppercase hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
           >
             <ArrowLeft size={14} /> Exit Room
           </button>
 
-          <h3 className="mb-4 text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+          <h3 className="mb-4 text-xs font-black tracking-wider text-slate-900 uppercase dark:text-white">
             Navigation Tree
           </h3>
           <div className="grid grid-cols-4 gap-2">
@@ -420,7 +330,8 @@ export default function ExamPage({ user }) {
             <div className="h-3 w-3 rounded-sm bg-emerald-500" /> Saved Response
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-amber-400" /> Flagged For Review
+            <div className="h-3 w-3 rounded-sm bg-amber-400" /> Flagged For
+            Review
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm border bg-slate-50 dark:border-white/20 dark:bg-white/10" />{' '}
@@ -458,23 +369,25 @@ export default function ExamPage({ user }) {
         {/* Interactive Workspace Area */}
         <section className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-8">
           <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
-            <span className="rounded-lg bg-indigo-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:bg-indigo-500/10">
+            <span className="rounded-lg bg-indigo-50 px-3 py-1 text-[10px] font-black tracking-widest text-indigo-600 uppercase dark:bg-indigo-500/10">
               Question {currentIdx + 1} of {questions.length} (
               {currentQuestion.marks || 1} Marks)
             </span>
-            <h2 className="mb-8 mt-4 text-xl font-bold leading-relaxed text-slate-800 dark:text-white">
-              {currentQuestion.question}
+            <h2 className="mt-4 mb-8 text-xl leading-relaxed font-bold text-slate-800 dark:text-white">
+              {currentQuestion.question_text}
             </h2>
 
             {/* MCQ Input Mode */}
-            {currentQuestion.type === 'mcq' && currentQuestion.options && (
+            {currentQuestion.type === 'mcq' && (
               <div className="space-y-3">
-                {currentQuestion.options.map((opt) => {
+                {examOptions(currentQuestion.options).map((opt) => {
                   const isChecked = answers[currentQuestion.id] === opt
                   return (
                     <button
                       key={opt}
-                      onClick={() => saveAnswerToDB(currentQuestion.id, opt)}
+                      onClick={() =>
+                        void saveAnswerToDB(currentQuestion.id, opt)
+                      }
                       className={`block w-full rounded-2xl border-2 p-4 text-left text-sm font-medium transition-all active:scale-[0.99] ${
                         isChecked
                           ? 'border-indigo-600 bg-indigo-50/50 font-bold text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-300'
@@ -497,7 +410,7 @@ export default function ExamPage({ user }) {
                 value={answers[currentQuestion.id] || ''}
                 placeholder="Type your formal code snippet or textual response evaluation here..."
                 onChange={(e) =>
-                  saveAnswerToDB(currentQuestion.id, e.target.value)
+                  void saveAnswerToDB(currentQuestion.id, e.target.value)
                 }
               />
             )}
@@ -508,7 +421,7 @@ export default function ExamPage({ user }) {
         <footer className="flex items-center justify-between border-t border-slate-100 bg-white px-8 py-5 shadow-lg dark:border-white/10 dark:bg-white/5">
           <button
             onClick={() => toggleFlag(currentQuestion.id)}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black tracking-wider uppercase transition ${
               flags[currentQuestion.id]
                 ? 'bg-amber-400 text-white'
                 : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-white/5'
@@ -525,7 +438,7 @@ export default function ExamPage({ user }) {
             <button
               disabled={currentIdx === 0}
               onClick={() => setCurrentIdx((p) => p - 1)}
-              className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-black tracking-wider text-slate-600 uppercase hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
             >
               Previous
             </button>
@@ -533,7 +446,7 @@ export default function ExamPage({ user }) {
             {currentIdx < questions.length - 1 ? (
               <button
                 onClick={() => setCurrentIdx((p) => p + 1)}
-                className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white hover:bg-slate-800 dark:bg-white/10 dark:hover:bg-white/20"
+                className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-black tracking-wider text-white uppercase hover:bg-slate-800 dark:bg-white/10 dark:hover:bg-white/20"
               >
                 Next
               </button>
@@ -542,9 +455,9 @@ export default function ExamPage({ user }) {
                 disabled={isSubmitting}
                 onClick={() => {
                   if (confirm('Are you sure you want to finish and submit?'))
-                    submitExam()
+                    void submitExam()
                 }}
-                className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-indigo-700"
+                className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-black tracking-wider text-white uppercase shadow-md hover:bg-indigo-700"
               >
                 {isSubmitting ? (
                   <Loader2 size={14} className="animate-spin" />

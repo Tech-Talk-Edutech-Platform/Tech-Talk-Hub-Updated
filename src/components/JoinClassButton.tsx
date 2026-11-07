@@ -23,19 +23,21 @@ export default function JoinClassButton({ studentId }: JoinClassButtonProps) {
       if (!error) setClassInfo(data)
       setLoading(false)
     }
-    fetchUpcomingClass()
+    void fetchUpcomingClass()
   }, [studentId])
 
-  if (loading || !classInfo) return null
+  if (loading || !classInfo?.meet_link) return null
 
+  const meetLink = classInfo.meet_link
   const handleJoin = () => {
     // You could also log the attendance here if you wanted to track
     // exactly when they clicked 'Join'
-    window.open(classInfo.meet_link, '_blank', 'noopener,noreferrer')
+    window.open(meetLink, '_blank', 'noopener,noreferrer')
   }
 
   return (
     <button
+      type="button"
       onClick={handleJoin}
       className="animate-pulse rounded-lg bg-green-600 px-6 py-3 font-bold text-white shadow-lg transition-all hover:bg-green-700"
     >

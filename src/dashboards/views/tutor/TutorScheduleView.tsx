@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { Calendar as CalendarIcon, Clock } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Calendar as CalendarIcon } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import UpcomingClasses from '../../../components/UpcomingClasses'
 
@@ -11,71 +11,81 @@ interface TutorScheduleItem {
   id: string
   start_time: string
   end_time: string
+  title: string
+  meet_link: string | null
   student_name: string
-  grade: string
+}
+
+async function loadTutorSchedule(
+  tutorId: string,
+): Promise<TutorScheduleItem[]> {
+  const { data, error } = await supabase
+    .from('calendar_events')
+    .select('id, start_time, end_time, title, meet_link, classes(student_id)')
+    .eq('tutor_id', tutorId)
+    .order('start_time', { ascending: true })
+
+  if (error) throw error
+
+  const studentIds = [
+    ...new Set(
+      data.flatMap((event) =>
+        event.classes?.student_id ? [event.classes.student_id] : [],
+      ),
+    ),
+  ]
+  const names = new Map<string, string>()
+
+  if (studentIds.length > 0) {
+    const { data: students, error: studentsError } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .in('id', studentIds)
+
+    if (studentsError) throw studentsError
+    for (const student of students) names.set(student.id, student.full_name)
+  }
+
+  return data.map((event) => ({
+    id: event.id,
+    start_time: event.start_time,
+    end_time: event.end_time,
+    title: event.title,
+    meet_link: event.meet_link,
+    student_name:
+      (event.classes?.student_id && names.get(event.classes.student_id)) ||
+      'N/A',
+  }))
 }
 
 export default function TutorScheduleView({ userId }: TutorScheduleViewProps) {
   const [classes, setClasses] = useState<TutorScheduleItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchSchedule = useCallback(async () => {
-    if (!userId) return
-    setLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .select(
-          `
-          *,
-          classes (
-            student_name,
-            students (full_name, grade)
-          )
-        `,
-        )
-        .eq('tutor_id', userId)
-        .order('start_time', { ascending: true })
+  useEffect(() => {
+    if (!userId) return undefined
 
-      if (error) throw error
-
-      const formatted = (data || []).map(
-        (e: {
-          id: string
-          start_time: string
-          end_time: string
-          student_name?: string | null
-          grade?: string | null
-          classes?: {
-            student_name?: string | null
-            students?: {
-              full_name?: string | null
-              grade?: string | null
-            } | null
-          } | null
-        }) => ({
-          ...e,
-          student_name:
-            e.classes?.students?.full_name || e.classes?.student_name || 'N/A',
-          grade: e.classes?.students?.grade || 'N/A',
-        }),
-      )
-
-      setClasses(formatted)
-    } catch (err) {
-      console.error('Error fetching schedule:', err)
-    } finally {
-      setLoading(false)
+    let cancelled = false
+    loadTutorSchedule(userId).then(
+      (rows) => {
+        if (cancelled) return
+        setClasses(rows)
+        setLoading(false)
+      },
+      (err: unknown) => {
+        if (cancelled) return
+        console.error('Error fetching schedule:', err)
+        setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
     }
   }, [userId])
 
-  useEffect(() => {
-    fetchSchedule()
-  }, [fetchSchedule])
-
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 text-gray-900 dark:text-white md:p-8">
-      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60 md:p-8">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 text-gray-900 md:p-8 dark:text-white">
+      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl md:p-8 dark:border-white/8 dark:bg-[#131b31]/60">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-purple-500/10 px-3.5 py-1.5 text-xs font-bold tracking-wider text-purple-600 dark:text-purple-300">
           <CalendarIcon size={14} />
           CALENDAR & SESSIONS
@@ -83,13 +93,13 @@ export default function TutorScheduleView({ userId }: TutorScheduleViewProps) {
         <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
           Class Schedule
         </h1>
-        <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 md:text-base">
+        <p className="mt-1.5 text-sm text-gray-600 md:text-base dark:text-gray-400">
           Review all scheduled upcoming virtual tutorial sessions and student
           time slots.
         </p>
       </div>
 
-      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60 md:p-8">
+      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl md:p-8 dark:border-white/8 dark:bg-[#131b31]/60">
         <UpcomingClasses classes={classes} loading={loading} />
       </div>
     </div>

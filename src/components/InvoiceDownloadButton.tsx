@@ -1,5 +1,5 @@
 // InvoiceDownloadButton.js
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   PDFDownloadLink,
   Page,
@@ -9,7 +9,12 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer'
-import { supabase } from '../supabase' // adjust path if needed
+import { plannedDb } from '../lib/plannedDb'
+import type { PlannedRow } from '../types/plannedTables'
+
+type Invoice = PlannedRow<'invoices'>
+type Customer = PlannedRow<'customers'>
+type InvoiceItem = PlannedRow<'invoice_items'>
 
 // PDF Styles
 const styles = StyleSheet.create({
@@ -22,7 +27,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   table: {
-    display: 'table',
     width: 'auto',
     borderStyle: 'solid',
     borderWidth: 1,
@@ -52,7 +56,14 @@ const styles = StyleSheet.create({
 })
 
 // PDF Document Component
-const InvoicePDF = ({ invoice, customer, items, logoUrl }) => {
+interface InvoicePDFProps {
+  invoice: Invoice
+  customer: Customer
+  items: InvoiceItem[]
+  logoUrl?: string
+}
+
+const InvoicePDF = ({ invoice, customer, items, logoUrl }: InvoicePDFProps) => {
   // Determine badge color and text
   const badgeText = invoice.paid ? 'PAID' : 'UNPAID'
   const badgeColor = invoice.paid ? '#28a745' : '#dc3545'
@@ -96,8 +107,8 @@ const InvoicePDF = ({ invoice, customer, items, logoUrl }) => {
             <Text style={styles.tableColHeader}>Unit Price</Text>
             <Text style={styles.tableColHeader}>Total</Text>
           </View>
-          {items.map((item, i) => (
-            <View key={i} style={styles.tableRow}>
+          {items.map((item) => (
+            <View key={item.id} style={styles.tableRow}>
               <Text style={styles.tableCol}>{item.description}</Text>
               <Text style={styles.tableCol}>{item.quantity}</Text>
               <Text style={styles.tableCol}>
@@ -121,6 +132,36 @@ const InvoicePDF = ({ invoice, customer, items, logoUrl }) => {
   )
 }
 
+async function fetchInvoiceData(invoiceId: string) {
+  const { data: inv, error } = await plannedDb
+    .from('invoices')
+    .select('*')
+    .eq('id', invoiceId)
+    .single()
+  if (error) throw error
+
+  const { data: cust } = await plannedDb
+    .from('customers')
+    .select('*')
+    .eq('id', inv.customer_id)
+    .single()
+  const { data: invItems } = await plannedDb
+    .from('invoice_items')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+
+  return { invoice: inv, customer: cust, items: invItems || [] }
+}
+
+interface InvoiceDownloadButtonProps {
+  invoice?: Invoice
+  customer?: Customer
+  items?: InvoiceItem[]
+  logoUrl?: string
+  /** When given, the invoice, customer and items are loaded from the database. */
+  invoiceId?: string
+}
+
 // Main Button Component
 export default function InvoiceDownloadButton({
   invoice,
@@ -128,54 +169,31 @@ export default function InvoiceDownloadButton({
   items,
   logoUrl,
   invoiceId,
-}) {
+}: InvoiceDownloadButtonProps) {
   const [fetchedInvoice, setFetchedInvoice] = useState(invoice)
   const [fetchedCustomer, setFetchedCustomer] = useState(customer)
   const [fetchedItems, setFetchedItems] = useState(items || [])
 
   // Fetch from Supabase if invoiceId is provided
   useEffect(() => {
-    if (!invoiceId) return
+    if (!invoiceId) return undefined
 
-    const fetchInvoiceData = async () => {
-      const { data: inv } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('id', invoiceId)
-        .single()
-      if (!inv) return
-
-      const { data: cust } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', inv.customer_id)
-        .single()
-      const { data: invItems } = await supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', invoiceId)
-
-      setFetchedInvoice(inv)
-      setFetchedCustomer(cust)
-      setFetchedItems(invItems || [])
+    let cancelled = false
+    fetchInvoiceData(invoiceId).then(
+      (data) => {
+        if (cancelled) return
+        setFetchedInvoice(data.invoice)
+        setFetchedCustomer(data.customer ?? undefined)
+        setFetchedItems(data.items)
+      },
+      () => undefined, // Leave the loading message up when the invoice isn't found
+    )
+    return () => {
+      cancelled = true
     }
-
-    fetchInvoiceData()
   }, [invoiceId])
 
   if (!fetchedInvoice || !fetchedCustomer) return <p>Loading invoice...</p>
-  const handleInvoiceStatus = async (invoiceId, paid) => {
-    try {
-      const { error } = await supabase
-        .from('invoices')
-        .update({ paid })
-        .eq('id', invoiceId)
-      if (error) throw error
-      toast.success('Invoice status updated')
-    } catch (err) {
-      toast.error(err.message)
-    }
-  }
 
   return (
     <PDFDownloadLink

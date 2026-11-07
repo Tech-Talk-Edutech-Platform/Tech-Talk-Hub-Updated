@@ -25,7 +25,7 @@ export function FormTextField<TValues extends FieldValues>({
 }: FormTextFieldProps<TValues>) {
   const { register, getFieldState, formState } = useFormContext<TValues>()
   const error = getFieldState(name, formState).error
-  const inputId = id ?? `field-${String(name).replace(/[^a-zA-Z0-9_-]/g, '-')}`
+  const inputId = id ?? `field-${name.replace(/[^a-zA-Z0-9_-]/g, '-')}`
   const errorId = `${inputId}-error`
 
   return (

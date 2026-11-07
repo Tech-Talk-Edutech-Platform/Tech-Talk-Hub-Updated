@@ -1,3 +1,6 @@
+// Parked: an earlier draft of MarketerDashboard, kept commented out for reference.
+// .oxlintrc.json lets this file be comment-only.
+
 // import React, { useState, useEffect } from "react";
 // import { Copy, Check, Award, Flame, Wallet, Users, ArrowUpRight, ShieldCheck } from "lucide-react";
 // import { supabase } from "../../supabase";

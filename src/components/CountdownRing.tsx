@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface CountdownRingProps {
   startTime: string | Date | null | undefined
@@ -6,42 +6,51 @@ interface CountdownRingProps {
   size?: number
 }
 
+interface Timing {
+  total: number
+  left: number
+}
+
 export default function CountdownRing({
   startTime,
   onStart,
 }: CountdownRingProps) {
-  const [timeLeft, setTimeLeft] = useState(0)
-  const [totalTime, setTotalTime] = useState(0)
+  const [{ total: totalTime, left: timeLeft }, setTiming] = useState<Timing>({
+    total: 0,
+    left: 0,
+  })
 
   useEffect(() => {
-    if (!startTime) return
+    if (!startTime) return undefined
 
     const start = new Date(startTime).getTime()
-    const now = new Date().getTime()
-    const initialDiff = start - now
+    const total = Math.max(start - Date.now(), 0)
 
-    setTotalTime(initialDiff > 0 ? initialDiff : 0)
+    /** Updates the ring; returns true once the start time has been reached. */
+    const tick = () => {
+      const diff = start - Date.now()
 
-    // Auto-enable join if startTime is already past
-    if (initialDiff <= 0 && onStart) {
-      onStart() // optional callback to auto-join class
+      if (diff <= 0) {
+        setTiming({ total, left: 0 })
+        onStart?.() // auto-trigger when the timer hits 0, or if it already has
+        return true
+      }
+
+      setTiming({ total, left: diff })
+      return false
     }
 
     const interval = setInterval(() => {
-      const current = new Date().getTime()
-      const diff = start - current
-
-      if (diff <= 0) {
-        setTimeLeft(0)
-        clearInterval(interval)
-        if (onStart) onStart() // auto-trigger when timer hits 0
-        return
-      }
-
-      setTimeLeft(diff)
+      if (tick()) clearInterval(interval)
     }, 1000)
+    const firstTick = setTimeout(() => {
+      if (tick()) clearInterval(interval)
+    }, 0)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearTimeout(firstTick)
+      clearInterval(interval)
+    }
   }, [startTime, onStart])
 
   // Convert time

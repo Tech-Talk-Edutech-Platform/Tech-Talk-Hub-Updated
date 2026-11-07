@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import type { CSSProperties } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -9,14 +10,93 @@ import {
   Circle,
 } from 'lucide-react'
 import { supabase } from '../../supabase'
+import { plannedDb } from '../../lib/plannedDb'
+import type { PlannedDatabase, PlannedRow } from '../../types/plannedTables'
 import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import {
   materialDark,
   vscDarkPlus,
 } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import CountdownRing from '../CountdownRing'
+import { HighlightedCode } from '../ui/HighlightedCode'
+
+type Topic = PlannedRow<'topics'>
+type Note = PlannedRow<'notes'>
+type NextClass =
+  PlannedDatabase['public']['Functions']['get_next_class']['Returns']
+
+interface LearningUser {
+  id: string
+  role: string | null
+}
+
+async function fetchTopicNotes(topicId: string): Promise<Note[]> {
+  const { data, error } = await plannedDb
+    .from('notes')
+    .select('*')
+    .eq('topic_id', topicId)
+    .order('created_at')
+  if (error) throw error
+  return data
+}
+
+async function fetchCourseTopics(courseId: string): Promise<Topic[]> {
+  const { data, error } = await plannedDb
+    .from('topics')
+    .select('*')
+    .eq('course_id', courseId)
+    .order('title')
+  if (error) throw error
+  return data
+}
+
+async function fetchCompletedNoteIds(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('user_notes_progress')
+    .select('note_id')
+    .eq('user_id', userId)
+  if (error) throw error
+  return data.flatMap((item) => (item.note_id ? [item.note_id] : []))
+}
+
+async function fetchNextClass(user: LearningUser): Promise<NextClass> {
+  const { data, error } = await plannedDb.rpc('get_next_class', {
+    user_id: user.id,
+    role: user.role,
+  })
+  if (error) throw error
+  return data
+}
+
+function lessonComponents(theme: Record<string, CSSProperties>): Components {
+  return {
+    code: ({ className, children }) => (
+      <HighlightedCode
+        className={className}
+        theme={theme}
+        inlineClassName="rounded-sm bg-indigo-100 px-2 py-0.5 font-mono font-bold text-indigo-600 dark:bg-gray-700 dark:text-green-300"
+        blockClassName="border-opacity-10 my-4 rounded-xl border shadow-inner"
+      >
+        {children}
+      </HighlightedCode>
+    ),
+  }
+}
+
+const LESSON_COMPONENTS = {
+  dark: lessonComponents(materialDark),
+  light: lessonComponents(vscDarkPlus),
+}
+
+interface NotesNavigationProps {
+  topic: Topic
+  onSelectNote: (note: Note) => void
+  darkMode: boolean
+  completedNotes: string[]
+  onBack: () => void
+}
 
 // --- Sub-Component: Sidebar (Only shows when a topic is selected) ---
 function NotesNavigation({
@@ -25,30 +105,33 @@ function NotesNavigation({
   darkMode,
   completedNotes,
   onBack,
-}) {
-  const [notes, setNotes] = useState([])
+}: NotesNavigationProps) {
+  const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!topic) return
-    const fetchNotes = async () => {
-      setLoading(true)
-      const { data } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('topic_id', topic.id)
-        .order('created_at')
-      setNotes(data || [])
-      setLoading(false)
+    let cancelled = false
+    fetchTopicNotes(topic.id).then(
+      (rows) => {
+        if (cancelled) return
+        setNotes(rows)
+        setLoading(false)
+      },
+      () => {
+        if (!cancelled) setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
     }
-    fetchNotes()
-  }, [topic])
+  }, [topic.id])
 
   if (loading) return <p className="p-4 text-sm opacity-50">Loading notes...</p>
 
   return (
     <div className="flex h-full flex-col">
       <button
+        type="button"
         onClick={onBack}
         className="mb-6 flex items-center gap-1 text-sm font-bold text-indigo-500 hover:underline"
       >
@@ -64,6 +147,7 @@ function NotesNavigation({
       <div className="flex flex-col gap-2 overflow-y-auto pr-2">
         {notes.map((n) => (
           <button
+            type="button"
             key={n.id}
             onClick={() => onSelectNote(n)}
             className={`flex w-full items-center justify-between rounded-xl border-l-4 p-3 text-left font-bold transition-all ${
@@ -84,64 +168,69 @@ function NotesNavigation({
 }
 
 // --- Main Component: LearningPage ---
-export default function LearningPage({ user }) {
+export default function LearningPage({ user }: { user: LearningUser | null }) {
   const navigate = useNavigate()
   const { id: courseId } = useParams()
 
   const [darkMode, setDarkMode] = useState(true)
   const [classStarted, setClassStarted] = useState(false)
-  const [nextClass, setNextClass] = useState(null)
-  const [selectedTopic, setSelectedTopic] = useState(null)
-  const [selectedNote, setSelectedNote] = useState(null)
-  const [completedNotes, setCompletedNotes] = useState([])
-  const [topics, setTopics] = useState([])
+  const [nextClass, setNextClass] = useState<NextClass>(null)
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null)
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
+  const [completedNotes, setCompletedNotes] = useState<string[]>([])
+  const [topics, setTopics] = useState<Topic[]>([])
   const [isUpdating, setIsUpdating] = useState(false)
 
   // Fetch all topics for this course
   useEffect(() => {
-    if (!courseId) return
-    const fetchTopics = async () => {
-      const { data } = await supabase
-        .from('topics')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('title')
-      setTopics(data || [])
+    if (!courseId) return undefined
+
+    let cancelled = false
+    fetchCourseTopics(courseId).then(
+      (rows) => {
+        if (!cancelled) setTopics(rows)
+      },
+      () => undefined,
+    )
+    return () => {
+      cancelled = true
     }
-    fetchTopics()
   }, [courseId])
 
   // Fetch progress tracking for the current user
   useEffect(() => {
-    if (!user) return
-    const fetchProgress = async () => {
-      const { data, error } = await supabase
-        .from('user_notes_progress')
-        .select('note_id')
-        .eq('user_id', user.id)
+    if (!user) return undefined
 
-      if (!error && data) {
-        setCompletedNotes(data.map((item) => item.note_id))
-      }
+    let cancelled = false
+    fetchCompletedNoteIds(user.id).then(
+      (ids) => {
+        if (!cancelled) setCompletedNotes(ids)
+      },
+      () => undefined,
+    )
+    return () => {
+      cancelled = true
     }
-    fetchProgress()
   }, [user])
 
   // Fetch upcoming scheduled class live feedback
   useEffect(() => {
-    if (!user) return
-    const fetchNextClass = async () => {
-      const { data, error } = await supabase.rpc('get_next_class', {
-        user_id: user.id,
-        role: user.role,
-      })
-      if (!error && data) setNextClass(data)
+    if (!user) return undefined
+
+    let cancelled = false
+    fetchNextClass(user).then(
+      (next) => {
+        if (!cancelled && next) setNextClass(next)
+      },
+      () => undefined,
+    )
+    return () => {
+      cancelled = true
     }
-    fetchNextClass()
   }, [user])
 
   // Handle Mark as Completed logic
-  const toggleCompletion = async (noteId) => {
+  const toggleCompletion = async (noteId: string) => {
     if (!user || isUpdating) return
     setIsUpdating(true)
 
@@ -179,7 +268,8 @@ export default function LearningPage({ user }) {
         }`}
       >
         <button
-          onClick={() => navigate(-1)}
+          type="button"
+          onClick={() => void navigate(-1)}
           className="flex items-center gap-2 rounded-2xl bg-indigo-500 px-4 py-2 font-black text-white shadow-lg hover:bg-indigo-600"
         >
           <ArrowLeft size={22} strokeWidth={3} />
@@ -200,6 +290,10 @@ export default function LearningPage({ user }) {
             </div>
           )}
           <button
+            type="button"
+            aria-label={
+              darkMode ? 'Switch to light mode' : 'Switch to dark mode'
+            }
             onClick={() => setDarkMode(!darkMode)}
             className={`rounded-2xl border-2 p-2 transition-colors duration-300 ${
               darkMode
@@ -219,6 +313,7 @@ export default function LearningPage({ user }) {
         >
           {selectedTopic ? (
             <NotesNavigation
+              key={selectedTopic.id}
               topic={selectedTopic}
               darkMode={darkMode}
               completedNotes={completedNotes}
@@ -250,6 +345,7 @@ export default function LearningPage({ user }) {
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {topics.map((t) => (
                   <button
+                    type="button"
                     key={t.id}
                     onClick={() => setSelectedTopic(t)}
                     className={`transform rounded-3xl border-2 p-8 text-left shadow-xl transition-all duration-200 hover:-translate-y-1 ${
@@ -287,29 +383,11 @@ export default function LearningPage({ user }) {
                 >
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
-                    components={{
-                      code({ node, inline, className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || '')
-                        return !inline && match ? (
-                          <SyntaxHighlighter
-                            style={darkMode ? materialDark : vscDarkPlus}
-                            language={match[1]}
-                            PreTag="div"
-                            className="border-opacity-10 my-4 rounded-xl border shadow-inner"
-                            {...props}
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        ) : (
-                          <code
-                            className="rounded-sm bg-indigo-100 px-2 py-0.5 font-mono font-bold text-indigo-600 dark:bg-gray-700 dark:text-green-300"
-                            {...props}
-                          >
-                            {children}
-                          </code>
-                        )
-                      },
-                    }}
+                    components={
+                      darkMode
+                        ? LESSON_COMPONENTS.dark
+                        : LESSON_COMPONENTS.light
+                    }
                   >
                     {selectedNote.content}
                   </ReactMarkdown>
@@ -320,7 +398,8 @@ export default function LearningPage({ user }) {
                   className={`mb-8 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}
                 />
                 <button
-                  onClick={() => toggleCompletion(selectedNote.id)}
+                  type="button"
+                  onClick={() => void toggleCompletion(selectedNote.id)}
                   disabled={isUpdating}
                   className={`flex w-full transform items-center justify-center gap-3 rounded-2xl py-4 text-lg font-black transition-all active:scale-95 ${
                     completedNotes.includes(selectedNote.id)
