@@ -34,9 +34,9 @@ export function ToolbarButton({
       {...rest}
     >
       <Icon size={13} strokeWidth={2} className="shrink-0" aria-hidden="true" />
-      <span className="text-balance text-center">{label}</span>
+      <span className="text-center text-balance">{label}</span>
       {badge ? (
-        <span className="bg-brand absolute -right-2 -top-2 grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[10.5px] font-semibold tabular-nums leading-none text-white">
+        <span className="absolute -top-2 -right-2 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand px-1 text-[10.5px] leading-none font-semibold text-white tabular-nums">
           {badge}
         </span>
       ) : null}

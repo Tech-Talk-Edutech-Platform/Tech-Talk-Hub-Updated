@@ -68,7 +68,7 @@ export function StatsPopover({
       align="end"
       gap={8}
       label="Connection stats"
-      className="text-ink w-[300px] rounded-[8px] bg-white p-4 shadow-[0_16px_40px_-12px_rgb(0_0_0/0.4)]"
+      className="w-[300px] rounded-[8px] bg-white p-4 text-ink shadow-[0_16px_40px_-12px_rgb(0_0_0/0.4)]"
     >
       <h2 className="text-[15px] font-semibold">Connection stats</h2>
       <dl className="mt-3 space-y-2 text-[13.5px]">
@@ -77,7 +77,7 @@ export function StatsPopover({
             key={row.label}
             className="flex items-baseline justify-between gap-4"
           >
-            <dt className="text-muted shrink-0">{row.label}</dt>
+            <dt className="shrink-0 text-muted">{row.label}</dt>
             <dd
               className={`truncate text-right tabular-nums ${row.value === 'Off' ? 'text-faint' : 'text-ink'}`}
             >
@@ -86,7 +86,7 @@ export function StatsPopover({
           </div>
         ))}
       </dl>
-      <p className="border-line text-muted mt-3 border-t pt-3 text-[12.5px] leading-[18px]">
+      <p className="mt-3 border-t border-line pt-3 text-[12.5px] leading-[18px] text-muted">
         Media stays on this device. Other tabs share presence, chat and
         reactions, not video.
       </p>

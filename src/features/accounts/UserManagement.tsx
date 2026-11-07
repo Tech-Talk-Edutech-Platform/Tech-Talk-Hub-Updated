@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import {
   Search,
   UserCheck,
-  BookOpen,
-  GraduationCap,
   AlertTriangle,
-  Loader2,
   Users,
   LayoutGrid,
   Mail,
@@ -15,7 +12,9 @@ import {
 import UserManagementModal from './AddUserModal'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
-import type { Tables } from '../../types/database'
+import { Constants } from '../../types/database'
+import type { Tables, TablesUpdate } from '../../types/database'
+import { getErrorMessage } from '../../lib/getErrorMessage'
 
 type UserRow = Pick<
   Tables<'users'>,
@@ -35,12 +34,71 @@ type TutorOption = Pick<Tables<'users'>, 'id' | 'full_name'>
 type EditableField = 'role' | 'assigned_course_id' | 'assigned_tutor_id'
 
 interface UserManagementProps {
-  viewerRole?: string
   showAdmins?: boolean
 }
 
+interface DirectoryFilters {
+  showAdmins: boolean
+  searchTerm: string
+  filterLowBalance: boolean
+}
+
+interface Directory {
+  courses: CourseOption[]
+  tutors: TutorOption[]
+  users: UserRow[]
+}
+
+async function loadDirectory({
+  showAdmins,
+  searchTerm,
+  filterLowBalance,
+}: DirectoryFilters): Promise<Directory> {
+  const { data: cData } = await supabase.from('courses').select('id, title')
+
+  const { data: tData } = await supabase
+    .from('users')
+    .select('id, full_name')
+    .eq('role', 'tutor')
+
+  let query = supabase.from('users').select(`
+        id, email, full_name, role, assigned_course_id, assigned_tutor_id,
+        subscription_tier, total_classes, classes_remaining, personal_meet_link
+      `)
+
+  if (!showAdmins)
+    query = query.not('role', 'in', '("owner","tech_admin","operations_admin")')
+  if (searchTerm) query = query.ilike('full_name', `%${searchTerm}%`)
+
+  const { data, error } = await query.order('full_name', {
+    ascending: true,
+  })
+  if (error) throw error
+
+  const users = filterLowBalance
+    ? data.filter(
+        (u) => u.role === 'student' && (u.classes_remaining || 0) <= 1,
+      )
+    : data
+
+  return { courses: cData ?? [], tutors: tData ?? [], users }
+}
+
+/** The column change for an inline edit; `null` when the value isn't valid. */
+function buildUserUpdate(
+  field: EditableField,
+  value: string,
+): TablesUpdate<'users'> | null {
+  if (field === 'role') {
+    const role = Constants.public.Enums.user_role.find((r) => r === value)
+    return role ? { role } : null
+  }
+  return field === 'assigned_course_id'
+    ? { assigned_course_id: value || null }
+    : { assigned_tutor_id: value || null }
+}
+
 export default function UserManagement({
-  viewerRole,
   showAdmins = false,
 }: UserManagementProps) {
   const [activeTab, setActiveTab] = useState('assignments') // 'assignments' or 'students'
@@ -49,80 +107,66 @@ export default function UserManagement({
   const [tutors, setTutors] = useState<TutorOption[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterLowBalance, setFilterLowBalance] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const navigate = useNavigate()
 
+  // Debounced so typing in the search box doesn't query on every key
+  useEffect(() => {
+    let cancelled = false
+    const handler = setTimeout(() => {
+      loadDirectory({ showAdmins, searchTerm, filterLowBalance }).then(
+        (directory) => {
+          if (cancelled) return
+          setCourses(directory.courses)
+          setTutors(directory.tutors)
+          setUsers(directory.users)
+        },
+        (err: unknown) => {
+          toast.error('Fetch Error: ' + getErrorMessage(err, 'Unknown error'))
+        },
+      )
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(handler)
+    }
+  }, [showAdmins, searchTerm, filterLowBalance])
+
   const fetchData = async () => {
-    setLoading(true)
     try {
-      const { data: cData } = await supabase.from('courses').select('id, title')
-      setCourses(cData || [])
-
-      const { data: tData } = await supabase
-        .from('users')
-        .select('id, full_name')
-        .eq('role', 'tutor')
-      setTutors(tData || [])
-
-      let query = supabase.from('users').select(`
-        id, email, full_name, role, assigned_course_id, assigned_tutor_id, 
-        subscription_tier, total_classes, classes_remaining, personal_meet_link
-      `)
-
-      if (!showAdmins)
-        query = query.not(
-          'role',
-          'in',
-          '("owner","tech_admin","operations_admin")',
-        )
-      if (searchTerm) query = query.ilike('full_name', `%${searchTerm}%`)
-
-      const { data, error } = await query.order('full_name', {
-        ascending: true,
+      const directory = await loadDirectory({
+        showAdmins,
+        searchTerm,
+        filterLowBalance,
       })
-      if (error) throw error
-
-      let filteredData = data || []
-      if (filterLowBalance) {
-        filteredData = filteredData.filter(
-          (u) => u.role === 'student' && (u.classes_remaining || 0) <= 1,
-        )
-      }
-
-      setUsers(filteredData)
+      setCourses(directory.courses)
+      setTutors(directory.tutors)
+      setUsers(directory.users)
     } catch (err) {
-      toast.error('Fetch Error: ' + err.message)
-    } finally {
-      setLoading(false)
+      toast.error('Fetch Error: ' + getErrorMessage(err, 'Unknown error'))
     }
   }
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      fetchData()
-    }, 300)
-    return () => clearTimeout(handler)
-  }, [searchTerm, filterLowBalance])
 
   const handleUpdate = async (
     userId: string,
     value: string,
     field: EditableField,
   ) => {
+    const update = buildUserUpdate(field, value)
+    if (!update) return
     try {
       const { error } = await supabase
         .from('users')
-        .update({ [field]: value || null })
+        .update(update)
         .eq('id', userId)
       if (error) throw error
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, [field]: value } : u)),
+        prev.map((u) => (u.id === userId ? Object.assign({}, u, update) : u)),
       )
       toast.success('Updated')
     } catch (err) {
-      toast.error(err.message)
+      toast.error(getErrorMessage(err, 'Update failed'))
     }
   }
 
@@ -131,7 +175,8 @@ export default function UserManagement({
       {/* Tab Switcher & Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <button
-          onClick={() => navigate(`/:role`)}
+          type="button"
+          onClick={() => void navigate(-1)}
           className="rounded-xl bg-slate-200 px-3 py-2 text-sm font-bold hover:bg-slate-300"
         >
           ← Back
@@ -176,13 +221,13 @@ export default function UserManagement({
       {/* Search Input */}
       <div className="relative">
         <Search
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+          className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400"
           size={20}
         />
         <input
           type="text"
           placeholder="Search by name..."
-          className="w-full rounded-2xl border border-slate-100 bg-slate-50 py-4 pl-12 pr-4 font-medium outline-hidden focus:ring-2 focus:ring-blue-500/20"
+          className="w-full rounded-2xl border border-slate-100 bg-slate-50 py-4 pr-4 pl-12 font-medium outline-hidden focus:ring-2 focus:ring-blue-500/20"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -204,10 +249,10 @@ export default function UserManagement({
                     {u.full_name?.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="font-bold leading-tight text-slate-900">
+                    <h4 className="leading-tight font-bold text-slate-900">
                       {u.full_name}
                     </h4>
-                    <span className="text-[10px] font-black uppercase text-blue-500">
+                    <span className="text-[10px] font-black text-blue-500 uppercase">
                       {u.role}
                     </span>
                   </div>
@@ -216,13 +261,17 @@ export default function UserManagement({
                 <div className="flex flex-wrap items-end gap-4">
                   {/* Restored Dropdowns from Previous Fix */}
                   <div className="flex w-28 flex-col gap-1">
-                    <label className="ml-1 text-[9px] font-black uppercase text-slate-400">
+                    <label
+                      htmlFor={`user-role-${u.id}`}
+                      className="ml-1 text-[9px] font-black text-slate-400 uppercase"
+                    >
                       Role
                     </label>
                     <select
-                      value={u.role}
+                      id={`user-role-${u.id}`}
+                      value={u.role ?? ''}
                       onChange={(e) =>
-                        handleUpdate(u.id, e.target.value, 'role')
+                        void handleUpdate(u.id, e.target.value, 'role')
                       }
                       className="rounded-lg border-none bg-slate-50 p-2 text-xs font-bold"
                     >
@@ -233,13 +282,17 @@ export default function UserManagement({
                   {u.role === 'student' && (
                     <>
                       <div className="flex w-40 flex-col gap-1">
-                        <label className="ml-1 text-[9px] font-black uppercase text-slate-400">
+                        <label
+                          htmlFor={`user-course-${u.id}`}
+                          className="ml-1 text-[9px] font-black text-slate-400 uppercase"
+                        >
                           Course
                         </label>
                         <select
+                          id={`user-course-${u.id}`}
                           value={u.assigned_course_id || ''}
                           onChange={(e) =>
-                            handleUpdate(
+                            void handleUpdate(
                               u.id,
                               e.target.value,
                               'assigned_course_id',
@@ -256,13 +309,17 @@ export default function UserManagement({
                         </select>
                       </div>
                       <div className="flex w-40 flex-col gap-1">
-                        <label className="ml-1 text-[9px] font-black uppercase text-slate-400">
+                        <label
+                          htmlFor={`user-tutor-${u.id}`}
+                          className="ml-1 text-[9px] font-black text-slate-400 uppercase"
+                        >
                           Tutor
                         </label>
                         <select
+                          id={`user-tutor-${u.id}`}
                           value={u.assigned_tutor_id || ''}
                           onChange={(e) =>
-                            handleUpdate(
+                            void handleUpdate(
                               u.id,
                               e.target.value,
                               'assigned_tutor_id',
@@ -301,19 +358,19 @@ export default function UserManagement({
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th className="p-5 text-[10px] font-black tracking-widest text-slate-400 uppercase">
                   Student Name
                 </th>
-                <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th className="p-5 text-[10px] font-black tracking-widest text-slate-400 uppercase">
                   Contact Info
                 </th>
-                <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th className="p-5 text-[10px] font-black tracking-widest text-slate-400 uppercase">
                   Plan
                 </th>
-                <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th className="p-5 text-[10px] font-black tracking-widest text-slate-400 uppercase">
                   Balance
                 </th>
-                <th className="p-5 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th className="p-5 text-right text-[10px] font-black tracking-widest text-slate-400 uppercase">
                   Actions
                 </th>
               </tr>
@@ -354,17 +411,20 @@ export default function UserManagement({
                       </div>
                     </td>
                     <td className="p-5">
-                      <span className="rounded-full bg-purple-100 px-3 py-1 text-[10px] font-black uppercase tracking-tighter text-purple-700">
+                      <span className="rounded-full bg-purple-100 px-3 py-1 text-[10px] font-black tracking-tighter text-purple-700 uppercase">
                         {s.subscription_tier || 'Starter'}
                       </span>
                     </td>
-                    <td className="p-5">
+                    <td
+                      className="p-5"
+                      aria-label={`${s.classes_remaining ?? 0} of ${s.total_classes ?? 0} classes remaining`}
+                    >
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-16 overflow-hidden rounded-full bg-slate-100">
                           <div
-                            className={`h-full ${s.classes_remaining / (s.total_classes || 1) < 0.3 ? 'bg-red-500' : 'bg-green-500'}`}
+                            className={`h-full ${(s.classes_remaining ?? 0) / (s.total_classes || 1) < 0.3 ? 'bg-red-500' : 'bg-green-500'}`}
                             style={{
-                              width: `${(s.classes_remaining / (s.total_classes || 1)) * 100}%`,
+                              width: `${((s.classes_remaining ?? 0) / (s.total_classes || 1)) * 100}%`,
                             }}
                           />
                         </div>
@@ -375,6 +435,8 @@ export default function UserManagement({
                     </td>
                     <td className="p-5 text-right">
                       <button
+                        type="button"
+                        aria-label={`Edit ${s.full_name}'s package`}
                         onClick={() => {
                           setSelectedUser(s)
                           setIsModalOpen(true)
@@ -391,12 +453,16 @@ export default function UserManagement({
         </div>
       )}
 
-      <UserManagementModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onRefresh={fetchData}
-        editingUser={selectedUser}
-      />
+      {isModalOpen && (
+        // Keyed by user so the form starts fresh for each person
+        <UserManagementModal
+          key={selectedUser?.id ?? 'new-user'}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onRefresh={() => void fetchData()}
+          editingUser={selectedUser}
+        />
+      )}
     </div>
   )
 }

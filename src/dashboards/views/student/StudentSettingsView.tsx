@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { supabase } from '../../../supabase'
 import {
   User,
@@ -14,12 +15,18 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import type { DashboardIdentity } from '../../../types/dashboardIdentity'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
 
-export default function StudentSettingsView({ user }) {
+export default function StudentSettingsView({
+  user,
+}: {
+  user: DashboardIdentity
+}) {
   const navigate = useNavigate()
-  const [fullName, setFullName] = useState(user?.full_name || user?.name || '')
-  const [email] = useState(user?.email || '')
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '')
+  const [fullName, setFullName] = useState(user.full_name || '')
+  const [email] = useState(user.email || '')
+  const [avatarUrl, setAvatarUrl] = useState('')
 
   // Password change states
   const [newPassword, setNewPassword] = useState('')
@@ -30,7 +37,7 @@ export default function StudentSettingsView({ user }) {
   const [examReminders, setExamReminders] = useState(true)
 
   // Theme state
-  const [isDarkMode, setIsDarkMode] = useState(
+  const [isDarkMode, setIsDarkMode] = useState(() =>
     document.documentElement.classList.contains('dark'),
   )
 
@@ -39,28 +46,25 @@ export default function StudentSettingsView({ user }) {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
   // Sync theme state with user profile on load
+  // Show the avatar saved on the profile row
   useEffect(() => {
-    if (user?.id) {
-      supabase
-        .from('users')
-        .select('is_dark_mode')
-        .eq('id', user.id)
-        .single()
-        .then(({ data }) => {
-          if (data && typeof data.is_dark_mode === 'boolean') {
-            setIsDarkMode(data.is_dark_mode)
-            if (data.is_dark_mode) {
-              document.documentElement.classList.add('dark')
-            } else {
-              document.documentElement.classList.remove('dark')
-            }
-          }
-        })
+    let cancelled = false
+    void supabase
+      .from('users')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled && data?.avatar_url) setAvatarUrl(data.avatar_url)
+      })
+    return () => {
+      cancelled = true
     }
-  }, [user?.id])
+  }, [user.id])
 
   // Toggle Theme Function & Save to Database
-  const toggleTheme = async () => {
+  // There is no theme column on users, so the choice isn't saved to the profile.
+  const toggleTheme = () => {
     const nextMode = !isDarkMode
     setIsDarkMode(nextMode)
 
@@ -71,18 +75,10 @@ export default function StudentSettingsView({ user }) {
     }
 
     toast.success(nextMode ? 'Dark mode activated' : 'Light mode activated')
-
-    // Save preference to Supabase profile row
-    if (user?.id) {
-      await supabase
-        .from('users')
-        .update({ is_dark_mode: nextMode })
-        .eq('id', user.id)
-    }
   }
 
   // Handle Avatar Upload
-  const handleAvatarChange = async (e) => {
+  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -113,16 +109,15 @@ export default function StudentSettingsView({ user }) {
       toast.success('Avatar updated successfully!')
     } catch (err) {
       console.error(err)
-      toast.error(err.message || 'Failed to upload avatar.')
+      toast.error(getErrorMessage(err, 'Failed to upload avatar.'))
     } finally {
       setIsUploadingAvatar(false)
     }
   }
 
   // Handle Profile Detail Updates
-  const handleUpdateProfile = async (e) => {
+  const handleUpdateProfile = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!user?.id) return
     setIsUpdatingProfile(true)
 
     try {
@@ -135,14 +130,14 @@ export default function StudentSettingsView({ user }) {
       toast.success('Profile updated successfully!')
     } catch (err) {
       console.error(err)
-      toast.error(err.message || 'Failed to update profile.')
+      toast.error(getErrorMessage(err, 'Failed to update profile.'))
     } finally {
       setIsUpdatingProfile(false)
     }
   }
 
   // Handle Password Modification
-  const handleUpdatePassword = async (e) => {
+  const handleUpdatePassword = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (newPassword !== confirmPassword) {
       toast.error('New passwords do not match.')
@@ -165,7 +160,7 @@ export default function StudentSettingsView({ user }) {
       setConfirmPassword('')
     } catch (err) {
       console.error(err)
-      toast.error(err.message || 'Failed to update password.')
+      toast.error(getErrorMessage(err, 'Failed to update password.'))
     } finally {
       setIsUpdatingPassword(false)
     }
@@ -178,7 +173,7 @@ export default function StudentSettingsView({ user }) {
       if (error) throw error
       toast.success('Signed out successfully.')
       void navigate('/login', { replace: true })
-    } catch (err) {
+    } catch {
       toast.error('Failed to sign out.')
     }
   }
@@ -260,7 +255,7 @@ export default function StudentSettingsView({ user }) {
               <input
                 type="file"
                 accept="image/*"
-                onChange={handleAvatarChange}
+                onChange={(e) => void handleAvatarChange(e)}
                 className="hidden"
               />
             </label>
@@ -270,13 +265,20 @@ export default function StudentSettingsView({ user }) {
           </div>
         </div>
 
-        <form onSubmit={handleUpdateProfile} className="space-y-4">
+        <form
+          onSubmit={(e) => void handleUpdateProfile(e)}
+          className="space-y-4"
+        >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              <label
+                htmlFor="student-settings-full-name"
+                className="mb-2 block text-xs font-bold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+              >
                 Full Name
               </label>
               <input
+                id="student-settings-full-name"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -285,10 +287,14 @@ export default function StudentSettingsView({ user }) {
               />
             </div>
             <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              <label
+                htmlFor="student-settings-email"
+                className="mb-2 block text-xs font-bold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+              >
                 Email Address (Locked)
               </label>
               <input
+                id="student-settings-email"
                 type="email"
                 value={email}
                 disabled
@@ -329,13 +335,20 @@ export default function StudentSettingsView({ user }) {
           </div>
         </div>
 
-        <form onSubmit={handleUpdatePassword} className="space-y-4">
+        <form
+          onSubmit={(e) => void handleUpdatePassword(e)}
+          className="space-y-4"
+        >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              <label
+                htmlFor="student-settings-new-password"
+                className="mb-2 block text-xs font-bold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+              >
                 New Password
               </label>
               <input
+                id="student-settings-new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -345,10 +358,14 @@ export default function StudentSettingsView({ user }) {
               />
             </div>
             <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              <label
+                htmlFor="student-settings-confirm-password"
+                className="mb-2 block text-xs font-bold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+              >
                 Confirm New Password
               </label>
               <input
+                id="student-settings-confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -392,6 +409,7 @@ export default function StudentSettingsView({ user }) {
         </div>
 
         <div className="space-y-4">
+          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- the label text is a title/description pair nested past the rule's search depth; the whole row is the clickable label for its checkbox */}
           <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/5">
             <div>
               <p className="text-sm font-bold text-slate-800 dark:text-white">
@@ -409,6 +427,7 @@ export default function StudentSettingsView({ user }) {
             />
           </label>
 
+          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- the label text is a title/description pair nested past the rule's search depth; the whole row is the clickable label for its checkbox */}
           <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/5">
             <div>
               <p className="text-sm font-bold text-slate-800 dark:text-white">
@@ -440,7 +459,7 @@ export default function StudentSettingsView({ user }) {
           </p>
         </div>
         <button
-          onClick={handleLogout}
+          onClick={() => void handleLogout()}
           className="flex items-center gap-2 rounded-xl bg-red-600 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-red-500/20 transition hover:bg-red-700"
         >
           <LogOut size={16} /> Logout

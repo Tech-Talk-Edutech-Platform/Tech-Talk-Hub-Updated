@@ -8,7 +8,6 @@ import {
   User,
   ExternalLink,
   Award,
-  BookOpen,
 } from 'lucide-react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -23,16 +22,21 @@ interface UpcomingClass {
   meet_link?: string | null
 }
 
+type CalendarEvents = ComponentProps<typeof FullCalendar>['events']
+
 interface UpcomingClassesProps {
   classes?: UpcomingClass[]
   loading: boolean
-  allEvents?: ComponentProps<typeof FullCalendar>['events']
+  allEvents?: CalendarEvents
 }
 
+const NO_CLASSES: UpcomingClass[] = []
+const NO_EVENTS: CalendarEvents = []
+
 export default function UpcomingClasses({
-  classes = [],
+  classes = NO_CLASSES,
   loading,
-  allEvents = [],
+  allEvents = NO_EVENTS,
 }: UpcomingClassesProps) {
   const [view, setView] = useState('list')
   const [selectedClass, setSelectedClass] = useState<UpcomingClass | null>(null)
@@ -43,7 +47,7 @@ export default function UpcomingClasses({
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-xs transition-all duration-300">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+        <h3 className="flex items-center gap-2 text-xs font-black tracking-widest text-slate-400 uppercase">
           {selectedClass
             ? 'Class Details'
             : view === 'list'
@@ -64,7 +68,7 @@ export default function UpcomingClasses({
         <div className="animate-in fade-in zoom-in space-y-4 duration-200">
           <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
             <div>
-              <p className="text-[10px] font-bold uppercase text-slate-400">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">
                 Class
               </p>
               <h4 className="text-sm font-bold text-slate-800">
@@ -75,7 +79,7 @@ export default function UpcomingClasses({
             {/* Student Details Section */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className="text-[10px] font-bold uppercase text-slate-400">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
                   Student
                 </p>
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -84,7 +88,7 @@ export default function UpcomingClasses({
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase text-slate-400">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
                   Grade
                 </p>
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -95,7 +99,7 @@ export default function UpcomingClasses({
             </div>
 
             <div>
-              <p className="text-[10px] font-bold uppercase text-slate-400">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">
                 Time
               </p>
               <p className="text-sm font-semibold text-slate-700">
@@ -116,7 +120,7 @@ export default function UpcomingClasses({
           </div>
           <button
             onClick={() => setSelectedClass(null)}
-            className="w-full rounded-lg border border-slate-200 py-2 text-[10px] font-bold uppercase text-slate-400 hover:bg-slate-50"
+            className="w-full rounded-lg border border-slate-200 py-2 text-[10px] font-bold text-slate-400 uppercase hover:bg-slate-50"
           >
             Back to List
           </button>
@@ -125,13 +129,15 @@ export default function UpcomingClasses({
         <div className="space-y-3">
           {classes.length > 0 ? (
             classes.map((item) => (
-              <div
+              <button
+                type="button"
                 key={item.id}
+                aria-label={`View details for ${item.title || 'this class'}`}
                 onClick={() => setSelectedClass(item)}
-                className="group flex cursor-pointer items-center justify-between rounded-xl border border-slate-50 bg-slate-50/50 p-3 transition-all hover:border-blue-100 hover:bg-white"
+                className="group flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-50 bg-slate-50/50 p-3 text-left transition-all hover:border-blue-100 hover:bg-white"
               >
                 <div>
-                  <p className="text-sm font-bold leading-none text-slate-800">
+                  <p className="text-sm leading-none font-bold text-slate-800">
                     {item.title}
                   </p>
                   <p className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-400">
@@ -142,16 +148,16 @@ export default function UpcomingClasses({
                     })}
                   </p>
                 </div>
-              </div>
+              </button>
             ))
           ) : (
-            <p className="py-6 text-center text-[10px] font-bold uppercase text-slate-400">
+            <p className="py-6 text-center text-[10px] font-bold text-slate-400 uppercase">
               No upcoming classes
             </p>
           )}
           <Link
             to="/calendar"
-            className="flex items-center justify-center pt-2 text-[10px] font-black uppercase text-blue-600 hover:underline"
+            className="flex items-center justify-center pt-2 text-[10px] font-black text-blue-600 uppercase hover:underline"
           >
             Full Schedule <ChevronRight size={12} />
           </Link>

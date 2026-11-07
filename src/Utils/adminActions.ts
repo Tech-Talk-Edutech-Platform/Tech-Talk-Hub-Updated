@@ -1,5 +1,7 @@
 import { supabase } from '../supabase'
-import type { AppRole } from '../types/roles'
+import type { Database } from '../types/database'
+
+type UserRole = Database['public']['Enums']['user_role']
 
 /**
  * Triggers a push notification to a specific tutor
@@ -9,7 +11,7 @@ import type { AppRole } from '../types/roles'
 /**
  * ACTIONS: Change things in the DB
  */
-export const updateUserRole = async (userId: string, newRole: AppRole) => {
+export const updateUserRole = async (userId: string, newRole: UserRole) => {
   const { data, error } = await supabase
     .from('users')
     .update({ role: newRole })
@@ -19,9 +21,6 @@ export const updateUserRole = async (userId: string, newRole: AppRole) => {
 }
 
 export const notifyTutor = async (tutorId: string, message: string) => {
-  // Always log for dev debugging
-  console.log(`[Admin Action] Notifying ${tutorId}: ${message}`)
-
   const { data, error } = await supabase.functions.invoke('send-push', {
     body: { tutor_id: tutorId, title: 'Class Update', body: message },
   })

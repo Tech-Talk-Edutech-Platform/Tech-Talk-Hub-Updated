@@ -17,7 +17,7 @@ export function HeroSection() {
 
             {/* Desktop image */}
             <div className="relative hidden h-full min-h-[510px] lg:block xl:min-h-[530px]">
-              <div className="hero-image-fade pointer-events-none absolute inset-y-0 -left-8 -right-12 xl:-right-20">
+              <div className="pointer-events-none absolute inset-y-0 -right-12 -left-8 hero-image-fade xl:-right-20">
                 <FillImage
                   src={heroImage}
                   alt={HERO_IMAGE_ALT}

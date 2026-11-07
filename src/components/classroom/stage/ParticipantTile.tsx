@@ -53,7 +53,7 @@ export function ParticipantTile({
       ) : (
         <div className="relative flex flex-col items-center">
           <div
-            className={`bg-avatar text-ink relative grid place-items-center rounded-[4px] transition-shadow duration-150 ${
+            className={`relative grid place-items-center rounded-[4px] bg-avatar text-ink transition-shadow duration-150 ${
               speaking ? 'shadow-[0_0_0_3px_#fff]' : ''
             }`}
             style={{
@@ -65,11 +65,11 @@ export function ParticipantTile({
             {!person.mic && (
               <span
                 aria-hidden="true"
-                className="bg-stage-muted absolute left-[9px] top-[9px] size-2.5 rounded-full"
+                className="absolute top-[9px] left-[9px] size-2.5 rounded-full bg-stage-muted"
               />
             )}
-            <span className="font-normal leading-none">{person.initial}</span>
-            {person.hand && <HandBadge className="-right-3 -top-3" />}
+            <span className="leading-none font-normal">{person.initial}</span>
+            {person.hand && <HandBadge className="-top-3 -right-3" />}
           </div>
           <figcaption
             className={`max-w-[200px] truncate rounded-[4px] bg-black/45 px-2 py-0.5 text-[12.5px] text-white transition-opacity duration-150 ${
@@ -82,7 +82,7 @@ export function ParticipantTile({
           </figcaption>
         </div>
       )}
-      {person.hand && showVideo && <HandBadge className="right-1.5 top-1.5" />}
+      {person.hand && showVideo && <HandBadge className="top-1.5 right-1.5" />}
     </figure>
   )
 }

@@ -28,9 +28,8 @@ type Lead = Tables<'leads'> & { lost_reason?: string | null }
 interface Tutor {
   id: string
   full_name: string | null
-  name: string | null
   email: string | null
-  role: string
+  role: string | null
 }
 
 interface LeadFormData {
@@ -148,9 +147,10 @@ function getLeadName(lead: Lead | null | undefined) {
   return lead?.parent_name || lead?.student_name || 'Unnamed lead'
 }
 
-function getStatusStyle(status: string) {
+function getStatusStyle(status: string | null) {
   return (
-    STATUS_STYLES[status] || 'bg-slate-100 text-slate-700 ring-slate-600/20'
+    (status && STATUS_STYLES[status]) ||
+    'bg-slate-100 text-slate-700 ring-slate-600/20'
   )
 }
 
@@ -205,8 +205,8 @@ async function loadLeads() {
 async function loadTutors() {
   const { data, error } = await supabase
     .from('users')
-    .select('id, full_name, name, email, role')
-    .in('role', ['tutor', 'operations_admin', 'admin'])
+    .select('id, full_name, email, role')
+    .in('role', ['tutor', 'operations_admin'])
 
   if (error) {
     console.warn('Unable to load tutors:', error.message)
@@ -253,7 +253,7 @@ function StatCard({
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${getStatusStyle(
+      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ring-1 ring-inset ${getStatusStyle(
         status,
       )}`}
     >
@@ -298,7 +298,7 @@ function LeadDrawer({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      className="my-0 ml-auto mr-0 h-full max-h-none w-full max-w-xl flex-col border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/40 backdrop:backdrop-blur-xs open:flex"
+      className="my-0 mr-0 ml-auto h-full max-h-none w-full max-w-xl flex-col border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/40 backdrop:backdrop-blur-xs open:flex"
     >
       {children}
     </dialog>
@@ -745,10 +745,8 @@ export default function LeadsPage() {
         assigned_tutor_id: formData.assigned_tutor_id || null,
       }
 
-      // Only include this field if your database has the column.
-      if (formData.status === 'Lost' && formData.lost_reason.trim()) {
-        payload.lost_reason = formData.lost_reason.trim()
-      }
+      // `leads` has no `lost_reason` column yet, so the reason isn't saved.
+      // Add the column and regenerate the types to store it.
 
       if (editingLead) {
         const { data, error } = await supabase
@@ -985,7 +983,7 @@ export default function LeadsPage() {
 
         <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <div className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
+            <div className="mb-2 text-xs font-bold tracking-[0.2em] text-indigo-600 uppercase">
               Tech Talk Hub · Administration
             </div>
 
@@ -1013,7 +1011,7 @@ export default function LeadsPage() {
             <button
               type="button"
               onClick={openCreateForm}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 focus:outline-hidden focus:ring-4 focus:ring-indigo-500/20"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-500/20 focus:outline-hidden"
             >
               <span className="text-lg leading-none">+</span>
               Add Lead
@@ -1178,7 +1176,7 @@ export default function LeadsPage() {
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search by parent, student, phone, email..."
               aria-label="Search leads"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-10 text-sm outline-hidden transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pr-10 pl-11 text-sm outline-hidden transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
             />
 
             {searchTerm && (
@@ -1324,7 +1322,7 @@ export default function LeadsPage() {
                       ].map((heading) => (
                         <th
                           key={heading}
-                          className="whitespace-nowrap px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500"
+                          className="px-5 py-3.5 text-xs font-semibold tracking-wider whitespace-nowrap text-slate-500 uppercase"
                         >
                           {heading}
                         </th>
@@ -1396,7 +1394,7 @@ export default function LeadsPage() {
                             aria-label={`Change status for ${getLeadName(
                               lead,
                             )}`}
-                            className={`max-w-44 cursor-pointer rounded-full border-0 px-3 py-2 text-xs font-semibold outline-hidden ring-1 ring-inset focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 ${getStatusStyle(
+                            className={`max-w-44 cursor-pointer rounded-full border-0 px-3 py-2 text-xs font-semibold ring-1 outline-hidden ring-inset focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 ${getStatusStyle(
                               lead.status,
                             )}`}
                           >
@@ -1410,7 +1408,7 @@ export default function LeadsPage() {
 
                         <td className="px-5 py-4">
                           <span
-                            className={`block whitespace-nowrap text-sm ${
+                            className={`block text-sm whitespace-nowrap ${
                               isFollowUpOverdue(lead, now)
                                 ? 'font-semibold text-red-600'
                                 : 'text-slate-600'
@@ -1426,7 +1424,7 @@ export default function LeadsPage() {
                           )}
                         </td>
 
-                        <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-500">
+                        <td className="px-5 py-4 text-sm whitespace-nowrap text-slate-500">
                           {formatDate(lead.created_at)}
                         </td>
 
@@ -1608,7 +1606,7 @@ export default function LeadsPage() {
           >
             <div className="space-y-7">
               <section>
-                <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">
+                <h3 className="mb-4 text-sm font-bold tracking-wider text-slate-500 uppercase">
                   Contact information
                 </h3>
 
@@ -1688,7 +1686,7 @@ export default function LeadsPage() {
               </section>
 
               <section>
-                <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">
+                <h3 className="mb-4 text-sm font-bold tracking-wider text-slate-500 uppercase">
                   Lead management
                 </h3>
 
@@ -1740,10 +1738,7 @@ export default function LeadsPage() {
                       <option value="">Unassigned</option>
                       {tutors.map((tutor) => (
                         <option key={tutor.id} value={tutor.id}>
-                          {tutor.full_name ||
-                            tutor.name ||
-                            tutor.email ||
-                            tutor.id}
+                          {tutor.full_name || tutor.email || tutor.id}
                         </option>
                       ))}
                     </select>
@@ -1808,7 +1803,7 @@ export default function LeadsPage() {
         <LeadDrawer onClose={closeDetails}>
           <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
+              <p className="text-xs font-bold tracking-[0.2em] text-indigo-600 uppercase">
                 Lead details
               </p>
               <h2 className="mt-2 text-xl font-bold text-slate-900">
@@ -1854,7 +1849,7 @@ export default function LeadsPage() {
             {/* CONTACT */}
 
             <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+              <h3 className="mb-3 text-sm font-bold tracking-wider text-slate-500 uppercase">
                 Contact information
               </h3>
 
@@ -1870,7 +1865,7 @@ export default function LeadsPage() {
                     className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                   >
                     <span className="text-sm text-slate-500">{label}</span>
-                    <span className="break-all text-sm font-medium text-slate-800 sm:text-right">
+                    <span className="text-sm font-medium break-all text-slate-800 sm:text-right">
                       {value || '—'}
                     </span>
                   </div>
@@ -1881,7 +1876,7 @@ export default function LeadsPage() {
             {/* LEAD INFORMATION */}
 
             <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+              <h3 className="mb-3 text-sm font-bold tracking-wider text-slate-500 uppercase">
                 Lead information
               </h3>
 
@@ -1896,7 +1891,6 @@ export default function LeadsPage() {
                   [
                     'Assigned tutor',
                     assignedTutor?.full_name ||
-                      assignedTutor?.name ||
                       assignedTutor?.email ||
                       'Unassigned',
                   ],
@@ -1906,7 +1900,7 @@ export default function LeadsPage() {
                     className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                   >
                     <span className="text-sm text-slate-500">{label}</span>
-                    <span className="wrap-break-word text-sm font-medium text-slate-800 sm:text-right">
+                    <span className="text-sm font-medium wrap-break-word text-slate-800 sm:text-right">
                       {value || '—'}
                     </span>
                   </div>
@@ -1917,7 +1911,7 @@ export default function LeadsPage() {
             {/* TRIAL CLASS */}
 
             <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+              <h3 className="mb-3 text-sm font-bold tracking-wider text-slate-500 uppercase">
                 Trial class
               </h3>
 
@@ -1942,7 +1936,7 @@ export default function LeadsPage() {
             {/* FOLLOW-UP */}
 
             <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+              <h3 className="mb-3 text-sm font-bold tracking-wider text-slate-500 uppercase">
                 Follow-up
               </h3>
 
@@ -2005,7 +1999,7 @@ export default function LeadsPage() {
 
             {selectedLead.status === 'Lost' && selectedLead.lost_reason && (
               <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+                <h3 className="mb-3 text-sm font-bold tracking-wider text-slate-500 uppercase">
                   Reason for lost lead
                 </h3>
 

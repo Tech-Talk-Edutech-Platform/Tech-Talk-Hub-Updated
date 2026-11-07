@@ -23,12 +23,12 @@ export function SidePanel({
   return (
     <aside
       aria-labelledby={labelId}
-      className="panel-in flex w-[20%] min-w-[248px] max-w-[340px] shrink-0 flex-col bg-white max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30 max-lg:w-[min(340px,100%)] max-lg:max-w-none max-lg:shadow-[-16px_0_40px_-16px_rgb(0_0_0/0.35)]"
+      className="panel-in flex w-[20%] max-w-[340px] min-w-[248px] shrink-0 flex-col bg-white max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30 max-lg:w-[min(340px,100%)] max-lg:max-w-none max-lg:shadow-[-16px_0_40px_-16px_rgb(0_0_0/0.35)]"
     >
-      <div className="border-line flex h-[47px] shrink-0 items-center justify-between border-b pl-[9px] pr-2">
+      <div className="flex h-[47px] shrink-0 items-center justify-between border-b border-line pr-2 pl-[9px]">
         <h2
           id={labelId}
-          className="text-ink text-[19px] font-semibold leading-6"
+          className="text-[19px] leading-6 font-semibold text-ink"
         >
           {title}
         </h2>
@@ -36,7 +36,7 @@ export function SidePanel({
           type="button"
           onClick={onClose}
           aria-label={`Close ${title}`}
-          className="press text-ink hover:bg-surface-2 grid size-8 place-items-center rounded-md"
+          className="press grid size-8 place-items-center rounded-md text-ink hover:bg-surface-2"
         >
           <X size={22} strokeWidth={2.25} aria-hidden="true" />
         </button>

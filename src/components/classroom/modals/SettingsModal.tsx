@@ -36,11 +36,11 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
       width={560}
       labelledBy="settings-title"
     >
-      <h2 id="settings-title" className="text-ink text-[20px] font-semibold">
+      <h2 id="settings-title" className="text-[20px] font-semibold text-ink">
         Settings
       </h2>
 
-      <div className="bg-stage mt-5 aspect-video overflow-hidden rounded-[8px]">
+      <div className="mt-5 aspect-video overflow-hidden rounded-[8px] bg-stage">
         {media.cam ? (
           <VideoView stream={media.cam} mirror={media.mirror} />
         ) : (
@@ -50,7 +50,7 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
               <button
                 type="button"
                 onClick={media.toggleCam}
-                className="press text-stage mt-3 h-9 rounded-[4px] bg-white px-3.5 text-[14px] font-medium hover:bg-white/90"
+                className="press mt-3 h-9 rounded-[4px] bg-white px-3.5 text-[14px] font-medium text-stage hover:bg-white/90"
               >
                 Turn on camera
               </button>
@@ -84,7 +84,7 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
             )}
           />
           <div
-            className="bg-surface-2 mt-2 h-1.5 overflow-hidden rounded-full"
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2"
             // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a styled level bar; native <meter> can't be restyled consistently across browsers
             role="meter"
             aria-label="Microphone level"
@@ -93,17 +93,17 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
             aria-valuenow={Math.round(level * 100)}
           >
             <div
-              className="bg-brand h-full origin-left rounded-full transition-transform duration-75"
+              className="h-full origin-left rounded-full bg-brand transition-transform duration-75"
               style={{ transform: `scaleX(${media.mic ? level : 0})` }}
             />
           </div>
           {!media.mic && (
-            <p className="text-muted mt-1.5 text-[12.5px]">
+            <p className="mt-1.5 text-[12.5px] text-muted">
               Unmute to test your microphone.
             </p>
           )}
         </div>
-        <label className="text-ink flex cursor-pointer items-center gap-3 self-end pb-2 text-[15px]">
+        <label className="flex cursor-pointer items-center gap-3 self-end pb-2 text-[15px] text-ink">
           <input
             type="checkbox"
             checked={media.mirror}
@@ -114,7 +114,7 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
         </label>
       </div>
       {devices.videoinput.some((device) => !device.label) && (
-        <p className="text-muted mt-4 text-[12.5px] leading-[18px]">
+        <p className="mt-4 text-[12.5px] leading-[18px] text-muted">
           Device names appear after you allow camera and microphone access.
         </p>
       )}

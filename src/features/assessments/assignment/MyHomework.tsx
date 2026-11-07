@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom' // IMPORT THIS
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { supabase } from '../../../supabase'
+import type { Tables } from '../../../types/database'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
 import {
   Loader2,
   CheckCircle,
@@ -10,57 +12,81 @@ import {
   MessageSquare,
   Star,
   ArrowLeft,
-} from 'lucide-react' // ADDED ArrowLeft
+} from 'lucide-react'
 
 interface MyHomeworkProps {
   studentId?: string
 }
 
-interface StudentAssignment {
-  id: string
-  status: string
-  task_name: string
-  description: string | null
-  submission_text: string | null
-  tutor_feedback: string | null
-  grade: string | null
-  submitted_at?: string | null
+type StudentAssignment = Pick<
+  Tables<'student_assignments'>,
+  | 'id'
+  | 'status'
+  | 'task_name'
+  | 'description'
+  | 'student_answer'
+  | 'tutor_feedback'
+  | 'grade'
+  | 'submitted_at'
+>
+
+async function loadAssignments(
+  studentId: string,
+): Promise<StudentAssignment[]> {
+  const { data, error } = await supabase
+    .from('student_assignments')
+    .select(
+      'id, status, task_name, description, student_answer, tutor_feedback, grade, submitted_at',
+    )
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
 }
 
 export default function MyHomework({ studentId }: MyHomeworkProps) {
-  const navigate = useNavigate() // INITIALIZE NAVIGATE
+  const navigate = useNavigate()
   const [assignments, setAssignments] = useState<StudentAssignment[]>([])
   const [submissions, setSubmissions] = useState<Record<string, string>>({})
   const [submittingId, setSubmittingId] = useState<string | null>(null)
 
-  const fetchAssignments = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('student_assignments')
-      .select('*')
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false })
-
-    if (error) console.error('Fetch error:', error)
-    setAssignments(data || [])
-  }, [studentId])
-
   useEffect(() => {
-    if (studentId) void fetchAssignments()
-  }, [studentId, fetchAssignments])
+    if (!studentId) return undefined
+
+    let cancelled = false
+    loadAssignments(studentId).then(
+      (rows) => {
+        if (!cancelled) setAssignments(rows)
+      },
+      (error: unknown) => {
+        if (!cancelled) {
+          toast.error(getErrorMessage(error, 'Could not load your homework.'))
+        }
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [studentId])
 
   async function submitAssignment(id: string) {
     const text = submissions[id]
-    if (!text) return toast.error('Please write your response first')
+    if (!text) {
+      toast.error('Please write your response first')
+      return
+    }
 
     setSubmittingId(id)
 
     try {
+      const submittedAt = new Date().toISOString()
       const { error } = await supabase
         .from('student_assignments')
         .update({
-          submission_text: text,
+          student_answer: text,
           status: 'submitted',
-          submitted_at: new Date().toISOString(),
+          submitted_at: submittedAt,
         })
         .eq('id', id)
 
@@ -71,12 +97,11 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
       setAssignments((prev) =>
         prev.map((a) =>
           a.id === id
-            ? {
-                ...a,
+            ? Object.assign({}, a, {
                 status: 'submitted',
-                submission_text: text,
-                submitted_at: new Date().toISOString(),
-              }
+                student_answer: text,
+                submitted_at: submittedAt,
+              })
             : a,
         ),
       )
@@ -87,7 +112,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
         return next
       })
 
-      fetchAssignments()
+      if (studentId) setAssignments(await loadAssignments(studentId))
     } catch (err) {
       toast.error(
         `Submit failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
@@ -102,7 +127,8 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
       {/* ===== ADDED BACK BUTTON HEADER ===== */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-4">
         <button
-          onClick={() => navigate(-1)} // Navigates back to previous dashboard route
+          type="button"
+          onClick={() => void navigate(-1)}
           className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600 transition hover:bg-slate-200 active:scale-95"
         >
           <ArrowLeft size={16} />
@@ -161,7 +187,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
                 </div>
 
                 <span
-                  className={`flex items-center gap-2 rounded-2xl px-4 py-1.5 text-[10px] font-black uppercase tracking-widest shadow-xs ${
+                  className={`flex items-center gap-2 rounded-2xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase shadow-xs ${
                     a.status === 'pending'
                       ? 'border border-amber-100 bg-white text-amber-600'
                       : a.status === 'submitted'
@@ -182,6 +208,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
               {a.status === 'pending' ? (
                 <div className="mt-4 space-y-3">
                   <textarea
+                    aria-label={`Your answer for ${a.task_name}`}
                     disabled={isSubmitting}
                     className="w-full rounded-[24px] border-none bg-slate-50 p-5 text-sm font-medium text-slate-700 outline-hidden transition placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                     placeholder="Write your answer or link your work here..."
@@ -193,8 +220,9 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
                   />
 
                   <button
+                    type="button"
                     disabled={isSubmitting || !submissions[a.id]}
-                    onClick={() => submitAssignment(a.id)}
+                    onClick={() => void submitAssignment(a.id)}
                     className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-lg transition-all active:scale-[0.98] ${
                       isSubmitting
                         ? 'cursor-wait bg-blue-600 text-white'
@@ -217,11 +245,11 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
                 <div className="space-y-4">
                   {/* Student's Submission */}
                   <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
-                    <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    <p className="mb-2 text-[10px] font-black tracking-widest text-slate-400 uppercase">
                       Your Work
                     </p>
-                    <p className="whitespace-pre-wrap border-l-2 border-slate-100 pl-4 text-sm font-medium italic text-slate-700">
-                      "{a.submission_text}"
+                    <p className="border-l-2 border-slate-100 pl-4 text-sm font-medium whitespace-pre-wrap text-slate-700 italic">
+                      "{a.student_answer}"
                     </p>
                   </div>
 
@@ -230,11 +258,11 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
                     <div className="animate-in zoom-in rounded-2xl bg-emerald-600 p-5 text-white shadow-lg duration-300">
                       <div className="mb-2 flex items-center gap-2">
                         <MessageSquare size={16} />
-                        <p className="text-[10px] font-black uppercase tracking-widest">
+                        <p className="text-[10px] font-black tracking-widest uppercase">
                           Tutor Feedback
                         </p>
                       </div>
-                      <p className="mb-3 text-sm font-bold leading-relaxed">
+                      <p className="mb-3 text-sm leading-relaxed font-bold">
                         {a.tutor_feedback ||
                           'Great job! Your work has been reviewed.'}
                       </p>
@@ -254,7 +282,7 @@ export default function MyHomework({ studentId }: MyHomeworkProps) {
                             />
                           ))}
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-tight">
+                        <span className="text-[10px] font-black tracking-tight uppercase">
                           Grade: {a.grade}
                         </span>
                       </div>

@@ -1,30 +1,31 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   Users2,
   Plus,
   Search,
-  Shield,
   Filter,
   Trash2,
   Mail,
   LayoutGrid,
   Table as TableIcon,
   Edit3,
-  UserCheck,
-  BookOpen,
   X,
   Check,
 } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import AddUserModal from '../../../features/accounts/AddUserModal'
 import { toast } from 'react-hot-toast'
+import { Constants } from '../../../types/database'
+import type { Database } from '../../../types/database'
+
+type UserRole = Database['public']['Enums']['user_role']
 
 interface AdminUser {
   id: string
   full_name: string
   email: string | null
-  role: string | null
+  role: UserRole | null
   is_active?: boolean | null
   assigned_tutor_id?: string | null
   assigned_course_id?: string | null
@@ -44,6 +45,42 @@ interface CourseOption {
   title: string
 }
 
+function toUserRole(value: string): UserRole | undefined {
+  return Constants.public.Enums.user_role.find((role) => role === value)
+}
+
+/** Number inputs hold strings while editing; an empty field clears the value. */
+function toClassCount(value: number | string | null | undefined) {
+  if (value === '' || value === null || value === undefined) return null
+  return typeof value === 'number' ? value : parseInt(value, 10) || 0
+}
+
+function formatJoinedDate(value: string | null | undefined) {
+  return value ? new Date(value).toLocaleDateString() : '—'
+}
+
+async function loadUsers(): Promise<AdminUser[]> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+async function loadTutorsAndCourses(): Promise<{
+  tutors: TutorOption[]
+  courses: CourseOption[]
+}> {
+  const { data: tutors } = await supabase
+    .from('users')
+    .select('id, full_name')
+    .eq('role', 'tutor')
+
+  const { data: courses } = await supabase.from('courses').select('id, title')
+  return { tutors: tutors ?? [], courses: courses ?? [] }
+}
+
 export default function AdminUsersView() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,29 +98,39 @@ export default function AdminUsersView() {
 
   const fetchUsers = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (error) toast.error('Failed to load users')
-    else setUsers(data || [])
+    try {
+      setUsers(await loadUsers())
+    } catch {
+      toast.error('Failed to load users')
+    }
     setLoading(false)
   }
 
-  const fetchTutorsAndCourses = async () => {
-    const { data: tutors } = await supabase
-      .from('users')
-      .select('id, full_name')
-      .eq('role', 'tutor')
-    setTutorsList(tutors || [])
-
-    const { data: courses } = await supabase.from('courses').select('id, title')
-    setCoursesList(courses || [])
-  }
-
   useEffect(() => {
-    fetchUsers()
-    fetchTutorsAndCourses()
+    let cancelled = false
+
+    loadUsers().then(
+      (rows) => {
+        if (cancelled) return
+        setUsers(rows)
+        setLoading(false)
+      },
+      () => {
+        if (cancelled) return
+        toast.error('Failed to load users')
+        setLoading(false)
+      },
+    )
+
+    void loadTutorsAndCourses().then(({ tutors, courses }) => {
+      if (cancelled) return
+      setTutorsList(tutors)
+      setCoursesList(courses)
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const handleDeleteUser = async (id: string) => {
@@ -92,7 +139,7 @@ export default function AdminUsersView() {
     if (error) toast.error('Failed to delete user')
     else {
       toast.success('User deleted')
-      fetchUsers()
+      await fetchUsers()
     }
   }
 
@@ -110,14 +157,8 @@ export default function AdminUsersView() {
         assigned_tutor_id: editingUser.assigned_tutor_id || null,
         assigned_course_id: editingUser.assigned_course_id || null,
         subscription_tier: editingUser.subscription_tier || null,
-        classes_per_week:
-          editingUser.classes_per_week !== ''
-            ? parseInt(editingUser.classes_per_week) || 0
-            : null,
-        classes_remaining:
-          editingUser.classes_remaining !== ''
-            ? parseInt(editingUser.classes_remaining) || 0
-            : null,
+        classes_per_week: toClassCount(editingUser.classes_per_week),
+        classes_remaining: toClassCount(editingUser.classes_remaining),
       })
       .eq('id', editingUser.id)
 
@@ -128,7 +169,7 @@ export default function AdminUsersView() {
     } else {
       toast.success('User updated successfully')
       setEditingUser(null)
-      fetchUsers()
+      await fetchUsers()
     }
   }
 
@@ -152,7 +193,7 @@ export default function AdminUsersView() {
   }
 
   return (
-    <div className="shadow-2xs space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 dark:border-white/10 dark:bg-white/5 md:p-8">
+    <div className="space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 shadow-2xs md:p-8 dark:border-white/10 dark:bg-white/5">
       {/* Header & Action */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
@@ -165,7 +206,7 @@ export default function AdminUsersView() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 rounded-2xl bg-purple-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-purple-500/20 transition-all hover:bg-purple-700"
+          className="flex items-center gap-2 rounded-2xl bg-purple-600 px-5 py-3 text-xs font-black tracking-wider text-white uppercase shadow-md shadow-purple-500/20 transition-all hover:bg-purple-700"
         >
           <Plus size={16} /> Add New User
         </button>
@@ -175,11 +216,11 @@ export default function AdminUsersView() {
       <div className="flex flex-col items-center justify-between gap-3 lg:flex-row">
         <div className="relative w-full flex-1">
           <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400"
             size={18}
           />
           <input
-            className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 py-3.5 pl-12 pr-4 text-sm font-bold text-slate-900 outline-hidden transition-all focus:border-purple-500 focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:bg-white/10"
+            className="w-full rounded-2xl border border-slate-200/60 bg-slate-50 py-3.5 pr-4 pl-12 text-sm font-bold text-slate-900 outline-hidden transition-all focus:border-purple-500 focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:bg-white/10"
             placeholder="Search by name or email..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -192,7 +233,7 @@ export default function AdminUsersView() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="cursor-pointer bg-transparent py-3 text-xs font-black uppercase tracking-wider text-slate-600 outline-hidden dark:text-slate-300"
+              className="cursor-pointer bg-transparent py-3 text-xs font-black tracking-wider text-slate-600 uppercase outline-hidden dark:text-slate-300"
             >
               <option value="all" className="dark:bg-slate-900">
                 All Roles
@@ -254,7 +295,7 @@ export default function AdminUsersView() {
                   <h4 className="truncate text-base font-black text-slate-900 dark:text-white">
                     {user.full_name || 'Unnamed'}
                   </h4>
-                  <span className="shrink-0 rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-purple-600 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
+                  <span className="shrink-0 rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1 text-[10px] font-black tracking-wider text-purple-600 uppercase dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
                     {user.role}
                   </span>
                 </div>
@@ -290,9 +331,7 @@ export default function AdminUsersView() {
               </div>
 
               <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-bold text-slate-400 dark:border-white/10">
-                <span>
-                  Joined {new Date(user.created_at).toLocaleDateString()}
-                </span>
+                <span>Joined {formatJoinedDate(user.created_at)}</span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setEditingUser(user)}
@@ -311,7 +350,7 @@ export default function AdminUsersView() {
                     <Mail size={14} />
                   </button>
                   <button
-                    onClick={() => handleDeleteUser(user.id)}
+                    onClick={() => void handleDeleteUser(user.id)}
                     className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                     title="Delete User"
                   >
@@ -327,7 +366,7 @@ export default function AdminUsersView() {
         <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-white/10">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:border-white/10 dark:bg-white/5">
+              <tr className="border-b border-slate-100 bg-slate-50 text-[10px] font-black tracking-wider text-slate-400 uppercase dark:border-white/10 dark:bg-white/5">
                 <th className="p-4">Name & Email</th>
                 <th className="p-4">Role</th>
                 <th className="p-4">Assigned Tutor / Course</th>
@@ -348,7 +387,7 @@ export default function AdminUsersView() {
                     <p className="text-[11px] text-slate-400">{user.email}</p>
                   </td>
                   <td className="p-4">
-                    <span className="rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-purple-600 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
+                    <span className="rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1 text-[10px] font-black tracking-wider text-purple-600 uppercase dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
                       {user.role}
                     </span>
                   </td>
@@ -369,15 +408,17 @@ export default function AdminUsersView() {
                         </p>
                       </div>
                     ) : (
-                      <span className="italic text-slate-400">N/A</span>
+                      <span className="text-slate-400 italic">N/A</span>
                     )}
                   </td>
                   <td className="p-4 font-bold text-slate-400">
-                    {new Date(user.created_at).toLocaleDateString()}
+                    {formatJoinedDate(user.created_at)}
                   </td>
                   <td className="p-4 text-right">
                     <div className="inline-flex items-center gap-1">
                       <button
+                        type="button"
+                        aria-label="Edit user and relations"
                         onClick={() => setEditingUser(user)}
                         className="rounded-xl p-2 text-purple-600 hover:bg-slate-100 dark:hover:bg-white/10"
                         title="Edit User & Relations"
@@ -385,6 +426,8 @@ export default function AdminUsersView() {
                         <Edit3 size={14} />
                       </button>
                       <button
+                        type="button"
+                        aria-label="Send email"
                         onClick={() =>
                           (window.location.href = `mailto:${user.email}`)
                         }
@@ -394,7 +437,9 @@ export default function AdminUsersView() {
                         <Mail size={14} />
                       </button>
                       <button
-                        onClick={() => handleDeleteUser(user.id)}
+                        type="button"
+                        aria-label="Delete user"
+                        onClick={() => void handleDeleteUser(user.id)}
                         className="rounded-xl p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                         title="Delete User"
                       >
@@ -411,8 +456,8 @@ export default function AdminUsersView() {
 
       {/* EDIT USER & RELATIONS MODAL */}
       {editingUser && (
-        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg space-y-6 overflow-y-auto rounded-[32px] border border-slate-100 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900 md:p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="max-h-[90vh] w-full max-w-lg space-y-6 overflow-y-auto rounded-[32px] border border-slate-100 bg-white p-6 shadow-2xl md:p-8 dark:border-white/10 dark:bg-slate-900">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white">
@@ -423,6 +468,8 @@ export default function AdminUsersView() {
                 </p>
               </div>
               <button
+                type="button"
+                aria-label="Close edit user"
                 onClick={() => setEditingUser(null)}
                 className="rounded-full p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"
               >
@@ -430,12 +477,19 @@ export default function AdminUsersView() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateUser} className="space-y-4">
+            <form
+              onSubmit={(e) => void handleUpdateUser(e)}
+              className="space-y-4"
+            >
               <div>
-                <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                <label
+                  htmlFor="edit-user-name"
+                  className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                >
                   Full Name
                 </label>
                 <input
+                  id="edit-user-name"
                   type="text"
                   required
                   value={editingUser.full_name || ''}
@@ -450,10 +504,14 @@ export default function AdminUsersView() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                <label
+                  htmlFor="edit-user-email"
+                  className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                >
                   Email (Read Only)
                 </label>
                 <input
+                  id="edit-user-email"
                   type="email"
                   disabled
                   value={editingUser.email || ''}
@@ -463,15 +521,22 @@ export default function AdminUsersView() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                  <label
+                    htmlFor="edit-user-role"
+                    className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                  >
                     Role
                   </label>
                   <select
+                    id="edit-user-role"
                     value={editingUser.role || 'student'}
                     onChange={(e) =>
-                      setEditingUser({ ...editingUser, role: e.target.value })
+                      setEditingUser({
+                        ...editingUser,
+                        role: toUserRole(e.target.value) ?? editingUser.role,
+                      })
                     }
-                    className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                    className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black tracking-wider text-slate-700 uppercase outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                   >
                     <option value="student" className="dark:bg-slate-900">
                       Student
@@ -498,10 +563,14 @@ export default function AdminUsersView() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                  <label
+                    htmlFor="edit-user-status"
+                    className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                  >
                     Account Status
                   </label>
                   <select
+                    id="edit-user-status"
                     value={editingUser.is_active ? 'true' : 'false'}
                     onChange={(e) =>
                       setEditingUser({
@@ -509,7 +578,7 @@ export default function AdminUsersView() {
                         is_active: e.target.value === 'true',
                       })
                     }
-                    className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-700 outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                    className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black tracking-wider text-slate-700 uppercase outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                   >
                     <option value="true" className="dark:bg-slate-900">
                       Active
@@ -524,15 +593,19 @@ export default function AdminUsersView() {
               {/* Relations Fields (Primarily for Students) */}
               {editingUser.role === 'student' && (
                 <div className="space-y-4 border-t border-slate-100 pt-2 dark:border-white/10">
-                  <p className="text-xs font-black uppercase tracking-wider text-purple-600">
+                  <p className="text-xs font-black tracking-wider text-purple-600 uppercase">
                     Student Relations & Plan
                   </p>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                    <label
+                      htmlFor="edit-user-tutor"
+                      className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                    >
                       Assigned Tutor
                     </label>
                     <select
+                      id="edit-user-tutor"
                       value={editingUser.assigned_tutor_id || ''}
                       onChange={(e) =>
                         setEditingUser({
@@ -556,10 +629,14 @@ export default function AdminUsersView() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                    <label
+                      htmlFor="edit-user-course"
+                      className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                    >
                       Assigned Course
                     </label>
                     <select
+                      id="edit-user-course"
                       value={editingUser.assigned_course_id || ''}
                       onChange={(e) =>
                         setEditingUser({
@@ -584,10 +661,14 @@ export default function AdminUsersView() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                      <label
+                        htmlFor="edit-user-classes-per-week"
+                        className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                      >
                         Classes / Week
                       </label>
                       <input
+                        id="edit-user-classes-per-week"
                         type="number"
                         value={editingUser.classes_per_week ?? ''}
                         onChange={(e) =>
@@ -600,10 +681,14 @@ export default function AdminUsersView() {
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                      <label
+                        htmlFor="edit-user-classes-remaining"
+                        className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                      >
                         Classes Remaining
                       </label>
                       <input
+                        id="edit-user-classes-remaining"
                         type="number"
                         value={editingUser.classes_remaining ?? ''}
                         onChange={(e) =>
@@ -623,14 +708,14 @@ export default function AdminUsersView() {
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="rounded-2xl bg-slate-100 px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-600 transition-all hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+                  className="rounded-2xl bg-slate-100 px-5 py-3 text-xs font-black tracking-wider text-slate-600 uppercase transition-all hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-purple-500/20 transition-all hover:bg-purple-700"
+                  className="flex items-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-xs font-black tracking-wider text-white uppercase shadow-md shadow-purple-500/20 transition-all hover:bg-purple-700"
                 >
                   {saving ? (
                     'Saving...'
@@ -650,7 +735,7 @@ export default function AdminUsersView() {
         <AddUserModal
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
-          onUserAdded={fetchUsers}
+          onRefresh={() => void fetchUsers()}
         />
       )}
     </div>

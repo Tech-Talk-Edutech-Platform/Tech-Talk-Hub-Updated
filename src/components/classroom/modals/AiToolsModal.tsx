@@ -54,17 +54,17 @@ export function AiToolsModal({
   return (
     <Modal open={open} onClose={onClose} width={672} labelledBy="ai-title">
       <div className="flex items-center gap-3 pr-10">
-        <span className="bg-brand-soft text-brand grid size-10 shrink-0 place-items-center rounded-full">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
           <Zap size={20} strokeWidth={2} aria-hidden="true" />
         </span>
         <div>
           <h2
             id="ai-title"
-            className="text-ink text-[20px] font-semibold leading-7"
+            className="text-[20px] leading-7 font-semibold text-ink"
           >
             {tool ? tool.title : 'AI teaching tools'}
           </h2>
-          <p className="text-ink-soft text-[15px]">
+          <p className="text-[15px] text-ink-soft">
             {student.name} · {student.grade}
           </p>
         </div>
@@ -83,26 +83,26 @@ export function AiToolsModal({
             </div>
           )}
           <div
-            className="border-line bg-surface-2/50 rounded-[6px] border px-4 py-4"
+            className="rounded-[6px] border border-line bg-surface-2/50 px-4 py-4"
             aria-live="polite"
           >
-            <h3 className="text-ink text-[15.5px] font-semibold">
+            <h3 className="text-[15.5px] font-semibold text-ink">
               {result.title}
             </h3>
-            <ul className="text-ink-soft mt-2 list-disc space-y-2 pl-5 text-[15px] leading-[23px]">
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-[23px] text-ink-soft">
               {result.body.map((line) => (
                 <li key={line}>{line}</li>
               ))}
             </ul>
           </div>
-          <p className="text-muted mt-2 text-[12.5px]">
+          <p className="mt-2 text-[12.5px] text-muted">
             Suggestions come from lesson templates, not a live model.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setToolId(null)}
-              className="press text-ink-soft hover:text-ink -ml-2 flex h-10 items-center gap-1 rounded-[4px] px-2 text-[15px] font-medium"
+              className="press -ml-2 flex h-10 items-center gap-1 rounded-[4px] px-2 text-[15px] font-medium text-ink-soft hover:text-ink"
             >
               <ChevronLeft size={18} aria-hidden="true" /> All tools
             </button>
@@ -110,7 +110,7 @@ export function AiToolsModal({
               <button
                 type="button"
                 onClick={() => copyText(result.body.join('\n'), 'Copied')}
-                className="press border-line-strong text-ink hover:bg-surface-2 flex h-10 items-center gap-2 rounded-[4px] border px-3.5 text-[14.5px] font-medium"
+                className="press flex h-10 items-center gap-2 rounded-[4px] border border-line-strong px-3.5 text-[14.5px] font-medium text-ink hover:bg-surface-2"
               >
                 <Copy size={15} aria-hidden="true" /> Copy
               </button>
@@ -118,7 +118,7 @@ export function AiToolsModal({
                 <button
                   type="button"
                   onClick={() => onSendToChat(result.body[0] ?? '')}
-                  className="press bg-brand hover:bg-brand-strong flex h-10 items-center gap-2 rounded-[4px] px-3.5 text-[14.5px] font-medium text-white"
+                  className="press flex h-10 items-center gap-2 rounded-[4px] bg-brand px-3.5 text-[14.5px] font-medium text-white hover:bg-brand-strong"
                 >
                   <Send size={15} aria-hidden="true" /> Send in chat
                 </button>
@@ -135,13 +135,13 @@ export function AiToolsModal({
                 <button
                   type="button"
                   onClick={() => setToolId(option.id)}
-                  className="press border-line hover:border-brand/40 hover:bg-brand-soft/60 flex w-full items-center gap-4 rounded-[6px] border px-3 py-3 text-left"
+                  className="press flex w-full items-center gap-4 rounded-[6px] border border-line px-3 py-3 text-left hover:border-brand/40 hover:bg-brand-soft/60"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="text-ink block text-[15.5px] font-medium leading-6">
+                    <span className="block text-[15.5px] leading-6 font-medium text-ink">
                       {option.title}
                     </span>
-                    <span className="text-ink-soft block text-[15px] leading-6">
+                    <span className="block text-[15px] leading-6 text-ink-soft">
                       {option.description}
                     </span>
                   </span>
@@ -149,7 +149,7 @@ export function AiToolsModal({
                     size={16}
                     strokeWidth={2}
                     aria-hidden="true"
-                    className="text-ink-soft shrink-0"
+                    className="shrink-0 text-ink-soft"
                   />
                 </button>
               </li>

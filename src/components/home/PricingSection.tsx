@@ -36,11 +36,11 @@ export function PricingSection() {
   }
 
   return (
-    <section className="relative scroll-mt-24 bg-background px-4 pb-14 pt-12 font-poppins sm:px-6 sm:pb-16 sm:pt-16">
+    <section className="relative scroll-mt-24 bg-background px-4 pt-12 pb-14 font-poppins sm:px-6 sm:pt-16 sm:pb-16">
       <div className="mx-auto max-w-7xl">
         {/* Heading */}
         <div className="mx-auto max-w-3xl text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#2947C7] shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-white px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#2947C7] uppercase shadow-sm">
             <Sparkles className="h-4 w-4 text-[#FF3F7F]" />
             Flexible Learning Plans
           </div>
@@ -57,7 +57,7 @@ export function PricingSection() {
         </div>
 
         {/* Pricing controls */}
-        <div className="mb-10 mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <div className="mt-8 mb-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <SegmentedControl
             options={CURRENCY_OPTIONS}
             value={currency}

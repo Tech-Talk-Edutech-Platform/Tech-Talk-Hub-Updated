@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express, { type Request, type Response } from 'express'
 import WebPush from 'web-push'
-import './SMSServer'
+import { startReminderScheduler } from './reminderScheduler'
 import sendReceiptRoute from './routes/sendReceipt'
 import sendCurriculumRoute from './routes/sendCurriculum'
 import { allowOrigins } from './middleware/cors'
@@ -57,45 +57,52 @@ WebPush.setVapidDetails(
 // =========================
 // PUSH ROUTE
 // =========================
-app.post(
-  '/api/push',
-  async (
-    req: Request<Record<string, string>, unknown, PushNotificationBody>,
-    res: Response,
-  ) => {
-    try {
-      const { tutor_id, title, body } = req.body
+async function sendPush(
+  req: Request<Record<string, string>, unknown, PushNotificationBody>,
+  res: Response,
+): Promise<void> {
+  try {
+    const { tutor_id, title, body } = req.body
 
-      const { data, error } = await supabase
-        .from('users')
-        .select('push_subscription')
-        .eq('id', tutor_id)
-        .single()
+    const { data, error } = await supabase
+      .from('users')
+      .select('push_subscription')
+      .eq('id', tutor_id)
+      .single()
 
-      const user: { push_subscription: string | null } | null = data
+    const user: { push_subscription: string | null } | null = data
 
-      if (error || !user?.push_subscription) {
-        return res.status(404).json({ error: 'No subscription found' })
-      }
-
-      await WebPush.sendNotification(
-        JSON.parse(user.push_subscription),
-        JSON.stringify({
-          title,
-          body,
-          url: '/calendar',
-        }),
-      )
-
-      res.json({ success: true })
-    } catch (err) {
-      console.error(err)
-      res.status(500).json({
-        error: err instanceof Error ? err.message : 'Unknown server error',
-      })
+    if (error || !user?.push_subscription) {
+      res.status(404).json({ error: 'No subscription found' })
+      return
     }
-  },
-)
+
+    await WebPush.sendNotification(
+      JSON.parse(user.push_subscription),
+      JSON.stringify({
+        title,
+        body,
+        url: '/calendar',
+      }),
+    )
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Unknown server error',
+    })
+  }
+}
+
+app.post('/api/push', (req, res) => {
+  void sendPush(req, res)
+})
+
+// =========================
+// SMS REMINDERS
+// =========================
+startReminderScheduler()
 
 // =========================
 // START SERVER
@@ -103,7 +110,8 @@ app.post(
 const PORT = 5000
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+  process.stdout.write(`Server running on port ${PORT}
+`)
 })
 // const express = require("express");
 // const WebPush = require("web-push");

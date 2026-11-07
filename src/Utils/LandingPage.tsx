@@ -22,7 +22,8 @@ type LeadErrors = Partial<Record<LeadField, boolean>>
 
 export default function LandingPage() {
   usePageMeta(staticPageMeta('/book'))
-  const today = new Date().toISOString().split('T')[0]
+  // Read once; the date picker's minimum doesn't need to tick past midnight.
+  const [today] = useState(() => new Date().toISOString().split('T')[0])
   const [form, setForm] = useState<LeadForm>({
     parent_name: '',
     parent_email: '',
@@ -195,7 +196,7 @@ export default function LandingPage() {
             </div>
           ) : (
             <form
-              onSubmit={submitForm}
+              onSubmit={(event) => void submitForm(event)}
               className="md:bg-opacity-50 space-y-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-lg md:bg-transparent md:p-10 md:backdrop-blur-xs"
             >
               <input

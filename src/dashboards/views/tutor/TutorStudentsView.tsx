@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react'
-import type { ChangeEvent } from 'react'
+import { useState, useEffect } from 'react'
 import {
   BookOpen,
   Search,
@@ -15,11 +14,11 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
-  Layers,
 } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
 import type { Tables } from '../../../types/database'
+import { quizOptions } from '../../../lib/quiz'
 
 interface Student {
   id: string
@@ -94,7 +93,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
 
   // Track collapsed state per phase (auto-collapsed if complete)
   const [collapsedPhases, setCollapsedPhases] = useState<
-    Record<string, boolean>
+    Record<string, boolean | undefined>
   >({})
 
   // Track expanded lesson details inline view for notes & quizzes
@@ -126,7 +125,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
       }
     }
 
-    fetchAssignedStudents()
+    void fetchAssignedStudents()
   }, [userId])
 
   // Fetch student's enrolled courses when selectedStudent changes
@@ -181,7 +180,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
       }
     }
 
-    fetchStudentCourses()
+    void fetchStudentCourses()
   }, [selectedStudent])
 
   // Fetch academic data (progress, syllabus, quiz attempts) when selectedStudent or selectedCourseId changes
@@ -229,10 +228,14 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
           .select('id, title, passing_score, lesson_id')
           .eq('course_id', selectedCourseId)
 
-        const enrichedPhases = (phaseData || []).map((phase) => ({
-          ...phase,
-          course_lessons: (phase.course_lessons || []).map((lesson) => ({
-            ...lesson,
+        const enrichedPhases: Phase[] = (phaseData || []).map((phase) => ({
+          id: phase.id,
+          phase_number: phase.phase_number,
+          title: phase.title,
+          course_lessons: phase.course_lessons.map((lesson) => ({
+            id: lesson.id,
+            title: lesson.title,
+            position: lesson.position,
             quiz:
               (quizzesData || []).find((q) => q.lesson_id === lesson.id) ||
               null,
@@ -264,7 +267,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
       }
     }
 
-    fetchStudentAcademicData()
+    void fetchStudentAcademicData()
   }, [selectedStudent, selectedCourseId])
 
   const handleLessonClick = async (
@@ -410,7 +413,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
           {/* Collapse/Expand Toggle Button */}
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="absolute -right-3 top-6 z-10 flex hidden h-7 w-7 items-center justify-center rounded-full bg-purple-600 text-white shadow-md transition-colors hover:bg-purple-700 lg:flex"
+            className="absolute top-6 -right-3 z-10 flex hidden h-7 w-7 items-center justify-center rounded-full bg-purple-600 text-white shadow-md transition-colors hover:bg-purple-700 lg:flex"
             title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {isSidebarCollapsed ? (
@@ -424,14 +427,14 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
             <div className="relative">
               <Search
                 size={16}
-                className="absolute left-4 top-3.5 text-gray-400"
+                className="absolute top-3.5 left-4 text-gray-400"
               />
               <input
                 type="text"
                 placeholder="Search students..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-xs font-medium focus:border-purple-500 focus:outline-hidden dark:border-white/10 dark:bg-white/5"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pr-4 pl-11 text-xs font-medium focus:border-purple-500 focus:outline-hidden dark:border-white/10 dark:bg-white/5"
               />
             </div>
           )}
@@ -515,7 +518,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
             <div className="space-y-6">
               {/* Course Selection Tabs for Student */}
               {studentCourses.length > 0 && (
-                <div className="scrollbar-none flex items-center gap-3 overflow-x-auto pb-2">
+                <div className="flex scrollbar-none items-center gap-3 overflow-x-auto pb-2">
                   {studentCourses.map((course) => {
                     const isSelected = selectedCourseId === course.id
                     return (
@@ -571,7 +574,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                     const isPhaseComplete =
                       lessons.length > 0 &&
                       lessons.every((l) => completedLessonIds.has(l.id))
-                    const isCollapsed = !!collapsedPhases[phase.id]
+                    const isCollapsed = collapsedPhases[phase.id] ?? false
 
                     return (
                       <div
@@ -586,7 +589,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                               </div>
                             )}
                             <div>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-purple-600">
+                              <span className="text-[10px] font-black tracking-wider text-purple-600 uppercase">
                                 Phase {phase.phase_number}
                               </span>
                               <h4 className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
@@ -646,11 +649,15 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                                   }`}
                                 >
                                   <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                                    <div
+                                    <button
+                                      type="button"
                                       onClick={() =>
-                                        handleLessonClick(lesson.id, isUnlocked)
+                                        void handleLessonClick(
+                                          lesson.id,
+                                          isUnlocked,
+                                        )
                                       }
-                                      className={`flex-1 space-y-1 ${isUnlocked ? 'group cursor-pointer' : 'cursor-not-allowed'}`}
+                                      className={`flex-1 space-y-1 text-left ${isUnlocked ? 'group cursor-pointer' : 'cursor-not-allowed'}`}
                                     >
                                       <div className="flex items-center gap-2">
                                         {isCompleted ? (
@@ -706,21 +713,22 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                                               )
                                             </span>
                                           ) : (
-                                            <span className="italic text-gray-400">
+                                            <span className="text-gray-400 italic">
                                               Not attempted yet
                                             </span>
                                           )}
                                         </p>
                                       ) : (
-                                        <p className="pl-6 text-[11px] italic text-gray-400">
+                                        <p className="pl-6 text-[11px] text-gray-400 italic">
                                           No quiz attached
                                         </p>
                                       )}
-                                    </div>
+                                    </button>
 
                                     <button
+                                      type="button"
                                       onClick={() =>
-                                        handleToggleLock(
+                                        void handleToggleLock(
                                           lesson.id,
                                           isCompleted,
                                           phase.id,
@@ -756,7 +764,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                                       ) : (
                                         <>
                                           <div className="space-y-2 rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/5 dark:bg-white/5">
-                                            <h5 className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-purple-600">
+                                            <h5 className="flex items-center gap-1.5 text-xs font-black tracking-wider text-purple-600 uppercase">
                                               <FileText size={14} /> Lesson
                                               Notes Content
                                             </h5>
@@ -765,7 +773,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                                                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
                                                   {lessonDetails.notes.title}
                                                 </p>
-                                                <p className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl bg-gray-50 p-3 text-xs leading-relaxed text-gray-600 dark:bg-white/5 dark:text-gray-300">
+                                                <p className="max-h-48 overflow-y-auto rounded-xl bg-gray-50 p-3 text-xs leading-relaxed whitespace-pre-wrap text-gray-600 dark:bg-white/5 dark:text-gray-300">
                                                   {lessonDetails.notes
                                                     .content ||
                                                     'No detailed text content provided.'}
@@ -787,7 +795,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                                                 )}
                                               </div>
                                             ) : (
-                                              <p className="text-xs italic text-gray-400">
+                                              <p className="text-xs text-gray-400 italic">
                                                 No notes uploaded for this
                                                 lesson.
                                               </p>
@@ -795,7 +803,7 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                                           </div>
 
                                           <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/5 dark:bg-white/5">
-                                            <h5 className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-pink-600">
+                                            <h5 className="flex items-center gap-1.5 text-xs font-black tracking-wider text-pink-600 uppercase">
                                               <HelpCircle size={14} /> Attached
                                               Quiz & Questions (
                                               {lessonDetails.questions.length})
@@ -825,45 +833,42 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                                                             {q.question_text}
                                                           </p>
                                                           <div className="grid grid-cols-1 gap-1.5 pl-3 sm:grid-cols-2">
-                                                            {Array.isArray(
+                                                            {quizOptions(
                                                               q.options,
-                                                            ) &&
-                                                              q.options.map(
-                                                                (
-                                                                  opt,
-                                                                  optIdx,
-                                                                ) => (
-                                                                  <span
-                                                                    key={optIdx}
-                                                                    className={`rounded-lg border p-1.5 text-[11px] ${
-                                                                      optIdx ===
-                                                                      q.correct_option_index
-                                                                        ? 'border-emerald-500/30 bg-emerald-500/10 font-bold text-emerald-600'
-                                                                        : 'border-gray-200 text-gray-600 dark:border-white/10 dark:text-gray-400'
-                                                                    }`}
-                                                                  >
-                                                                    {optIdx + 1}
-                                                                    . {opt}{' '}
-                                                                    {optIdx ===
-                                                                      q.correct_option_index &&
-                                                                      '✓'}
-                                                                  </span>
-                                                                ),
-                                                              )}
+                                                            ).map(
+                                                              (opt, optIdx) => (
+                                                                <span
+                                                                  // oxlint-disable-next-line react/no-array-index-key -- a question's options are a fixed list that is never reordered, so the position is the option's identity
+                                                                  key={optIdx}
+                                                                  className={`rounded-lg border p-1.5 text-[11px] ${
+                                                                    optIdx ===
+                                                                    q.correct_option_index
+                                                                      ? 'border-emerald-500/30 bg-emerald-500/10 font-bold text-emerald-600'
+                                                                      : 'border-gray-200 text-gray-600 dark:border-white/10 dark:text-gray-400'
+                                                                  }`}
+                                                                >
+                                                                  {optIdx + 1}.{' '}
+                                                                  {opt}{' '}
+                                                                  {optIdx ===
+                                                                    q.correct_option_index &&
+                                                                    '✓'}
+                                                                </span>
+                                                              ),
+                                                            )}
                                                           </div>
                                                         </div>
                                                       ),
                                                     )}
                                                   </div>
                                                 ) : (
-                                                  <p className="text-xs italic text-gray-400">
+                                                  <p className="text-xs text-gray-400 italic">
                                                     No questions added to this
                                                     quiz yet.
                                                   </p>
                                                 )}
                                               </div>
                                             ) : (
-                                              <p className="text-xs italic text-gray-400">
+                                              <p className="text-xs text-gray-400 italic">
                                                 No quiz attached to this lesson.
                                               </p>
                                             )}

@@ -20,20 +20,12 @@ import {
 import Login from './auth/login'
 import RoleGate from './auth/RoleGate'
 
-import ExamInterface from './features/exam/ExamInterface'
 import FullCalendarView from './features/schedule/Calendar'
-import CreateExam from './features/assessments/exams/CreateExam'
-import ExamPage from './features/assessments/exams/ExamPage'
 import StudentDashboard from './features/assessments/results/parentResult'
 import AdminEntryForm from './features/assessments/results/AdminUpload'
-import StudentAssignmentManager from './features/accounts/StudentAssignmentManager'
 import UserManagement from './features/accounts/UserManagement'
-import ReferralDashboard from './features/commerce/Sales/ReferralDashboard'
-import MarketerDashboard from './features/commerce/Sales/MarketerDashboard'
-import LearningPage from './components/pages/Learning'
 
 import UnifiedDashboard from './dashboards/UnifiedDashboard'
-import AdminNotesManager from './components/AdminNotesManager'
 import './index.css'
 import AdminDashboard from './dashboards/views/sendReceipt'
 import LandingOrDashboard from './LandingOrDashboard'
@@ -116,27 +108,6 @@ function BookClassRedirect() {
 import MyHomework from './features/assessments/assignment/MyHomework'
 import StudentAssignments from './features/assessments/assignment/StudentAssignments'
 
-// --- HOISTED COMPONENTS ---
-const UserManagementPage = () => {
-  const { role } = useParams()
-  return <UserManagement viewerRole={role} />
-}
-
-const MarketerView = () => {
-  const { marketerId } = useParams()
-  const [id, setId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      setId(marketerId || data.user?.id || null)
-    }
-    getUser()
-  }, [marketerId])
-
-  return <MarketerDashboard currentMarketerId={id} />
-}
-
 function DashboardApp() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -156,7 +127,7 @@ function DashboardApp() {
       }
     }
 
-    getInitialSession()
+    void getInitialSession()
 
     const {
       data: { subscription },
@@ -261,23 +232,12 @@ function DashboardApp() {
         />
         {/* Public Routes */}
         <Route path="/results/:slug" element={<StudentDashboard />} />
-        <Route path="/admin/referrals" element={<ReferralDashboard />} />
-        <Route path="/marketer" element={<MarketerView />} />
-        // <Route path="/exam1" element={<ExamInterface />} />
         <Route path="/:role" element={<RoleDashboardRoute />} />
         <Route
           path="/receive-homework"
           element={<MyHomework studentId={user?.id} />}
         />
-        <Route path="/upload-notes" element={<AdminNotesManager />} />
-        <Route path="/users" element={<UserManagementPage />} />
-        <Route
-          path="/student-assignment"
-          element={<StudentAssignmentManager />}
-        />
-        <Route path="/learning/:id" element={<LearningPage user={user} />} />
-        <Route path="/create-exam" element={<CreateExam />} />
-        <Route path="/exam" element={<ExamPage user={user} />} />
+        <Route path="/users" element={<UserManagement />} />
         <Route
           path="/calendar"
           element={

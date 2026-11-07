@@ -71,7 +71,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
       }
     }
 
-    loadData()
+    void loadData()
   }, [userId])
 
   const studentAvatar = latestResult?.avatar_url || student?.avatar_url
@@ -90,17 +90,17 @@ export default function StudentHomeView({ userId }: { userId: string }) {
   return (
     <div className="min-h-screen overflow-hidden bg-[#f5f7ff] text-gray-900 transition-colors duration-300 dark:bg-dashboard-night dark:text-white">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-0 top-0 h-[500px] w-[500px] bg-purple-600/20 blur-[120px] dark:bg-purple-600/15" />
-        <div className="absolute bottom-0 right-0 h-[500px] w-[500px] bg-indigo-600/15 blur-[140px] dark:bg-indigo-600/10" />
+        <div className="absolute top-0 left-0 h-[500px] w-[500px] bg-purple-600/20 blur-[120px] dark:bg-purple-600/15" />
+        <div className="absolute right-0 bottom-0 h-[500px] w-[500px] bg-indigo-600/15 blur-[140px] dark:bg-indigo-600/10" />
       </div>
 
       <div className="animate-fade-in relative z-10 mx-auto max-w-7xl space-y-8 p-4 md:p-6 lg:p-8">
         {/* WELCOME BANNER HEADER */}
         <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-[25px] border border-purple-700/30 bg-linear-to-r from-purple-900 via-purple-800 to-indigo-900 p-6 text-white shadow-2xl sm:rounded-[30px] sm:p-8 md:rounded-[35px] lg:flex-row lg:items-center">
-          <div className="pointer-events-none absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-pink-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-12 -bottom-12 h-64 w-64 rounded-full bg-pink-500/10 blur-3xl" />
 
           <div className="relative z-10 space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest text-purple-200 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-1.5 text-[10px] font-black tracking-widest text-purple-200 uppercase backdrop-blur-md">
               <Sparkles size={12} className="animate-spin text-pink-400" />{' '}
               Student Dashboard ⭐
             </div>
@@ -129,19 +129,19 @@ export default function StudentHomeView({ userId }: { userId: string }) {
             </p>
 
             <div className="flex flex-wrap gap-3 pt-2">
-              <div className="shadow-2xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 shadow-2xs backdrop-blur-md">
                 <Flame className="text-orange-400" size={16} />
                 <span className="text-xs font-bold text-white">
                   {streak} Day Streak
                 </span>
               </div>
-              <div className="shadow-2xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 shadow-2xs backdrop-blur-md">
                 <Crown className="text-yellow-400" size={16} />
                 <span className="text-xs font-bold text-white">
                   Level {level}
                 </span>
               </div>
-              <div className="shadow-2xs flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-md">
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 shadow-2xs backdrop-blur-md">
                 <Sparkles className="text-pink-400" size={16} />
                 <span className="text-xs font-bold text-white">
                   {clampedScore}% Score
@@ -157,7 +157,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                   🎯
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-purple-200">
+                  <p className="text-[10px] font-bold tracking-wider text-purple-200 uppercase">
                     Next Goal
                   </p>
                   <h3 className="text-sm font-black text-white">
@@ -187,7 +187,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
         </div>
 
         {/* RECENT CLASS RECORDINGS SECTION */}
-        <div className="rounded-[32px] border border-purple-200/60 bg-white/90 p-6 shadow-xl backdrop-blur-2xl dark:border-purple-500/25 dark:bg-white/5 md:p-8">
+        <div className="rounded-[32px] border border-purple-200/60 bg-white/90 p-6 shadow-xl backdrop-blur-2xl md:p-8 dark:border-purple-500/25 dark:bg-white/5">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-pink-500/10 text-pink-500">
@@ -203,9 +203,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {latestRecordings.map((recording) => {
                 const resolvedTutorName =
-                  recording.tutor?.full_name ||
-                  recording.tutor_name ||
-                  'Assigned Tutor'
+                  recording.tutor?.full_name || 'Assigned Tutor'
 
                 return (
                   <div
@@ -235,7 +233,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                           </div>
                         </div>
 
-                        <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-sm bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
+                        <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-sm bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
                           Watch Session <ExternalLink size={10} />
                         </span>
                       </a>
@@ -250,8 +248,8 @@ export default function StudentHomeView({ userId }: { userId: string }) {
 
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="inline-block rounded-full bg-purple-600/15 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">
-                          {recording.course_name || 'Live Session'}
+                        <span className="inline-block rounded-full bg-purple-600/15 px-3 py-1 text-[10px] font-black tracking-wider text-purple-700 uppercase dark:text-purple-300">
+                          Live Session
                         </span>
                         {recording.created_at && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-pink-500">
@@ -308,33 +306,33 @@ export default function StudentHomeView({ userId }: { userId: string }) {
         </div>
 
         {/* MAIN FEATURED HERO CARD */}
-        <div className="relative overflow-hidden rounded-[32px] border border-purple-200/60 bg-white/90 p-6 shadow-2xl backdrop-blur-2xl dark:border-purple-500/25 dark:bg-white/5 md:p-10">
-          <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="relative overflow-hidden rounded-[32px] border border-purple-200/60 bg-white/90 p-6 shadow-2xl backdrop-blur-2xl md:p-10 dark:border-purple-500/25 dark:bg-white/5">
+          <div className="pointer-events-none absolute top-0 right-0 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
 
           <div className="relative z-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-purple-200/60 bg-purple-50/60 p-6 shadow-inner dark:border-purple-500/30 dark:bg-purple-950/30 lg:col-span-3">
-              <h3 className="mb-6 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-purple-200/60 bg-purple-50/60 p-6 shadow-inner lg:col-span-3 dark:border-purple-500/30 dark:bg-purple-950/30">
+              <h3 className="mb-6 flex items-center gap-2 text-xs font-black tracking-wider text-purple-700 uppercase dark:text-purple-300">
                 <Sparkles size={14} className="text-yellow-500" /> Magic Skill
                 Jar
               </h3>
               <div className="relative h-40 w-32">
                 <div className="absolute inset-0 rounded-full bg-purple-400/20 blur-3xl" />
-                <div className="absolute left-1/2 top-0 z-20 h-4 w-20 -translate-x-1/2 rounded-full bg-linear-to-b from-purple-600 to-indigo-600 shadow-md" />
+                <div className="absolute top-0 left-1/2 z-20 h-4 w-20 -translate-x-1/2 rounded-full bg-linear-to-b from-purple-600 to-indigo-600 shadow-md" />
                 <div className="absolute top-3 h-36 w-full overflow-hidden rounded-[2.2rem] border-[6px] border-white bg-linear-to-b from-purple-100/90 to-indigo-200/90 shadow-xl backdrop-blur-md dark:border-purple-500/30 dark:from-purple-900/40 dark:to-indigo-950/50">
-                  <div className="absolute left-3 top-3 h-20 w-3 rounded-full bg-white/50" />
-                  <div className="absolute left-5 top-6 animate-bounce text-xl">
+                  <div className="absolute top-3 left-3 h-20 w-3 rounded-full bg-white/50" />
+                  <div className="absolute top-6 left-5 animate-bounce text-xl">
                     ⚙️
                   </div>
-                  <div className="absolute right-4 top-9 animate-pulse text-lg">
+                  <div className="absolute top-9 right-4 animate-pulse text-lg">
                     💡
                   </div>
                   <div className="absolute bottom-8 left-6 animate-bounce text-xl">
                     🎮
                   </div>
-                  <div className="absolute bottom-6 right-5 animate-pulse text-lg">
+                  <div className="absolute right-5 bottom-6 animate-pulse text-lg">
                     🚀
                   </div>
-                  <div className="absolute left-1/2 top-14 -translate-x-1/2 animate-spin text-base">
+                  <div className="absolute top-14 left-1/2 -translate-x-1/2 animate-spin text-base">
                     💜
                   </div>
                 </div>
@@ -342,14 +340,14 @@ export default function StudentHomeView({ userId }: { userId: string }) {
             </div>
 
             <div className="space-y-4 lg:col-span-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-600/15 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-600/15 px-3.5 py-1.5 text-xs font-black tracking-wider text-purple-700 uppercase dark:text-purple-300">
                 <Star size={14} className="text-purple-500" /> Current Enrolled
                 Course
               </div>
-              <h2 className="text-3xl font-black leading-tight tracking-tight sm:text-4xl">
+              <h2 className="text-3xl leading-tight font-black tracking-tight sm:text-4xl">
                 {latestResult?.course_name || 'Scratch Programming & Logic'}
               </h2>
-              <p className="text-sm font-medium leading-relaxed text-gray-600 dark:text-purple-200">
+              <p className="text-sm leading-relaxed font-medium text-gray-600 dark:text-purple-200">
                 You're making fantastic progress! Keep completing exercises and
                 building your coding projects to rank higher.
               </p>
@@ -362,7 +360,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
               <div className="pt-3">
                 <Link
                   to="/courses"
-                  className="inline-flex items-center gap-3 rounded-2xl border border-purple-400/30 bg-linear-to-r from-purple-600 to-indigo-600 px-8 py-4 text-sm font-black uppercase tracking-wider text-white shadow-xl shadow-purple-950/30 transition-all hover:scale-105 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98]"
+                  className="inline-flex items-center gap-3 rounded-2xl border border-purple-400/30 bg-linear-to-r from-purple-600 to-indigo-600 px-8 py-4 text-sm font-black tracking-wider text-white uppercase shadow-xl shadow-purple-950/30 transition-all hover:scale-105 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98]"
                 >
                   <span>Continue Learning</span>
                   <Rocket size={18} />
@@ -370,7 +368,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
               </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-purple-200/60 bg-purple-50/60 p-6 shadow-inner dark:border-purple-500/30 dark:bg-purple-950/30 lg:col-span-3">
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-purple-200/60 bg-purple-50/60 p-6 shadow-inner lg:col-span-3 dark:border-purple-500/30 dark:bg-purple-950/30">
               <div className="relative flex h-36 w-36 items-center justify-center">
                 <svg className="h-full w-full -rotate-90 transform">
                   <circle
@@ -409,7 +407,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                   <h3 className="text-3xl font-black tracking-tight">
                     {clampedScore}%
                   </h3>
-                  <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-purple-700 dark:text-purple-300">
+                  <p className="mt-1 text-[10px] font-black tracking-widest text-purple-700 uppercase dark:text-purple-300">
                     {latestResult?.performance_label || 'Mastery'}
                   </p>
                 </div>

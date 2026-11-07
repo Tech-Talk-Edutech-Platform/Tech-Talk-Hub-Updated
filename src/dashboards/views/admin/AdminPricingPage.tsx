@@ -19,7 +19,29 @@ import {
 
 import { supabase } from '../../../supabase'
 
-const initialForm = {
+// Inputs store what the user typed, so numeric fields may hold strings until
+// `buildPayload` converts them.
+interface PricingForm {
+  name: string
+  slug: string
+  description: string
+  classes_per_week: number | string
+  session_duration_minutes: number | string
+  monthly_kes: string
+  monthly_usd: string
+  quarterly_kes: string
+  quarterly_usd: string
+  quarterly_discount: number | string
+  yearly_kes: string
+  yearly_usd: string
+  yearly_discount: number | string
+  features: string
+  is_popular: boolean
+  is_active: boolean
+  display_order: number | string
+}
+
+const initialForm: PricingForm = {
   name: '',
   slug: '',
   description: '',
@@ -60,10 +82,26 @@ interface PricingPlan {
   display_order: number
 }
 
-type PricingForm = typeof initialForm
-
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
+}
+
+async function fetchPricingPlans(): Promise<PricingPlan[]> {
+  const { data, error } = await supabase
+    .from('pricing_plans')
+    .select('*')
+    .order('display_order', {
+      ascending: true,
+    })
+    .order('created_at', {
+      ascending: true,
+    })
+
+  if (error) {
+    throw error
+  }
+
+  return data
 }
 
 function formatPrice(
@@ -103,9 +141,9 @@ function planToForm(plan: PricingPlan): PricingForm {
     yearly_usd: String(plan.yearly_usd ?? ''),
     yearly_discount: plan.yearly_discount ?? 10,
     features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
-    is_popular: Boolean(plan.is_popular),
-    is_active: Boolean(plan.is_active),
-    display_order: plan.display_order ?? 0,
+    is_popular: plan.is_popular,
+    is_active: plan.is_active,
+    display_order: plan.display_order,
   }
 }
 
@@ -128,8 +166,8 @@ function buildPayload(form: PricingForm) {
       .split('\n')
       .map((feature: string) => feature.trim())
       .filter(Boolean),
-    is_popular: Boolean(form.is_popular),
-    is_active: Boolean(form.is_active),
+    is_popular: form.is_popular,
+    is_active: form.is_active,
     display_order: Number(form.display_order) || 0,
   }
 }
@@ -200,28 +238,31 @@ export default function AdminPricingPage() {
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
-    loadPlans()
+    let cancelled = false
+
+    fetchPricingPlans().then(
+      (rows) => {
+        if (cancelled) return
+        setPlans(rows)
+        setLoading(false)
+      },
+      (fetchError: unknown) => {
+        if (cancelled) return
+        setError(getErrorMessage(fetchError) || 'Unable to load pricing plans.')
+        setLoading(false)
+      },
+    )
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   async function loadPlans() {
     setLoading(true)
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('pricing_plans')
-        .select('*')
-        .order('display_order', {
-          ascending: true,
-        })
-        .order('created_at', {
-          ascending: true,
-        })
-
-      if (fetchError) {
-        throw fetchError
-      }
-
-      setPlans(data || [])
+      setPlans(await fetchPricingPlans())
     } catch (fetchError) {
       setError(getErrorMessage(fetchError) || 'Unable to load pricing plans.')
     } finally {
@@ -273,7 +314,7 @@ export default function AdminPricingPage() {
         ...current,
         [name]:
           type === 'checkbox' && 'checked' in event.target ? checked : value,
-      } as PricingForm
+      }
 
       if (name === 'name' && !editingPlan) {
         next.slug = createSlug(value)
@@ -492,7 +533,7 @@ export default function AdminPricingPage() {
         {/* Header */}
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-pink-500">
+            <p className="text-xs font-bold tracking-[0.15em] text-pink-500 uppercase">
               Website Management
             </p>
 
@@ -509,7 +550,7 @@ export default function AdminPricingPage() {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={loadPlans}
+              onClick={() => void loadPlans()}
               disabled={loading}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
             >
@@ -653,7 +694,7 @@ export default function AdminPricingPage() {
                   {/* Pricing summary */}
                   <div className="grid grid-cols-3 gap-3 border-b border-slate-100 p-6">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
                         Monthly
                       </p>
 
@@ -667,7 +708,7 @@ export default function AdminPricingPage() {
                     </div>
 
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
                         Quarterly
                       </p>
 
@@ -681,7 +722,7 @@ export default function AdminPricingPage() {
                     </div>
 
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
                         Yearly
                       </p>
 
@@ -697,7 +738,7 @@ export default function AdminPricingPage() {
 
                   {/* Features */}
                   <div className="p-6">
-                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+                    <p className="text-xs font-bold tracking-[0.12em] text-slate-400 uppercase">
                       Included Features
                     </p>
 
@@ -734,7 +775,7 @@ export default function AdminPricingPage() {
                       <button
                         type="button"
                         disabled={busyPlanId === plan.id}
-                        onClick={() => toggleActive(plan)}
+                        onClick={() => void toggleActive(plan)}
                         className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
                       >
                         {busyPlanId === plan.id ? (
@@ -751,7 +792,7 @@ export default function AdminPricingPage() {
                       <button
                         type="button"
                         disabled={busyPlanId === plan.id}
-                        onClick={() => deletePlan(plan)}
+                        onClick={() => void deletePlan(plan)}
                         className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-60"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -769,19 +810,22 @@ export default function AdminPricingPage() {
       {/* Create/edit modal */}
       {showForm && (
         <div
+          role="presentation"
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
-          onClick={closeForm}
+          onClick={(event) => {
+            // Only clicks on the backdrop itself close the form.
+            if (event.target === event.currentTarget) closeForm()
+          }}
         >
-          <div
-            role="dialog"
+          <dialog
+            open
             aria-modal="true"
             aria-labelledby="pricing-plan-form-title"
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
+            className="relative m-0 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border-0 bg-white p-0 shadow-2xl"
           >
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-5 sm:px-8">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-pink-500">
+                <p className="text-xs font-bold tracking-[0.14em] text-pink-500 uppercase">
                   Pricing Management
                 </p>
 
@@ -806,7 +850,10 @@ export default function AdminPricingPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8 p-6 sm:p-8">
+            <form
+              onSubmit={(event) => void handleSubmit(event)}
+              className="space-y-8 p-6 sm:p-8"
+            >
               {error && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   {error}
@@ -1109,7 +1156,7 @@ export default function AdminPricingPage() {
                 </button>
               </div>
             </form>
-          </div>
+          </dialog>
         </div>
       )}
     </div>

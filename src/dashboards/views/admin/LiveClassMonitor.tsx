@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../supabase'
 import {
   Activity,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import type { Tables } from '../../../types/database'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
 
 type MonitorTutor = Pick<Tables<'users'>, 'id' | 'full_name' | 'email' | 'role'>
 
@@ -39,6 +40,113 @@ interface LiveClassMonitorProps {
   notifyTutor?: (tutorId: string, message: string) => unknown
 }
 
+interface TodaysClasses {
+  classes: MonitorClass[]
+  tutors: MonitorTutor[]
+}
+
+const LOAD_ERROR =
+  "Unable to load today's classes. Check your database configuration and permissions."
+
+async function loadTodaysClasses(today: string): Promise<TodaysClasses> {
+  // Your schema uses classes.scheduled_at, not class_date/class_time.
+  const start = new Date(`${today}T00:00:00`)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+
+  const { data: classData, error: classError } = await supabase
+    .from('classes')
+    .select('*')
+    .gte('scheduled_at', start.toISOString())
+    .lt('scheduled_at', end.toISOString())
+    .order('scheduled_at', { ascending: true })
+  if (classError) throw classError
+
+  const classIds = classData.map((item) => item.id)
+  const tutorIds = [
+    ...new Set(
+      classData.flatMap((item) => (item.tutor_id ? [item.tutor_id] : [])),
+    ),
+  ]
+  let tutorData: MonitorTutor[] = []
+  let eventData: MonitorEvent[] = []
+
+  if (tutorIds.length) {
+    const { data, error: tutorError } = await supabase
+      .from('users')
+      .select('id, full_name, email, role')
+      .in('id', tutorIds)
+    if (tutorError) throw tutorError
+    tutorData = data
+  }
+
+  // calendar_events contains meet_link and references classes through class_id.
+  if (classIds.length) {
+    const { data, error: eventError } = await supabase
+      .from('calendar_events')
+      .select(
+        'id, title, meet_link, start_time, end_time, tutor_id, class_id, class_type, booking_status, session_status',
+      )
+      .in('class_id', classIds)
+      .order('start_time', { ascending: true })
+    if (eventError) throw eventError
+    eventData = data
+  }
+
+  // Prefer the event that has a meeting link when a class has several
+  const eventMap = new Map<string, MonitorEvent>()
+  for (const event of eventData) {
+    if (!event.class_id) continue
+    const previous = eventMap.get(event.class_id)
+    if (!previous || (!previous.meet_link && event.meet_link))
+      eventMap.set(event.class_id, event)
+  }
+
+  return {
+    classes: classData.map((item) =>
+      Object.assign(item, { calendar_event: eventMap.get(item.id) ?? null }),
+    ),
+    tutors: tutorData,
+  }
+}
+
+function tutorName(tutors: MonitorTutor[], id: string | null) {
+  if (!id) return 'Unassigned Tutor'
+  const tutor = tutors.find((t) => t.id === id)
+  return tutor?.full_name || tutor?.email || 'Assigned Tutor'
+}
+
+function getClassTitle(item: MonitorClass) {
+  return item.calendar_event?.title || `${item.class_type || 'Scheduled'} Class`
+}
+
+function getScheduledDate(item: MonitorClass) {
+  const value = item.scheduled_at || item.calendar_event?.start_time
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getClassTime(item: MonitorClass) {
+  const date = getScheduledDate(item)
+  return date
+    ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : 'Time not specified'
+}
+
+function getMeetLink(item: MonitorClass) {
+  return item.calendar_event?.meet_link?.trim() || ''
+}
+
+function hasValidMeetLink(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
   const [classes, setClasses] = useState<MonitorClass[]>([])
   const [tutors, setTutors] = useState<MonitorTutor[]>([])
@@ -52,127 +160,47 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   })
 
-  const fetchClasses = useCallback(
-    async (isRefresh = false) => {
-      isRefresh ? setRefreshing(true) : setLoading(true)
-      setError('')
-      try {
-        // Your schema uses classes.scheduled_at, not class_date/class_time.
-        const start = new Date(`${today}T00:00:00`)
-        const end = new Date(start)
-        end.setDate(end.getDate() + 1)
-
-        const { data: classData, error: classError } = await supabase
-          .from('classes')
-          .select('*')
-          .gte('scheduled_at', start.toISOString())
-          .lt('scheduled_at', end.toISOString())
-          .order('scheduled_at', { ascending: true })
-        if (classError) throw classError
-
-        const classIds = (classData || [])
-          .map((item) => item.id)
-          .filter(Boolean)
-        const tutorIds = [
-          ...new Set(
-            (classData || []).map((item) => item.tutor_id).filter(Boolean),
-          ),
-        ]
-        let tutorData: MonitorTutor[] = []
-        let eventData: MonitorEvent[] = []
-
-        if (tutorIds.length) {
-          const { data, error: tutorError } = await supabase
-            .from('users')
-            .select('id, full_name, name, email, role')
-            .in('id', tutorIds)
-          if (tutorError) throw tutorError
-          tutorData = data || []
-        }
-
-        // calendar_events contains meet_link and references classes through class_id.
-        if (classIds.length) {
-          const { data, error: eventError } = await supabase
-            .from('calendar_events')
-            .select(
-              'id, title, meet_link, start_time, end_time, tutor_id, class_id, class_type, booking_status, session_status',
-            )
-            .in('class_id', classIds)
-            .order('start_time', { ascending: true })
-          if (eventError) throw eventError
-          eventData = data || []
-        }
-
-        const eventMap = new Map<string, MonitorEvent>()
-        for (const event of eventData) {
-          const key = String(event.class_id)
-          const previous = eventMap.get(key)
-          if (!previous || (!previous.meet_link && event.meet_link))
-            eventMap.set(key, event)
-        }
-        setClasses(
-          (classData || []).map((item) => ({
-            ...item,
-            calendar_event: eventMap.get(String(item.id)) || null,
-          })),
-        )
-        setTutors(tutorData)
-      } catch (err) {
-        console.error("Failed to load today's classes:", err)
-        setError(
-          err?.message ||
-            "Unable to load today's classes. Check your database configuration and permissions.",
-        )
-        toast.error("Could not load today's classes.")
-      } finally {
-        setLoading(false)
-        setRefreshing(false)
-      }
-    },
-    [today],
-  )
-
   useEffect(() => {
-    fetchClasses()
-  }, [fetchClasses])
+    let cancelled = false
+    loadTodaysClasses(today).then(
+      (result) => {
+        if (cancelled) return
+        setClasses(result.classes)
+        setTutors(result.tutors)
+        setLoading(false)
+      },
+      (err: unknown) => {
+        console.error("Failed to load today's classes:", err)
+        if (cancelled) return
+        setError(getErrorMessage(err, LOAD_ERROR))
+        toast.error("Could not load today's classes.")
+        setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [today])
 
-  const getTutor = (id: string | null) =>
-    tutors.find((t) => String(t.id) === String(id))
-  const getTutorName = (id: string | null) => {
-    if (!id) return 'Unassigned Tutor'
-    const tutor = getTutor(id)
-    return tutor?.full_name || tutor?.name || tutor?.email || 'Assigned Tutor'
-  }
-  const getClassTitle = (item: MonitorClass) =>
-    item.title ||
-    item.class_name ||
-    item.name ||
-    item.calendar_event?.title ||
-    `${item.class_type || 'Scheduled'} Class`
-  const getScheduledDate = (item: MonitorClass) => {
-    const value = item.scheduled_at || item.calendar_event?.start_time
-    if (!value) return null
-    const date = new Date(value)
-    return Number.isNaN(date.getTime()) ? null : date
-  }
-  const getClassTime = (item: MonitorClass) => {
-    const date = getScheduledDate(item)
-    return date
-      ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-      : 'Time not specified'
-  }
-  const getMeetLink = (item: MonitorClass) => {
-    const value = item.calendar_event?.meet_link || item.meet_link || ''
-    return typeof value === 'string' ? value.trim() : ''
-  }
-  const hasValidMeetLink = (value: string) => {
+  const fetchClasses = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true)
+    else setLoading(true)
+    setError('')
     try {
-      const url = new URL(value)
-      return url.protocol === 'https:' || url.protocol === 'http:'
-    } catch {
-      return false
+      const result = await loadTodaysClasses(today)
+      setClasses(result.classes)
+      setTutors(result.tutors)
+    } catch (err) {
+      console.error("Failed to load today's classes:", err)
+      setError(getErrorMessage(err, LOAD_ERROR))
+      toast.error("Could not load today's classes.")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
   }
+
+  const getTutorName = (id: string | null) => tutorName(tutors, id)
 
   const handleJoinClass = (item: MonitorClass) => {
     const link = getMeetLink(item)
@@ -185,12 +213,14 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
   }
 
   const handlePingTutor = async (item: MonitorClass) => {
-    if (!item.tutor_id)
-      return toast.error('Assign a tutor to this class first.')
-    if (typeof notifyTutor !== 'function')
-      return toast.error(
-        'Tutor notifications are not connected to this page yet.',
-      )
+    if (!item.tutor_id) {
+      toast.error('Assign a tutor to this class first.')
+      return
+    }
+    if (typeof notifyTutor !== 'function') {
+      toast.error('Tutor notifications are not connected to this page yet.')
+      return
+    }
     setPingingTutorId(item.id)
     try {
       await notifyTutor(
@@ -212,10 +242,10 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
     return classes.filter((item) =>
       [
         getClassTitle(item),
-        getTutorName(item.tutor_id),
+        tutorName(tutors, item.tutor_id),
         getClassTime(item),
         item.class_type || '',
-      ].some((value) => String(value).toLowerCase().includes(query)),
+      ].some((value) => value.toLowerCase().includes(query)),
     )
   }, [classes, search, tutors])
 
@@ -232,7 +262,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
   )
 
   return (
-    <div className="min-h-screen space-y-7 bg-gray-50 p-4 dark:bg-[#0b0b12] sm:p-6 lg:p-8">
+    <div className="min-h-screen space-y-7 bg-gray-50 p-4 sm:p-6 lg:p-8 dark:bg-[#0b0b12]">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2">
@@ -242,11 +272,11 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
                 className="text-purple-600 dark:text-purple-400"
               />
             </div>
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400">
+            <span className="text-xs font-black tracking-[0.2em] text-purple-600 uppercase dark:text-purple-400">
               Operations Centre
             </span>
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white sm:text-3xl">
+          <h1 className="text-2xl font-black tracking-tight text-gray-900 sm:text-3xl dark:text-white">
             Live Class Monitor
           </h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -259,7 +289,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
         </div>
         <button
           type="button"
-          onClick={() => fetchClasses(true)}
+          onClick={() => void fetchClasses(true)}
           disabled={refreshing || loading}
           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-700 shadow-xs hover:bg-gray-100 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
         >
@@ -314,7 +344,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
       </div>
 
       <section className="overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-xs dark:border-white/10 dark:bg-white/5">
-        <div className="flex flex-col gap-4 border-b border-gray-100 p-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border-white/10">
           <div>
             <h2 className="text-lg font-black text-gray-900 dark:text-white">
               Today's Schedule
@@ -326,13 +356,13 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
           <div className="relative w-full sm:max-w-xs">
             <Search
               size={16}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute top-1/2 left-4 -translate-y-1/2 text-gray-400"
             />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search classes or tutors..."
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm text-gray-900 outline-hidden focus:border-purple-400 dark:border-white/10 dark:bg-white/5 dark:text-white"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pr-4 pl-11 text-sm text-gray-900 outline-hidden focus:border-purple-400 dark:border-white/10 dark:bg-white/5 dark:text-white"
             />
           </div>
         </div>
@@ -358,7 +388,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
                   </p>
                   <button
                     type="button"
-                    onClick={() => fetchClasses()}
+                    onClick={() => void fetchClasses()}
                     className="mt-3 text-sm font-black underline"
                   >
                     Try again
@@ -396,7 +426,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
               return (
                 <article
                   key={item.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 hover:border-purple-200 dark:border-white/10 dark:bg-white/2 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 hover:border-purple-200 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-white/2"
                 >
                   <div className="flex min-w-0 items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-500/15">
@@ -453,7 +483,7 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handlePingTutor(item)}
+                      onClick={() => void handlePingTutor(item)}
                       disabled={!assigned || pingingTutorId === item.id}
                       className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-black text-emerald-700 shadow-xs hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-emerald-400"
                     >

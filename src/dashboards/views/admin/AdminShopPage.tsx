@@ -17,6 +17,7 @@ import {
 import { supabase } from '../../../supabase'
 import { isAdminRole } from '../../../types/roles'
 import type { Tables } from '../../../types/database'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
 
 type ShopProduct = Tables<'shop_products'>
 
@@ -64,6 +65,63 @@ const emptyForm: ShopProductForm = {
   image_url: '',
 }
 
+const PROGRAM_LABELS: Record<string, string> = {
+  'junior-coders': 'Junior Coders',
+  'future-developers': 'Future Developers',
+  'tech-professionals': 'Tech Professionals',
+}
+
+function generateSlug(name: string) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function formatPrice(product: ShopProduct) {
+  return new Intl.NumberFormat('en-KE', {
+    style: 'currency',
+    currency: product.currency || 'KES',
+    maximumFractionDigits: 0,
+  }).format(product.price)
+}
+
+function formatProgram(program: string | null) {
+  return (program && PROGRAM_LABELS[program]) || 'General'
+}
+
+async function loadProducts(): Promise<ShopProduct[]> {
+  const { data, error } = await supabase
+    .from('shop_products')
+    .select('*')
+    .order('display_order', { ascending: true })
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error(error)
+  }
+
+  return data || []
+}
+
+/** Where to send someone who can't manage the shop, or `null` if they can. */
+async function getShopRedirect(): Promise<string | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return '/login'
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  return profile && isAdminRole(profile.role) ? null : '/'
+}
+
 export default function AdminShopPage() {
   const [products, setProducts] = useState<ShopProduct[]>([])
   const [form, setForm] = useState<ShopProductForm>(emptyForm)
@@ -76,56 +134,34 @@ export default function AdminShopPage() {
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
-    initialise()
+    let cancelled = false
+
+    async function initialise() {
+      const redirect = await getShopRedirect()
+      if (cancelled) return
+
+      if (redirect) {
+        window.location.assign(redirect)
+        return
+      }
+
+      const rows = await loadProducts()
+      if (cancelled) return
+      setProducts(rows)
+      setLoading(false)
+    }
+
+    void initialise()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
-
-  async function initialise() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      window.location.href = '/login'
-      return
-    }
-
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || !isAdminRole(profile.role)) {
-      window.location.href = '/'
-      return
-    }
-
-    await fetchProducts()
-  }
 
   async function fetchProducts() {
     setLoading(true)
-
-    const { data, error } = await supabase
-      .from('shop_products')
-      .select('*')
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error(error)
-    }
-
-    setProducts(data || [])
+    setProducts(await loadProducts())
     setLoading(false)
-  }
-
-  function generateSlug(name: string) {
-    return name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
   }
 
   function handleNameChange(value: string) {
@@ -212,7 +248,7 @@ export default function AdminShopPage() {
     } catch (error) {
       console.error('Product image upload failed:', error)
 
-      alert(error?.message || 'Image upload failed. Please try again.')
+      alert(getErrorMessage(error, 'Image upload failed. Please try again.'))
     } finally {
       setUploading(false)
     }
@@ -300,7 +336,7 @@ export default function AdminShopPage() {
       return
     }
 
-    fetchProducts()
+    await fetchProducts()
   }
 
   async function deleteProduct(product: ShopProduct) {
@@ -318,28 +354,7 @@ export default function AdminShopPage() {
       return
     }
 
-    fetchProducts()
-  }
-
-  function formatPrice(product: ShopProduct) {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: product.currency || 'KES',
-      maximumFractionDigits: 0,
-    }).format(Number(product.price))
-  }
-
-  function formatProgram(program: string | null) {
-    switch (program) {
-      case 'junior-coders':
-        return 'Junior Coders'
-      case 'future-developers':
-        return 'Future Developers'
-      case 'tech-professionals':
-        return 'Tech Professionals'
-      default:
-        return 'General'
-    }
+    await fetchProducts()
   }
 
   return (
@@ -439,19 +454,19 @@ export default function AdminShopPage() {
                       </span>
 
                       {!product.is_active && (
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-500">
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 uppercase">
                           Hidden
                         </span>
                       )}
 
                       {product.is_featured && (
-                        <span className="rounded-full bg-purple-100 px-2 py-1 text-[10px] font-bold uppercase text-primary">
+                        <span className="rounded-full bg-purple-100 px-2 py-1 text-[10px] font-bold text-primary uppercase">
                           Featured
                         </span>
                       )}
 
                       {product.badge && (
-                        <span className="rounded-full bg-pink-100 px-2 py-1 text-[10px] font-bold uppercase text-secondary">
+                        <span className="rounded-full bg-pink-100 px-2 py-1 text-[10px] font-bold text-secondary uppercase">
                           {product.badge}
                         </span>
                       )}
@@ -469,7 +484,11 @@ export default function AdminShopPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => toggleActive(product)}
+                      type="button"
+                      aria-label={
+                        product.is_active ? 'Hide product' : 'Show product'
+                      }
+                      onClick={() => void toggleActive(product)}
                       title={
                         product.is_active ? 'Hide product' : 'Show product'
                       }
@@ -483,6 +502,8 @@ export default function AdminShopPage() {
                     </button>
 
                     <button
+                      type="button"
+                      aria-label={`Edit ${product.name}`}
                       onClick={() => openEdit(product)}
                       className="rounded-xl border border-slate-200 p-2.5 text-primary transition hover:bg-purple-50"
                     >
@@ -490,7 +511,9 @@ export default function AdminShopPage() {
                     </button>
 
                     <button
-                      onClick={() => deleteProduct(product)}
+                      type="button"
+                      aria-label={`Delete ${product.name}`}
+                      onClick={() => void deleteProduct(product)}
                       className="rounded-xl border border-red-100 p-2.5 text-red-500 transition hover:bg-red-50"
                     >
                       <Trash2 size={17} />
@@ -530,12 +553,15 @@ export default function AdminShopPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6 p-6">
+            <form
+              onSubmit={(event) => void handleSubmit(event)}
+              className="space-y-6 p-6"
+            >
               {/* Image */}
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                <p className="mb-2 block text-sm font-semibold text-slate-700">
                   Product Image
-                </label>
+                </p>
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div className="relative h-28 w-28 overflow-hidden rounded-2xl bg-slate-100">
@@ -565,7 +591,9 @@ export default function AdminShopPage() {
                       accept="image/*"
                       className="hidden"
                       disabled={uploading}
-                      onChange={(event) => uploadImage(event.target.files?.[0])}
+                      onChange={(event) =>
+                        void uploadImage(event.target.files?.[0])
+                      }
                     />
                   </label>
                 </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../../supabase'
 import { Save, UserPlus, ClipboardList, Rocket, Award } from 'lucide-react'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
 
 interface StudentOption {
   id: string
@@ -18,29 +19,30 @@ const slugify = (name: string, examTitle: string) => {
   return base.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
+// A blank result dated today
+const createInitialState = () => ({
+  student_id: '', // 🔥 Store the relational UUID
+  student_name: '',
+  slug: '',
+  grade_level: '',
+  course_name: 'Scratch Programming',
+  exam_title: '',
+  exam_date: new Date().toISOString().split('T')[0],
+  theory_score: 0,
+  practical_score: 0,
+  problem_solving_score: 0,
+  creativity_score: 0,
+  performance_label: 'Excellent',
+  tutor_feedback: '',
+  project_url: '',
+})
+
 const AdminEntryForm = () => {
   const [loading, setLoading] = useState(false)
   const [studentsList, setStudentsList] = useState<StudentOption[]>([])
   const [fetchingStudents, setFetchingStudents] = useState(true)
 
-  const initialState = {
-    student_id: '', // 🔥 Store the relational UUID
-    student_name: '',
-    slug: '',
-    grade_level: '',
-    course_name: 'Scratch Programming',
-    exam_title: '',
-    exam_date: new Date().toISOString().split('T')[0],
-    theory_score: 0,
-    practical_score: 0,
-    problem_solving_score: 0,
-    creativity_score: 0,
-    performance_label: 'Excellent',
-    tutor_feedback: '',
-    project_url: '',
-  }
-
-  const [formData, setFormData] = useState(initialState)
+  const [formData, setFormData] = useState(createInitialState)
 
   // 1. Fetch real students from users table
   useEffect(() => {
@@ -56,12 +58,15 @@ const AdminEntryForm = () => {
         if (error) throw error
         setStudentsList(data || [])
       } catch (err) {
-        console.error('Error fetching student directory:', err.message)
+        console.error(
+          'Error fetching student directory:',
+          getErrorMessage(err, 'Unknown error'),
+        )
       } finally {
         setFetchingStudents(false)
       }
     }
-    fetchStudents()
+    void fetchStudents()
   }, [])
 
   // 2. Handle selection changes cleanly
@@ -78,6 +83,8 @@ const AdminEntryForm = () => {
     }
 
     const selectedStudent = studentsList.find((s) => s.id === selectedId)
+    if (!selectedStudent) return
+
     setFormData((prev) => ({
       ...prev,
       student_id: selectedId,
@@ -141,9 +148,9 @@ const AdminEntryForm = () => {
       alert(
         `✅ Saved Assessment Record!\n\nShareable Report Card Link:\n${link}`,
       )
-      setFormData(initialState)
+      setFormData(createInitialState())
     } catch (err) {
-      alert('Error: ' + err.message)
+      alert('Error: ' + getErrorMessage(err, 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -158,14 +165,18 @@ const AdminEntryForm = () => {
         </h1>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={(e) => void handleSave(e)} className="space-y-6">
         {/* DROPDOWN SELECTOR */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1 block text-sm font-semibold text-gray-700">
+            <label
+              htmlFor="result-student"
+              className="mb-1 block text-sm font-semibold text-gray-700"
+            >
               Select Registered Student
             </label>
             <select
+              id="result-student"
               name="student_id"
               value={formData.student_id}
               onChange={handleStudentSelect}
@@ -197,10 +208,14 @@ const AdminEntryForm = () => {
         {/* PERFORMANCE LABEL & COURSE */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1 flex items-center gap-1 text-sm font-semibold">
+            <label
+              htmlFor="result-performance-label"
+              className="mb-1 flex items-center gap-1 text-sm font-semibold"
+            >
               <Award size={14} className="text-indigo-500" /> Performance Label
             </label>
             <select
+              id="result-performance-label"
               name="performance_label"
               value={formData.performance_label}
               onChange={handleChange}
@@ -259,9 +274,9 @@ const AdminEntryForm = () => {
 
         {/* SCORES */}
         <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-          <label className="mb-3 block text-sm font-bold uppercase tracking-tight text-indigo-800">
+          <p className="mb-3 block text-sm font-bold tracking-tight text-indigo-800 uppercase">
             Skill Scores (0-100)
-          </label>
+          </p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Score
               label="Theory"
@@ -292,10 +307,14 @@ const AdminEntryForm = () => {
 
         {/* FEEDBACK */}
         <div>
-          <label className="mb-1 block text-sm font-semibold">
+          <label
+            htmlFor="result-tutor-feedback"
+            className="mb-1 block text-sm font-semibold"
+          >
             Tutor Feedback
           </label>
           <textarea
+            id="result-tutor-feedback"
             name="tutor_feedback"
             value={formData.tutor_feedback}
             onChange={handleChange}
@@ -335,7 +354,7 @@ const Input = ({ label, ...props }: LabeledInputProps) => (
 
 const Score = ({ label, ...props }: LabeledInputProps) => (
   <div className="rounded-sm border border-indigo-200 bg-white p-2">
-    <label className="mb-1 block text-[10px] font-black uppercase text-indigo-400">
+    <label className="mb-1 block text-[10px] font-black text-indigo-400 uppercase">
       {label}
     </label>
     <input

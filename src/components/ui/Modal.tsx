@@ -23,6 +23,7 @@ export function Modal({ title, closeLabel, onClose, children }: ModalProps) {
   }, [])
 
   return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop click to close; Escape (onCancel) is the keyboard equivalent
     <dialog
       ref={dialogRef}
       aria-modal="true"
@@ -48,7 +49,7 @@ export function Modal({ title, closeLabel, onClose, children }: ModalProps) {
           size="icon"
           onClick={onClose}
           aria-label={closeLabel}
-          className="-mr-2 -mt-2 shrink-0 rounded-full text-slate-400"
+          className="-mt-2 -mr-2 shrink-0 rounded-full text-slate-400"
         >
           &times;
         </Button>

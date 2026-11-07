@@ -20,12 +20,12 @@ export function EndClassModal({
 }: EndClassModalProps) {
   return (
     <Modal open={open} onClose={onClose} width={448} labelledBy="end-title">
-      <h2 id="end-title" className="text-ink pr-10 text-[20px] font-semibold">
+      <h2 id="end-title" className="pr-10 text-[20px] font-semibold text-ink">
         End this class?
       </h2>
-      <p className="text-ink-soft mt-2 text-[15px] leading-[23px]">
+      <p className="mt-2 text-[15px] leading-[23px] text-ink-soft">
         The class has run for{' '}
-        <span className="text-ink font-medium tabular-nums">
+        <span className="font-medium text-ink tabular-nums">
           {formatElapsed(elapsedMs)}
         </span>
         . Ending it closes the room for{' '}
@@ -38,14 +38,14 @@ export function EndClassModal({
         <button
           type="button"
           onClick={onClose}
-          className="press border-line-strong text-ink hover:bg-surface-2 h-10 rounded-[4px] border px-4 text-[15px] font-medium"
+          className="press h-10 rounded-[4px] border border-line-strong px-4 text-[15px] font-medium text-ink hover:bg-surface-2"
         >
           Keep teaching
         </button>
         <button
           type="button"
           onClick={onConfirm}
-          className="press bg-brand hover:bg-brand-strong h-10 rounded-[4px] px-4 text-[15px] font-medium text-white"
+          className="press h-10 rounded-[4px] bg-brand px-4 text-[15px] font-medium text-white hover:bg-brand-strong"
         >
           End class
         </button>

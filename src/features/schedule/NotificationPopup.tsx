@@ -32,7 +32,7 @@ export default function Notification({
         ) : (
           <CheckCircle size={18} />
         )}
-        <p className="text-xs font-black uppercase tracking-tight">{message}</p>
+        <p className="text-xs font-black tracking-tight uppercase">{message}</p>
       </div>
       <button onClick={onClose} className="hover:opacity-70">
         <X size={16} />

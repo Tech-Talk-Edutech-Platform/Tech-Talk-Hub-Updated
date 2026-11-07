@@ -13,7 +13,7 @@ export function HeroContent() {
         <span>Live Coding Classes for Kids</span>
       </div>
 
-      <h1 className="text-[2.6rem] font-extrabold leading-[1.08] tracking-[-0.045em] text-primary sm:text-5xl lg:text-[3.2rem] xl:text-[3.65rem]">
+      <h1 className="text-[2.6rem] leading-[1.08] font-extrabold tracking-[-0.045em] text-primary sm:text-5xl lg:text-[3.2rem] xl:text-[3.65rem]">
         Turning Young Minds Into{' '}
         <span className="text-secondary">Creators.</span>
       </h1>
@@ -31,7 +31,7 @@ export function HeroContent() {
               <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
             </span>
 
-            <span className="text-sm font-medium leading-5 text-slate-700 sm:text-[15px]">
+            <span className="text-sm leading-5 font-medium text-slate-700 sm:text-[15px]">
               {benefit}
             </span>
           </div>

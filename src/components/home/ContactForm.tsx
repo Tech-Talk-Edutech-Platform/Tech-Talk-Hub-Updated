@@ -31,6 +31,10 @@ const contactSchema = z.object({
   message: z.string().trim().min(1, 'Enter a message.'),
 })
 
+function openWhatsApp(values: ContactFormValues) {
+  window.open(buildContactWhatsAppUrl(values), '_blank', 'noopener,noreferrer')
+}
+
 /** Contact form that hands the parent's message off to WhatsApp. */
 export function ContactForm() {
   const {
@@ -49,14 +53,6 @@ export function ContactForm() {
     },
   })
 
-  function handleValidSubmit(values: ContactFormValues) {
-    window.open(
-      buildContactWhatsAppUrl(values),
-      '_blank',
-      'noopener,noreferrer',
-    )
-  }
-
   return (
     <div className="p-7 sm:p-9 lg:p-10">
       <div className="mb-7">
@@ -70,13 +66,12 @@ export function ContactForm() {
       </div>
 
       <form
-        onSubmit={handleSubmit(handleValidSubmit)}
+        onSubmit={(event) => void handleSubmit(openWhatsApp)(event)}
         noValidate
         className="grid gap-5 sm:grid-cols-2"
       >
         <TextField
           id="parentName"
-          name="parentName"
           label="Parent’s Name"
           type="text"
           required
@@ -92,7 +87,6 @@ export function ContactForm() {
 
         <TextField
           id="childAge"
-          name="childAge"
           label="Child’s Age"
           type="number"
           min="4"
@@ -110,7 +104,6 @@ export function ContactForm() {
 
         <TextField
           id="phone"
-          name="phone"
           label="Phone Number"
           type="tel"
           required
@@ -126,7 +119,6 @@ export function ContactForm() {
 
         <TextField
           id="email"
-          name="email"
           label="Email Address"
           type="email"
           {...register('email')}
@@ -141,7 +133,6 @@ export function ContactForm() {
         >
           <select
             id="interest"
-            name="interest"
             {...register('interest')}
             className={`h-12 text-slate-700 ${FORM_CONTROL_CLASS}`}
           >
@@ -158,7 +149,6 @@ export function ContactForm() {
         <FormField id="message" label="Your Message" className="sm:col-span-2">
           <textarea
             id="message"
-            name="message"
             rows={4}
             required
             {...register('message')}

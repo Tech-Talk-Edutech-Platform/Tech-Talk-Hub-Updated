@@ -26,7 +26,7 @@ export function SwitchPlatformModal({
     >
       <h2
         id="platform-title"
-        className="text-ink mb-5 text-center text-[17px] font-semibold"
+        className="mb-5 text-center text-[17px] font-semibold text-ink"
       >
         Switch Video Platform
       </h2>
@@ -45,7 +45,7 @@ export function SwitchPlatformModal({
                 role="radio"
                 aria-checked={isCurrent}
                 onClick={() => (isCurrent ? onClose() : onSwitch(platform))}
-                className={`press text-ink flex h-[46px] w-full items-center rounded-[4px] border px-3 text-left text-[15px] ${
+                className={`press flex h-[46px] w-full items-center rounded-[4px] border px-3 text-left text-[15px] text-ink ${
                   isCurrent
                     ? 'border-brand'
                     : 'border-line hover:border-line-strong hover:bg-surface-2/60'
@@ -54,7 +54,7 @@ export function SwitchPlatformModal({
                 <span className="flex-1">
                   {platform.name}
                   {isCurrent && (
-                    <span className="text-brand ml-1.5 text-[12.5px]">
+                    <span className="ml-1.5 text-[12.5px] text-brand">
                       (Current)
                     </span>
                   )}

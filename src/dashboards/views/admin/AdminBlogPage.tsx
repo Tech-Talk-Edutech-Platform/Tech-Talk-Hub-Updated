@@ -42,7 +42,7 @@ const BLOG_CATEGORIES = [
   'Learning Tips',
 ]
 
-const emptyForm = {
+const emptyForm: BlogForm = {
   id: null,
   title: '',
   slug: '',
@@ -91,12 +91,41 @@ function getErrorMessage(error: unknown) {
 }
 
 function createSlug(value = '') {
-  return String(value)
+  return value
     .toLowerCase()
     .trim()
     .replace(/['’]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+function postToForm(post: BlogPost): BlogForm {
+  return {
+    id: post.id,
+    title: post.title || '',
+    slug: post.slug || '',
+    excerpt: post.excerpt || '',
+    category: post.category || '',
+    content: post.content || '',
+    cover_image_url: post.cover_image_url || '',
+    status: post.status,
+    published_at: post.published_at,
+  }
+}
+
+async function fetchBlogPosts(): Promise<BlogPost[]> {
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .order('created_at', {
+      ascending: false,
+    })
+
+  if (error) {
+    throw error
+  }
+
+  return data
 }
 
 function formatDate(value: string | null | undefined) {
@@ -180,7 +209,8 @@ export default function AdminBlogPage({
 
   const [search, setSearch] = useState('')
 
-  const [loading, setLoading] = useState(true)
+  // Only admins load articles; everyone else sees the access message
+  const [loading, setLoading] = useState(() => isAdminRole(role))
 
   const [saving, setSaving] = useState(false)
 
@@ -202,18 +232,7 @@ export default function AdminBlogPage({
     setLoading(true)
 
     try {
-      const { data, error } = await supabase
-        .from('blog_posts')
-        .select('*')
-        .order('created_at', {
-          ascending: false,
-        })
-
-      if (error) {
-        throw error
-      }
-
-      setPosts(data || [])
+      setPosts(await fetchBlogPosts())
 
       return true
     } catch (error) {
@@ -230,12 +249,30 @@ export default function AdminBlogPage({
   }, [])
 
   useEffect(() => {
-    if (isAdmin) {
-      loadPosts()
-    } else {
-      setLoading(false)
+    if (!isAdmin) return undefined
+    let cancelled = false
+
+    fetchBlogPosts().then(
+      (rows) => {
+        if (cancelled) return
+        setPosts(rows)
+        setLoading(false)
+      },
+      (error: unknown) => {
+        if (cancelled) return
+        setMessage({
+          type: 'error',
+
+          text: getErrorMessage(error) || 'Unable to load articles.',
+        })
+        setLoading(false)
+      },
+    )
+
+    return () => {
+      cancelled = true
     }
-  }, [isAdmin, loadPosts])
+  }, [isAdmin])
 
   function updateField(name: keyof BlogForm, value: string) {
     setForm((current) => ({
@@ -273,23 +310,7 @@ export default function AdminBlogPage({
   }
 
   function startEditing(post: BlogPost) {
-    setForm({
-      ...emptyForm,
-
-      ...post,
-
-      title: post.title || '',
-
-      slug: post.slug || '',
-
-      excerpt: post.excerpt || '',
-
-      category: post.category || '',
-
-      content: post.content || '',
-
-      cover_image_url: post.cover_image_url || '',
-    })
+    setForm(postToForm(post))
 
     setMessage(null)
 
@@ -543,7 +564,7 @@ export default function AdminBlogPage({
         .replace(/[[\]]/g, '')
         .trim()
 
-      const imageMarkdown = `\n\n![${imageDescription}]` + `(${publicUrl})\n\n`
+      const imageMarkdown = `\n\n![${imageDescription}](${publicUrl})\n\n`
 
       setForm((current) => ({
         ...current,
@@ -684,11 +705,7 @@ export default function AdminBlogPage({
 
       await loadPosts()
 
-      setForm({
-        ...emptyForm,
-
-        ...result.data,
-      })
+      setForm(postToForm(result.data))
 
       setView('list')
 
@@ -810,7 +827,7 @@ export default function AdminBlogPage({
 
           <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
+              <p className="text-xs font-black tracking-[0.18em] text-pink-500 uppercase">
                 Blog Management
               </p>
 
@@ -837,7 +854,7 @@ export default function AdminBlogPage({
               <button
                 type="button"
                 disabled={saving || isUploading}
-                onClick={() => savePost('draft')}
+                onClick={() => void savePost('draft')}
                 className="inline-flex items-center gap-2 rounded-xl border border-purple-200 bg-white px-5 py-3 text-sm font-bold text-purple-700 transition hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
@@ -851,7 +868,7 @@ export default function AdminBlogPage({
               <button
                 type="button"
                 disabled={saving || isUploading}
-                onClick={() => savePost('published')}
+                onClick={() => void savePost('published')}
                 className="inline-flex items-center gap-2 rounded-xl bg-pink-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-pink-500/20 transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
@@ -868,13 +885,17 @@ export default function AdminBlogPage({
           <MessageAlert message={message} />
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5 sm:p-8">
+            <div className="space-y-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-xs sm:p-8 dark:border-white/10 dark:bg-white/5">
               <div>
-                <label className="mb-2 block text-sm font-bold">
+                <label
+                  htmlFor="blog-title"
+                  className="mb-2 block text-sm font-bold"
+                >
                   Article title
                 </label>
 
                 <input
+                  id="blog-title"
                   type="text"
                   value={form.title}
                   onChange={(event) => handleTitleChange(event.target.value)}
@@ -884,14 +905,20 @@ export default function AdminBlogPage({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold">Slug</label>
+                <label
+                  htmlFor="blog-slug"
+                  className="mb-2 block text-sm font-bold"
+                >
+                  Slug
+                </label>
 
                 <div className="flex overflow-hidden rounded-xl border border-gray-200 focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-500/10 dark:border-white/10">
-                  <span className="hidden items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-400 dark:border-white/10 dark:bg-white/5 sm:flex">
+                  <span className="hidden items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-400 sm:flex dark:border-white/10 dark:bg-white/5">
                     blog/
                   </span>
 
                   <input
+                    id="blog-slug"
                     type="text"
                     value={form.slug}
                     onChange={(event) =>
@@ -909,7 +936,10 @@ export default function AdminBlogPage({
 
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-bold">
+                  <label
+                    htmlFor="blog-excerpt"
+                    className="block text-sm font-bold"
+                  >
                     Short excerpt
                   </label>
 
@@ -920,6 +950,7 @@ export default function AdminBlogPage({
                 </div>
 
                 <textarea
+                  id="blog-excerpt"
                   rows={3}
                   maxLength={180}
                   value={form.excerpt}
@@ -937,7 +968,10 @@ export default function AdminBlogPage({
 
               <div>
                 <div className="mb-3 flex items-center justify-between">
-                  <label className="block text-sm font-bold">
+                  <label
+                    htmlFor="blog-content"
+                    className="block text-sm font-bold"
+                  >
                     Article content
                   </label>
 
@@ -1086,13 +1120,14 @@ export default function AdminBlogPage({
                         type="file"
                         accept="image/*"
                         disabled={uploadingArticleImage}
-                        onChange={uploadArticleImage}
+                        onChange={(event) => void uploadArticleImage(event)}
                         className="hidden"
                       />
                     </label>
                   </div>
 
                   <textarea
+                    id="blog-content"
                     ref={contentRef}
                     rows={24}
                     value={form.content}
@@ -1139,9 +1174,15 @@ Use the Add Image button to insert pictures between sections.`}
 
             <aside className="space-y-6">
               <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-xs dark:border-white/10 dark:bg-white/5">
-                <label className="mb-2 block text-sm font-bold">Category</label>
+                <label
+                  htmlFor="blog-category"
+                  className="mb-2 block text-sm font-bold"
+                >
+                  Category
+                </label>
 
                 <input
+                  id="blog-category"
                   type="text"
                   list="blog-categories"
                   value={form.category}
@@ -1158,7 +1199,11 @@ Use the Add Image button to insert pictures between sections.`}
 
                 <datalist id="blog-categories">
                   {BLOG_CATEGORIES.map((category) => (
-                    <option key={category} value={category} />
+                    <option
+                      key={category}
+                      value={category}
+                      aria-label={category}
+                    />
                   ))}
                 </datalist>
 
@@ -1229,7 +1274,7 @@ Use the Add Image button to insert pictures between sections.`}
 
                     disabled={uploadingCover}
 
-                    onChange={uploadCoverImage}
+                    onChange={(event) => void uploadCoverImage(event)}
 
                     className="hidden"
                   />
@@ -1319,7 +1364,7 @@ Use the Add Image button to insert pictures between sections.`}
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-500">
+            <p className="text-xs font-black tracking-[0.18em] text-pink-500 uppercase">
               Website Content
             </p>
 
@@ -1389,7 +1434,7 @@ Use the Add Image button to insert pictures between sections.`}
           <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xs dark:border-white/10 dark:bg-white/5">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[850px]">
-                <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500 dark:bg-white/5">
+                <thead className="bg-gray-50 text-left text-xs tracking-wider text-gray-500 uppercase dark:bg-white/5">
                   <tr>
                     <th className="px-6 py-4">Article</th>
 
@@ -1497,7 +1542,7 @@ Use the Add Image button to insert pictures between sections.`}
 
                             disabled={deletingId === post.id}
 
-                            onClick={() => deletePost(post)}
+                            onClick={() => void deletePost(post)}
 
                             title="Delete article"
 

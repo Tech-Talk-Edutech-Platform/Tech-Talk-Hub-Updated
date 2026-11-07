@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import { supabase } from '../../supabase'
 import {
   X,
-  Save,
   Package,
   History,
   Clock,
@@ -11,7 +11,11 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import type { Tables } from '../../types/database'
+import { Constants } from '../../types/database'
+import type { Database, Tables } from '../../types/database'
+import { getErrorMessage } from '../../lib/getErrorMessage'
+
+type UserRole = Database['public']['Enums']['user_role']
 
 type EditingUser = Pick<
   Tables<'users'>,
@@ -29,22 +33,86 @@ interface UserManagementModalProps {
   isOpen: boolean
   onClose: () => void
   onRefresh: () => unknown
+  /** The user to edit; the form reads it once, so remount (e.g. via `key`) to switch users. */
   editingUser?: EditingUser | null
 }
 
 interface UserFormData {
   email: string
   fullName: string
-  role: string
+  role: UserRole
   meetLink: string
   subscriptionTier: string
+  // Number inputs hold strings while the user types
   totalClasses: number | string
   classesRemaining: number | string
 }
 
 interface AttendanceHistoryRow {
+  id: string
   created_at: string | null
   calendar_events: { title: string; start_time: string } | null
+}
+
+const NEW_USER_FORM: UserFormData = {
+  email: '',
+  fullName: '',
+  role: 'student',
+  meetLink: '',
+  subscriptionTier: 'Starter',
+  totalClasses: 4,
+  classesRemaining: 4,
+}
+
+function toUserRole(value: string): UserRole | undefined {
+  return Constants.public.Enums.user_role.find((role) => role === value)
+}
+
+/** A class count from a number input; `null` when the field is empty. */
+function toClassCount(value: number | string): number | null {
+  if (typeof value === 'number') return value
+  const count = parseInt(value, 10)
+  return Number.isNaN(count) ? null : count
+}
+
+function formFromUser(user: EditingUser | null): UserFormData {
+  if (!user) return NEW_USER_FORM
+  return {
+    email: user.email || '',
+    fullName: user.full_name || '',
+    role: user.role || 'student',
+    meetLink: user.personal_meet_link || '',
+    subscriptionTier: user.subscription_tier || 'Starter',
+    totalClasses: user.total_classes || 0,
+    classesRemaining: user.classes_remaining || 0,
+  }
+}
+
+async function loadAttendanceHistory(
+  studentId: string,
+): Promise<AttendanceHistoryRow[]> {
+  try {
+    const { data, error } = await supabase
+      .from('event_attendance')
+      .select(
+        `
+          id,
+          created_at,
+          calendar_events (title, start_time)
+        `,
+      )
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.error(
+      'Error fetching history:',
+      getErrorMessage(err, 'Unknown error'),
+    )
+    return []
+  }
 }
 
 export default function UserManagementModal({
@@ -53,82 +121,40 @@ export default function UserManagementModal({
   onRefresh,
   editingUser = null,
 }: UserManagementModalProps) {
-  const [formData, setFormData] = useState<UserFormData>({
-    email: '',
-    fullName: '',
-    role: 'student',
-    meetLink: '',
-    subscriptionTier: 'Starter',
-    totalClasses: 4,
-    classesRemaining: 4,
-  })
+  const [formData, setFormData] = useState<UserFormData>(() =>
+    formFromUser(editingUser),
+  )
 
   const [history, setHistory] = useState<AttendanceHistoryRow[]>([])
   const [loading, setLoading] = useState(false)
 
-  // 1. Handle Modal Open / Load User Data
+  const historyStudentId =
+    isOpen && editingUser?.role === 'student' ? editingUser.id : null
+
+  // Load the attendance history of the student being edited
   useEffect(() => {
-    if (editingUser && isOpen) {
-      setFormData({
-        email: editingUser.email || '',
-        fullName: editingUser.full_name || '',
-        role: editingUser.role || 'student',
-        meetLink: editingUser.personal_meet_link || '',
-        subscriptionTier: editingUser.subscription_tier || 'Starter',
-        totalClasses: editingUser.total_classes || 0,
-        classesRemaining: editingUser.classes_remaining || 0,
-      })
-      if (editingUser.role === 'student') {
-        fetchHistory(editingUser.id)
-      }
-    } else {
-      // Reset for new user
-      setFormData({
-        email: '',
-        fullName: '',
-        role: 'student',
-        meetLink: '',
-        subscriptionTier: 'Starter',
-        totalClasses: 4,
-        classesRemaining: 4,
-      })
-      setHistory([])
+    if (!historyStudentId) return undefined
+    let cancelled = false
+    void loadAttendanceHistory(historyStudentId).then((rows) => {
+      if (!cancelled) setHistory(rows)
+    })
+    return () => {
+      cancelled = true
     }
-  }, [editingUser, isOpen])
+  }, [historyStudentId])
 
-  // 2. Fetch Attendance History
-  const fetchHistory = async (uid: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('event_attendance')
-        .select(
-          `
-          created_at, 
-          calendar_events (title, start_time)
-        `,
-        )
-        .eq('student_id', uid)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setHistory(data || [])
-    } catch (err) {
-      console.error('Error fetching history:', err.message)
-    }
-  }
-
-  // 3. Increment Classes (Top-Up)
+  // Increment Classes (Top-Up)
   const handleTopUp = (amount: number) => {
     setFormData((prev) => ({
       ...prev,
-      totalClasses: parseInt(prev.totalClasses || 0) + amount,
-      classesRemaining: parseInt(prev.classesRemaining || 0) + amount,
+      totalClasses: (toClassCount(prev.totalClasses) ?? 0) + amount,
+      classesRemaining: (toClassCount(prev.classesRemaining) ?? 0) + amount,
     }))
     toast.success(`Added ${amount} classes to draft`)
   }
 
-  // 4. Save Logic (Create or Update)
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Save Logic (Create or Update)
+  const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
 
@@ -141,10 +167,12 @@ export default function UserManagementModal({
         subscription_tier:
           formData.role === 'student' ? formData.subscriptionTier : null,
         total_classes:
-          formData.role === 'student' ? parseInt(formData.totalClasses) : null,
+          formData.role === 'student'
+            ? toClassCount(formData.totalClasses)
+            : null,
         classes_remaining:
           formData.role === 'student'
-            ? parseInt(formData.classesRemaining)
+            ? toClassCount(formData.classesRemaining)
             : null,
       }
 
@@ -174,11 +202,13 @@ export default function UserManagementModal({
       onRefresh()
       onClose()
     } catch (err) {
-      toast.error(`Error: ${err.message}`)
+      toast.error(`Error: ${getErrorMessage(err, 'Unable to save user')}`)
     } finally {
       setLoading(false)
     }
   }
+
+  const hasClassesRemaining = (toClassCount(formData.classesRemaining) ?? 0) > 0
 
   if (!isOpen) return null
 
@@ -197,6 +227,8 @@ export default function UserManagementModal({
               {editingUser ? 'Edit Profile' : 'Add Team Member'}
             </h3>
             <button
+              type="button"
+              aria-label="Close"
               onClick={onClose}
               className="rounded-full p-2 transition-colors hover:bg-slate-100"
             >
@@ -204,12 +236,16 @@ export default function UserManagementModal({
             </button>
           </div>
 
-          <form onSubmit={handleSave} className="space-y-4">
+          <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
             <div className="space-y-1">
-              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <label
+                htmlFor="user-modal-name"
+                className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase"
+              >
                 Full Name
               </label>
               <input
+                id="user-modal-name"
                 required
                 placeholder="Alex Rivera"
                 className="w-full rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-hidden focus:ring-2 focus:ring-blue-500"
@@ -221,10 +257,14 @@ export default function UserManagementModal({
             </div>
 
             <div className="space-y-1">
-              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <label
+                htmlFor="user-modal-email"
+                className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase"
+              >
                 Email
               </label>
               <input
+                id="user-modal-email"
                 required
                 disabled={!!editingUser}
                 type="email"
@@ -238,21 +278,27 @@ export default function UserManagementModal({
             </div>
 
             <div className="space-y-1">
-              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <label
+                htmlFor="user-modal-role"
+                className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase"
+              >
                 Position / Permissions
               </label>
               <select
+                id="user-modal-role"
                 className="w-full appearance-none rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.role}
                 onChange={(e) =>
-                  setFormData({ ...formData, role: e.target.value })
+                  setFormData({
+                    ...formData,
+                    role: toUserRole(e.target.value) ?? formData.role,
+                  })
                 }
               >
                 <option value="student">Student</option>
                 <option value="tutor">Tutor</option>
                 <option value="operations_admin">Operations Admin</option>
                 <option value="owner">Owner</option>
-                <option value="marketer">Marketer</option>
               </select>
             </div>
 
@@ -260,22 +306,21 @@ export default function UserManagementModal({
             {formData.role === 'student' && (
               <div className="animate-in fade-in zoom-in-95 space-y-4 rounded-3xl border border-purple-100 bg-purple-50 p-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-purple-600">
+                  <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-purple-600 uppercase">
                     <Package size={14} /> Course Package
                   </div>
                   <span
-                    className={`text-[10px] font-bold ${formData.classesRemaining > 0 ? 'text-purple-400' : 'animate-pulse text-red-500'}`}
+                    className={`text-[10px] font-bold ${hasClassesRemaining ? 'text-purple-400' : 'animate-pulse text-red-500'}`}
                   >
-                    Status:{' '}
-                    {formData.classesRemaining > 0 ? 'Active' : 'Low Balance'}
+                    Status: {hasClassesRemaining ? 'Active' : 'Low Balance'}
                   </span>
                 </div>
 
                 {/* Quick Top-Up */}
                 <div className="space-y-1">
-                  <label className="ml-1 text-[9px] font-bold uppercase text-purple-400">
+                  <p className="ml-1 text-[9px] font-bold text-purple-400 uppercase">
                     Quick Top-Up
-                  </label>
+                  </p>
                   <div className="flex gap-2">
                     {[4, 8, 12].map((num) => (
                       <button
@@ -292,10 +337,14 @@ export default function UserManagementModal({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="ml-1 text-[9px] font-bold uppercase text-purple-400">
+                    <label
+                      htmlFor="user-modal-total-classes"
+                      className="ml-1 text-[9px] font-bold text-purple-400 uppercase"
+                    >
                       Total
                     </label>
                     <input
+                      id="user-modal-total-classes"
                       type="number"
                       className="w-full rounded-xl border-none bg-white p-3 text-xs font-bold outline-hidden"
                       value={formData.totalClasses}
@@ -308,10 +357,14 @@ export default function UserManagementModal({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="ml-1 text-[9px] font-bold uppercase text-red-500">
+                    <label
+                      htmlFor="user-modal-classes-remaining"
+                      className="ml-1 text-[9px] font-bold text-red-500 uppercase"
+                    >
                       Remaining
                     </label>
                     <input
+                      id="user-modal-classes-remaining"
                       type="number"
                       className="w-full rounded-xl border-none bg-red-50 p-3 text-xs font-bold text-red-600 outline-hidden"
                       value={formData.classesRemaining}
@@ -329,10 +382,14 @@ export default function UserManagementModal({
 
             {formData.role === 'tutor' && (
               <div className="space-y-1">
-                <label className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600">
+                <label
+                  htmlFor="user-modal-meet-link"
+                  className="flex items-center gap-1 text-[10px] font-black tracking-widest text-blue-600 uppercase"
+                >
                   <Link size={12} /> Company Meet Link
                 </label>
                 <input
+                  id="user-modal-meet-link"
                   placeholder="https://meet.google.com/xxx-xxxx-xxx"
                   className="w-full rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold outline-hidden"
                   value={formData.meetLink}
@@ -359,28 +416,30 @@ export default function UserManagementModal({
 
         {/* RIGHT SIDE: HISTORY (Only for existing students) */}
         <div className="w-full overflow-y-auto bg-slate-50 p-6 md:w-72">
-          <h4 className="mb-4 flex items-center gap-2 text-xs font-black uppercase text-slate-400">
+          <h4 className="mb-4 flex items-center gap-2 text-xs font-black text-slate-400 uppercase">
             <History size={14} /> Class History
           </h4>
           <div className="space-y-3">
             {history.length > 0 ? (
-              history.map((h, i) => (
+              history.map((h) => (
                 <div
-                  key={i}
+                  key={h.id}
                   className="animate-in slide-in-from-right-2 rounded-xl border border-slate-100 bg-white p-3 shadow-xs"
                 >
-                  <p className="text-[10px] font-bold leading-tight text-slate-900">
+                  <p className="text-[10px] leading-tight font-bold text-slate-900">
                     {h.calendar_events?.title || 'Unnamed Session'}
                   </p>
                   <p className="mt-1 flex items-center gap-1 text-[9px] text-slate-400">
                     <Clock size={8} />{' '}
-                    {new Date(h.created_at).toLocaleDateString()}
+                    {h.created_at
+                      ? new Date(h.created_at).toLocaleDateString()
+                      : ''}
                   </p>
                 </div>
               ))
             ) : (
               <div className="py-10 text-center">
-                <p className="text-[10px] italic text-slate-400">
+                <p className="text-[10px] text-slate-400 italic">
                   No classes attended yet.
                 </p>
               </div>

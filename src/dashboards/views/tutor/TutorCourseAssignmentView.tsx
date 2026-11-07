@@ -1,18 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
-import {
-  BookOpen,
-  CheckCircle2,
-  User,
-  Layers,
-  Send,
-  AlertCircle,
-  Award,
-  FileCode2,
-  ExternalLink,
-} from 'lucide-react'
+import { User, Layers, Send, FileCode2, ExternalLink } from 'lucide-react'
 
 interface Student {
   id: string
@@ -47,6 +37,17 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
+async function loadTutorStudents(tutorId: string): Promise<Student[]> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, full_name, assigned_course_id')
+    .eq('assigned_tutor_id', tutorId)
+    .eq('role', 'student')
+
+  if (error) throw error
+  return data
+}
+
 export default function TutorCourseAssignmentView({
   userId,
 }: {
@@ -69,22 +70,19 @@ export default function TutorCourseAssignmentView({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchTutorStudents()
-  }, [userId])
-
-  const fetchTutorStudents = async () => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, full_name, assigned_course_id')
-      .eq('assigned_tutor_id', userId)
-      .eq('role', 'student')
-
-    if (error) {
-      toast.error('Failed to load students.')
-    } else {
-      setStudents(data || [])
+    let cancelled = false
+    loadTutorStudents(userId).then(
+      (rows) => {
+        if (!cancelled) setStudents(rows)
+      },
+      () => {
+        if (!cancelled) toast.error('Failed to load students.')
+      },
+    )
+    return () => {
+      cancelled = true
     }
-  }
+  }, [userId])
 
   const fetchStudentCourses = async (studentId: string) => {
     try {
@@ -120,7 +118,7 @@ export default function TutorCourseAssignmentView({
       if (enrolledCourses.length > 0) {
         const firstCourseId = enrolledCourses[0].id
         setSelectedCourse(firstCourseId)
-        fetchCourseLessons(firstCourseId, studentId)
+        await fetchCourseLessons(firstCourseId, studentId)
       } else {
         setSelectedCourse('')
         setCourseLessons([])
@@ -164,7 +162,7 @@ export default function TutorCourseAssignmentView({
 
       const allLessons: Lesson[] = []
       ;(phaseData || []).forEach((phase) => {
-        const sortedLessons = (phase.course_lessons || []).sort(
+        const sortedLessons = phase.course_lessons.toSorted(
           (a, b) => (a.position || 0) - (b.position || 0),
         )
         sortedLessons.forEach((lesson) => {
@@ -263,7 +261,7 @@ export default function TutorCourseAssignmentView({
         ? 'Assignment marked as completed! 🎉'
         : 'Requested revisions from student.',
     )
-    fetchStudentAssignments(selectedStudent)
+    await fetchStudentAssignments(selectedStudent)
   }
 
   const handleCreateTask = async (e: FormEvent<HTMLFormElement>) => {
@@ -299,7 +297,7 @@ export default function TutorCourseAssignmentView({
       setTaskName('')
       setTaskDescription('')
       setSelectedLessonId('')
-      fetchStudentAssignments(selectedStudent)
+      await fetchStudentAssignments(selectedStudent)
     }
   }
 
@@ -313,17 +311,17 @@ export default function TutorCourseAssignmentView({
   )
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 text-gray-900 dark:text-white md:p-6">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 text-gray-900 md:p-6 dark:text-white">
       {/* Premium Header Banner */}
-      <div className="relative overflow-hidden rounded-[35px] border border-purple-500/20 bg-linear-to-br from-purple-900/40 via-indigo-900/30 to-slate-900/50 p-6 shadow-2xl backdrop-blur-2xl dark:from-purple-950/60 dark:via-indigo-950/40 dark:to-slate-950/80 md:p-8">
-        <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 bg-purple-500/10 blur-[120px]" />
+      <div className="relative overflow-hidden rounded-[35px] border border-purple-500/20 bg-linear-to-br from-purple-900/40 via-indigo-900/30 to-slate-900/50 p-6 shadow-2xl backdrop-blur-2xl md:p-8 dark:from-purple-950/60 dark:via-indigo-950/40 dark:to-slate-950/80">
+        <div className="pointer-events-none absolute top-0 right-0 h-96 w-96 bg-purple-500/10 blur-[120px]" />
         <div className="relative z-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-purple-600 dark:text-purple-300">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-2 text-xs font-black tracking-widest text-purple-600 uppercase dark:text-purple-300">
               <FileCode2 size={15} className="text-purple-500" />
               TUTOR DISPATCH WORKSPACE
             </div>
-            <h1 className="bg-linear-to-r from-gray-900 via-purple-900 to-indigo-900 bg-clip-text text-3xl font-black text-transparent dark:from-white dark:via-purple-200 dark:to-indigo-300 md:text-4xl">
+            <h1 className="bg-linear-to-r from-gray-900 via-purple-900 to-indigo-900 bg-clip-text text-3xl font-black text-transparent md:text-4xl dark:from-white dark:via-purple-200 dark:to-indigo-300">
               Student Homework & Task Control
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-gray-600 dark:text-gray-300">
@@ -336,7 +334,7 @@ export default function TutorCourseAssignmentView({
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         {/* Left Column: Dispatch Form */}
-        <div className="space-y-6 rounded-[32px] border border-stone-200/80 bg-[#fcfbf9]/90 p-6 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/4 md:p-8 lg:col-span-5">
+        <div className="space-y-6 rounded-[32px] border border-stone-200/80 bg-[#fcfbf9]/90 p-6 shadow-xl backdrop-blur-2xl md:p-8 lg:col-span-5 dark:border-white/10 dark:bg-white/4">
           <div className="flex items-center gap-3 border-b border-stone-200/60 pb-4 dark:border-white/5">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-pink-500 to-purple-600 font-black text-white shadow-md shadow-purple-500/20">
               <Send size={18} />
@@ -349,14 +347,21 @@ export default function TutorCourseAssignmentView({
             </div>
           </div>
 
-          <form onSubmit={handleCreateTask} className="space-y-4">
+          <form
+            onSubmit={(e) => void handleCreateTask(e)}
+            className="space-y-4"
+          >
             <div>
-              <label className="mb-2 block text-[11px] font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+              <label
+                htmlFor="assign-student"
+                className="mb-2 block text-[11px] font-black tracking-wider text-stone-500 uppercase dark:text-gray-400"
+              >
                 Select Student
               </label>
               <select
+                id="assign-student"
                 value={selectedStudent}
-                onChange={(e) => handleStudentChange(e.target.value)}
+                onChange={(e) => void handleStudentChange(e.target.value)}
                 className="w-full rounded-2xl border border-stone-200 bg-[#f7f6f2] p-3.5 text-sm font-medium shadow-inner transition-all focus:border-purple-500 focus:outline-hidden dark:border-white/10 dark:bg-white/5"
               >
                 <option value="" className="dark:bg-slate-900">
@@ -372,12 +377,16 @@ export default function TutorCourseAssignmentView({
 
             {selectedStudent && (
               <div>
-                <label className="mb-2 block text-[11px] font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+                <label
+                  htmlFor="assign-course"
+                  className="mb-2 block text-[11px] font-black tracking-wider text-stone-500 uppercase dark:text-gray-400"
+                >
                   Select Student Course
                 </label>
                 <select
+                  id="assign-course"
                   value={selectedCourse}
-                  onChange={(e) => handleCourseChange(e.target.value)}
+                  onChange={(e) => void handleCourseChange(e.target.value)}
                   className="w-full rounded-2xl border border-stone-200 bg-[#f7f6f2] p-3.5 text-sm font-medium shadow-inner transition-all focus:border-purple-500 focus:outline-hidden dark:border-white/10 dark:bg-white/5"
                 >
                   <option value="" className="dark:bg-slate-900">
@@ -397,10 +406,14 @@ export default function TutorCourseAssignmentView({
             )}
 
             <div>
-              <label className="mb-2 block text-[11px] font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+              <label
+                htmlFor="assign-lesson"
+                className="mb-2 block text-[11px] font-black tracking-wider text-stone-500 uppercase dark:text-gray-400"
+              >
                 Target Unlocked Lesson
               </label>
               <select
+                id="assign-lesson"
                 value={selectedLessonId}
                 onChange={(e) => setSelectedLessonId(e.target.value)}
                 disabled={!selectedCourse}
@@ -418,10 +431,14 @@ export default function TutorCourseAssignmentView({
             </div>
 
             <div>
-              <label className="mb-2 block text-[11px] font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+              <label
+                htmlFor="assign-task-title"
+                className="mb-2 block text-[11px] font-black tracking-wider text-stone-500 uppercase dark:text-gray-400"
+              >
                 Task Title
               </label>
               <input
+                id="assign-task-title"
                 type="text"
                 placeholder="e.g., Build a Python Function"
                 value={taskName}
@@ -431,10 +448,14 @@ export default function TutorCourseAssignmentView({
             </div>
 
             <div>
-              <label className="mb-2 block text-[11px] font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+              <label
+                htmlFor="assign-task-instructions"
+                className="mb-2 block text-[11px] font-black tracking-wider text-stone-500 uppercase dark:text-gray-400"
+              >
                 Task Instructions
               </label>
               <textarea
+                id="assign-task-instructions"
                 placeholder="Provide precise execution requirements..."
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
@@ -446,7 +467,7 @@ export default function TutorCourseAssignmentView({
             <button
               type="submit"
               disabled={loading || !isFormValid}
-              className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black uppercase tracking-wider text-white shadow-xl transition-all ${
+              className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black tracking-wider text-white uppercase shadow-xl transition-all ${
                 isFormValid && !loading
                   ? 'scale-[1.01] cursor-pointer bg-linear-to-r from-purple-600 via-indigo-600 to-pink-600 shadow-purple-500/25 hover:opacity-95 active:scale-[0.99]'
                   : 'cursor-not-allowed bg-stone-300 text-stone-500 shadow-none dark:bg-white/10 dark:text-gray-400'
@@ -459,7 +480,7 @@ export default function TutorCourseAssignmentView({
         </div>
 
         {/* Right Column: Sidebar Task List */}
-        <div className="space-y-5 rounded-[32px] border border-stone-200/80 bg-[#fcfbf9]/90 p-6 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/4 md:p-8 lg:col-span-7">
+        <div className="space-y-5 rounded-[32px] border border-stone-200/80 bg-[#fcfbf9]/90 p-6 shadow-xl backdrop-blur-2xl md:p-8 lg:col-span-7 dark:border-white/10 dark:bg-white/4">
           <div className="flex items-center justify-between border-b border-stone-200/60 pb-4 dark:border-white/5">
             <h3 className="flex items-center gap-2 text-lg font-black tracking-tight">
               <Layers size={18} className="text-purple-500" /> Assigned Task
@@ -474,17 +495,18 @@ export default function TutorCourseAssignmentView({
 
           {selectedStudent ? (
             studentAssignments.length > 0 ? (
-              <div className="scrollbar-none max-h-[480px] space-y-3 overflow-y-auto pr-2">
+              <div className="max-h-[480px] scrollbar-none space-y-3 overflow-y-auto pr-2">
                 {studentAssignments.map((task) => {
                   const isSelected = selectedTaskId === task.id
                   const needsAttention =
                     task.status === 'submitted' || task.status === 'pending'
 
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={task.id}
                       onClick={() => setSelectedTaskId(task.id)}
-                      className={`group flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition-all ${
+                      className={`group flex w-full cursor-pointer items-center justify-between rounded-2xl border p-4 text-left transition-all ${
                         isSelected
                           ? 'border-2 border-purple-500 bg-transparent shadow-md'
                           : 'border-stone-200/60 bg-[#f7f6f2]/60 hover:border-purple-500/40 dark:border-white/5 dark:bg-white/2'
@@ -503,7 +525,7 @@ export default function TutorCourseAssignmentView({
                             {task.task_name}
                           </h4>
                           <span
-                            className={`mt-1 inline-block rounded-lg px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                            className={`mt-1 inline-block rounded-lg px-2.5 py-0.5 text-[10px] font-black tracking-wider uppercase ${
                               task.status === 'completed'
                                 ? 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-600'
                                 : task.status === 'submitted'
@@ -521,11 +543,11 @@ export default function TutorCourseAssignmentView({
                       </div>
 
                       {needsAttention && (
-                        <span className="shrink-0 rounded-xl border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-500">
+                        <span className="shrink-0 rounded-xl border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-[10px] font-black tracking-wider text-red-500 uppercase">
                           Review Needed
                         </span>
                       )}
-                    </div>
+                    </button>
                   )
                 })}
               </div>
@@ -553,10 +575,10 @@ export default function TutorCourseAssignmentView({
 
       {/* Bottom Expanded Review Panel */}
       {activeTask && (
-        <div className="animate-fade-in space-y-6 rounded-[32px] border border-stone-200/80 bg-[#fcfbf9]/90 p-6 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/4 md:p-8">
-          <div className="flex flex-col items-start justify-between gap-4 border-b border-stone-200/60 pb-5 dark:border-white/5 sm:flex-row sm:items-center">
+        <div className="animate-fade-in space-y-6 rounded-[32px] border border-stone-200/80 bg-[#fcfbf9]/90 p-6 shadow-2xl backdrop-blur-2xl md:p-8 dark:border-white/10 dark:bg-white/4">
+          <div className="flex flex-col items-start justify-between gap-4 border-b border-stone-200/60 pb-5 sm:flex-row sm:items-center dark:border-white/5">
             <div>
-              <span className="rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">
+              <span className="rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1 text-xs font-black tracking-wider text-purple-600 uppercase dark:text-purple-400">
                 Active Review Stream
               </span>
               <h3 className="mt-2 text-2xl font-black tracking-tight text-stone-900 dark:text-white">
@@ -564,7 +586,7 @@ export default function TutorCourseAssignmentView({
               </h3>
             </div>
             <span
-              className={`rounded-full border px-4 py-1.5 text-xs font-black uppercase tracking-wider ${
+              className={`rounded-full border px-4 py-1.5 text-xs font-black tracking-wider uppercase ${
                 activeTask.status === 'completed'
                   ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600'
                   : activeTask.status === 'submitted'
@@ -583,9 +605,9 @@ export default function TutorCourseAssignmentView({
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+                <p className="mb-2 block text-xs font-black tracking-wider text-stone-500 uppercase dark:text-gray-400">
                   Instructions / Brief
-                </label>
+                </p>
                 <div className="rounded-2xl border border-stone-200/60 bg-[#f7f6f2]/80 p-5 text-sm leading-relaxed text-stone-700 shadow-inner dark:border-white/5 dark:bg-white/2 dark:text-gray-300">
                   {activeTask.description}
                 </div>
@@ -593,9 +615,9 @@ export default function TutorCourseAssignmentView({
 
               {activeTask.submission_link && (
                 <div>
-                  <label className="mb-2 block text-xs font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+                  <p className="mb-2 block text-xs font-black tracking-wider text-stone-500 uppercase dark:text-gray-400">
                     Student Deployment / Link
-                  </label>
+                  </p>
                   <a
                     href={activeTask.submission_link}
                     target="_blank"
@@ -623,10 +645,14 @@ export default function TutorCourseAssignmentView({
 
             <div className="space-y-5 rounded-3xl border border-stone-200/60 bg-[#f7f6f2]/60 p-6 shadow-inner dark:border-white/5 dark:bg-white/2">
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+                <label
+                  htmlFor="review-grade"
+                  className="mb-2 block text-xs font-black tracking-wider text-stone-500 uppercase dark:text-gray-400"
+                >
                   Assign Grade
                 </label>
                 <input
+                  id="review-grade"
                   type="text"
                   placeholder="e.g., A+, 95%, Mastered..."
                   value={activeTask.grade || ''}
@@ -643,10 +669,14 @@ export default function TutorCourseAssignmentView({
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wider text-stone-500 dark:text-gray-400">
+                <label
+                  htmlFor="review-feedback"
+                  className="mb-2 block text-xs font-black tracking-wider text-stone-500 uppercase dark:text-gray-400"
+                >
                   Tutor Feedback
                 </label>
                 <textarea
+                  id="review-feedback"
                   rows={3}
                   placeholder="Write constructive guidance..."
                   value={activeTask.tutor_feedback || ''}
@@ -666,18 +696,22 @@ export default function TutorCourseAssignmentView({
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
+                  type="button"
                   onClick={() =>
-                    handleReviewTask(activeTask.id, 'needs_revision')
+                    void handleReviewTask(activeTask.id, 'needs_revision')
                   }
                   disabled={loading || activeTask.status !== 'submitted'}
-                  className="rounded-2xl border border-amber-500/20 bg-amber-500/10 py-3.5 text-xs font-black uppercase tracking-wider text-amber-600 shadow-xs transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
+                  className="rounded-2xl border border-amber-500/20 bg-amber-500/10 py-3.5 text-xs font-black tracking-wider text-amber-600 uppercase shadow-xs transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
                 >
                   Request Revision
                 </button>
                 <button
-                  onClick={() => handleReviewTask(activeTask.id, 'completed')}
+                  type="button"
+                  onClick={() =>
+                    void handleReviewTask(activeTask.id, 'completed')
+                  }
                   disabled={loading || activeTask.status !== 'submitted'}
-                  className="rounded-2xl bg-emerald-600 py-3.5 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-stone-300 dark:disabled:bg-white/10"
+                  className="rounded-2xl bg-emerald-600 py-3.5 text-xs font-black tracking-wider text-white uppercase shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-stone-300 dark:disabled:bg-white/10"
                 >
                   Approve & Complete
                 </button>

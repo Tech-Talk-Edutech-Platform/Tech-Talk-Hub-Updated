@@ -28,7 +28,7 @@ export function StatCard({
 
   return (
     <article className="group flex min-w-0 flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-6 shadow-xs transition-shadow hover:shadow-md">
-      <h4 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+      <h4 className="mb-3 flex items-center gap-2 text-xs font-bold tracking-widest text-slate-400 uppercase">
         {Icon && <Icon size={20} className={colors.icon} aria-hidden="true" />}
         {title}
       </h4>

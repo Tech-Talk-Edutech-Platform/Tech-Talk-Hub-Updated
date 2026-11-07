@@ -9,7 +9,7 @@ export function ContactInfoPanel() {
   return (
     <div className="relative overflow-hidden bg-[#2947C7] p-7 text-white sm:p-9 lg:p-10">
       {/* Decorative glows */}
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#9B6CFF]/35 blur-3xl" />
+      <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-[#9B6CFF]/35 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-[#FF3F7F]/25 blur-3xl" />
 
       <div className="relative">
@@ -27,7 +27,7 @@ export function ContactInfoPanel() {
         </div>
 
         <div className="mt-8 border-t border-white/15 pt-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-200">
+          <p className="text-xs font-semibold tracking-[0.14em] text-blue-200 uppercase">
             Follow Our Journey
           </p>
 

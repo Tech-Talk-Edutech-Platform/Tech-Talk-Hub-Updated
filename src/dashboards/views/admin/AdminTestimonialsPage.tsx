@@ -6,6 +6,7 @@ import type { FormEvent } from 'react'
 import { Loader2, Mail, MessageCircle, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import type { Tables } from '../../../types/database'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
 
 type Testimonial = Tables<'testimonials'>
 
@@ -27,6 +28,21 @@ const initialForm: TestimonialForm = {
   is_published: true,
 }
 
+async function fetchTestimonials(): Promise<Testimonial[]> {
+  const { data, error } = await supabase
+    .from('testimonials')
+    .select('*')
+    .order('display_order', {
+      ascending: true,
+    })
+    .order('created_at', {
+      ascending: false,
+    })
+
+  if (error) throw error
+  return data
+}
+
 export default function AdminTestimonialsPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [form, setForm] = useState<TestimonialForm>(initialForm)
@@ -36,27 +52,32 @@ export default function AdminTestimonialsPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    loadTestimonials()
+    let cancelled = false
+    fetchTestimonials().then(
+      (rows) => {
+        if (cancelled) return
+        setTestimonials(rows)
+        setLoading(false)
+      },
+      (fetchError: unknown) => {
+        if (cancelled) return
+        setError(getErrorMessage(fetchError, 'Failed to load testimonials.'))
+        setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   async function loadTestimonials() {
     setLoading(true)
     setError('')
 
-    const { data, error: fetchError } = await supabase
-      .from('testimonials')
-      .select('*')
-      .order('display_order', {
-        ascending: true,
-      })
-      .order('created_at', {
-        ascending: false,
-      })
-
-    if (fetchError) {
-      setError(fetchError.message)
-    } else {
-      setTestimonials(data || [])
+    try {
+      setTestimonials(await fetchTestimonials())
+    } catch (fetchError) {
+      setError(getErrorMessage(fetchError, 'Failed to load testimonials.'))
     }
 
     setLoading(false)
@@ -114,13 +135,13 @@ export default function AdminTestimonialsPage() {
 
       const fileInput = document.getElementById('testimonial-screenshot')
 
-      if (fileInput) {
+      if (fileInput instanceof HTMLInputElement) {
         fileInput.value = ''
       }
 
       await loadTestimonials()
     } catch (submitError) {
-      setError(submitError.message || 'Failed to save testimonial.')
+      setError(getErrorMessage(submitError, 'Failed to save testimonial.'))
     } finally {
       setSaving(false)
     }
@@ -202,7 +223,7 @@ export default function AdminTestimonialsPage() {
         <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
           {/* Upload form */}
           <form
-            onSubmit={handleSubmit}
+            onSubmit={(event) => void handleSubmit(event)}
             className="h-fit rounded-3xl border border-slate-200 bg-white p-6 shadow-xs"
           >
             <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900">
@@ -212,7 +233,10 @@ export default function AdminTestimonialsPage() {
 
             <div className="mt-6 space-y-5">
               <div>
-                <label className="text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="testimonial-screenshot"
+                  className="text-sm font-semibold text-slate-700"
+                >
                   Screenshot
                 </label>
 
@@ -233,11 +257,15 @@ export default function AdminTestimonialsPage() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="testimonial-source"
+                  className="text-sm font-semibold text-slate-700"
+                >
                   Source
                 </label>
 
                 <select
+                  id="testimonial-source"
                   value={form.source}
                   onChange={(event) =>
                     setForm({
@@ -254,11 +282,15 @@ export default function AdminTestimonialsPage() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="testimonial-parent-name"
+                  className="text-sm font-semibold text-slate-700"
+                >
                   Parent name
                 </label>
 
                 <input
+                  id="testimonial-parent-name"
                   type="text"
                   value={form.parent_name}
                   onChange={(event) =>
@@ -273,11 +305,15 @@ export default function AdminTestimonialsPage() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="testimonial-feedback"
+                  className="text-sm font-semibold text-slate-700"
+                >
                   Short quote
                 </label>
 
                 <textarea
+                  id="testimonial-feedback"
                   rows={4}
                   value={form.feedback}
                   onChange={(event) =>
@@ -292,11 +328,15 @@ export default function AdminTestimonialsPage() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="testimonial-display-order"
+                  className="text-sm font-semibold text-slate-700"
+                >
                   Display order
                 </label>
 
                 <input
+                  id="testimonial-display-order"
                   type="number"
                   min="0"
                   value={form.display_order}
@@ -380,9 +420,7 @@ export default function AdminTestimonialsPage() {
                       <img
                         src={testimonial.screenshot_url}
                         alt="Testimonial screenshot"
-                        fill
-                        sizes="(max-width: 640px) 100vw, 50vw"
-                        className="object-contain"
+                        className="absolute inset-0 h-full w-full object-contain"
                       />
                     </div>
 
@@ -412,7 +450,7 @@ export default function AdminTestimonialsPage() {
                       <div className="mt-5 flex gap-3">
                         <button
                           type="button"
-                          onClick={() => togglePublished(testimonial)}
+                          onClick={() => void togglePublished(testimonial)}
                           className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                         >
                           {testimonial.is_published ? 'Hide' : 'Publish'}
@@ -420,7 +458,7 @@ export default function AdminTestimonialsPage() {
 
                         <button
                           type="button"
-                          onClick={() => deleteTestimonial(testimonial)}
+                          onClick={() => void deleteTestimonial(testimonial)}
                           aria-label="Delete testimonial"
                           className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600 hover:bg-red-100"
                         >

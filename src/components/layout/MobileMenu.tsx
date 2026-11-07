@@ -55,7 +55,7 @@ export function MobileMenu({
         </button>
 
         <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="mb-2 px-2 text-xs font-bold uppercase text-slate-400">
+          <p className="mb-2 px-2 text-xs font-bold text-slate-400 uppercase">
             Learning Paths
           </p>
 

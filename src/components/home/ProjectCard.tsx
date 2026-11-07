@@ -15,7 +15,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <Code2 size={48} className="text-secondary/40" />
         </div>
 
-        <span className="absolute left-4 top-4 rounded-full border border-gray-100 bg-background/90 px-3 py-1.5 text-xs font-bold text-secondary shadow-sm backdrop-blur-md dark:border-gray-800">
+        <span className="absolute top-4 left-4 rounded-full border border-gray-100 bg-background/90 px-3 py-1.5 text-xs font-bold text-secondary shadow-sm backdrop-blur-md dark:border-gray-800">
           {project.category}
         </span>
       </div>

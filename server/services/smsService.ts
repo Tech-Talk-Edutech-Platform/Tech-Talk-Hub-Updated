@@ -23,20 +23,20 @@ export async function sendReminders(): Promise<void> {
 
   if (!classes || classes.length === 0) return
 
-  for (const cls of classes) {
-    try {
-      await sms.send({
-        to: cls.parent_phone,
-        message: `Hi! Reminder: ${cls.student_name}'s coding class starts in 10 minutes 🚀 - Tech Talk Hub`,
-        from: 'TechTalk',
-      })
-
-      console.log('SMS sent to', cls.parent_phone)
-    } catch (err) {
-      console.error(
-        'SMS failed',
-        err instanceof Error ? err.message : 'Unknown SMS error',
-      )
-    }
-  }
+  await Promise.all(
+    classes.map(async (cls) => {
+      try {
+        await sms.send({
+          to: cls.parent_phone,
+          message: `Hi! Reminder: ${cls.student_name}'s coding class starts in 10 minutes 🚀 - Tech Talk Hub`,
+          from: 'TechTalk',
+        })
+      } catch (err) {
+        console.error(
+          'SMS failed',
+          err instanceof Error ? err.message : 'Unknown SMS error',
+        )
+      }
+    }),
+  )
 }

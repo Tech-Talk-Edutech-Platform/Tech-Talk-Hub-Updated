@@ -30,7 +30,7 @@ export function PeoplePanel({
       labelId="people-title"
       onClose={onClose}
       footer={
-        <div className="border-line shrink-0 border-t p-3">
+        <div className="shrink-0 border-t border-line p-3">
           <button
             type="button"
             onClick={() =>
@@ -39,7 +39,7 @@ export function PeoplePanel({
                 'Guest link copied. Open it in another tab to join.',
               )
             }
-            className="press border-brand text-brand hover:bg-brand-soft flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border text-[14px] font-medium"
+            className="press flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border border-brand text-[14px] font-medium text-brand hover:bg-brand-soft"
           >
             <Link2 size={16} aria-hidden="true" />
             Copy guest link
@@ -47,25 +47,25 @@ export function PeoplePanel({
         </div>
       }
     >
-      <p className="text-muted px-[9px] pb-1 pt-3 text-[13px] tabular-nums">
+      <p className="px-[9px] pt-3 pb-1 text-[13px] text-muted tabular-nums">
         {participants.length} of {CLASSROOM_BRAND.roomCapacity} in the room
       </p>
       <ul className="px-[9px] pb-3">
         {participants.map((person) => (
           <li
             key={person.id}
-            className="border-line flex items-center gap-2.5 border-b py-2.5 last:border-b-0"
+            className="flex items-center gap-2.5 border-b border-line py-2.5 last:border-b-0"
           >
-            <span className="bg-avatar text-ink grid size-8 shrink-0 place-items-center rounded-[4px] text-[15px]">
+            <span className="grid size-8 shrink-0 place-items-center rounded-[4px] bg-avatar text-[15px] text-ink">
               {person.initial}
             </span>
-            <span className="text-ink min-w-0 flex-1 truncate text-[14.5px] font-medium">
+            <span className="min-w-0 flex-1 truncate text-[14.5px] font-medium text-ink">
               {person.name}
               {person.isSelf && (
-                <span className="text-muted font-normal"> (you)</span>
+                <span className="font-normal text-muted"> (you)</span>
               )}
             </span>
-            <span className="text-ink-soft flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 text-ink-soft">
               {person.hand && (
                 <Hand
                   size={16}

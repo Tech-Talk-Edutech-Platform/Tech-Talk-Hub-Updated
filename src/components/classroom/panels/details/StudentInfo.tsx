@@ -56,22 +56,22 @@ export function StudentInfo({
 
   return (
     <div>
-      <div className="bg-surface-2 flex items-center gap-2.5 rounded-[6px] py-2 pl-2.5 pr-1">
-        <span className="bg-line-strong grid size-[30px] shrink-0 place-items-center rounded-full text-white">
+      <div className="flex items-center gap-2.5 rounded-[6px] bg-surface-2 py-2 pr-1 pl-2.5">
+        <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-line-strong text-white">
           <User size={18} strokeWidth={2.25} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-ink truncate text-[16px] font-semibold leading-5">
+          <p className="truncate text-[16px] leading-5 font-semibold text-ink">
             {student.name}
           </p>
-          <p className="text-ink-soft text-[13px] leading-4">{student.grade}</p>
+          <p className="text-[13px] leading-4 text-ink-soft">{student.grade}</p>
         </div>
         <button
           type="button"
           onClick={() => copyText(summary, 'Student details copied')}
           aria-label="Copy student details"
           title="Copy student details"
-          className="press text-brand grid size-8 place-items-center rounded-md hover:bg-white"
+          className="press grid size-8 place-items-center rounded-md text-brand hover:bg-white"
         >
           <Copy size={16} strokeWidth={2} aria-hidden="true" />
         </button>
@@ -82,7 +82,7 @@ export function StudentInfo({
           aria-label="More student actions"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          className="press text-ink-soft grid size-8 place-items-center rounded-md hover:bg-white"
+          className="press grid size-8 place-items-center rounded-md text-ink-soft hover:bg-white"
         >
           <EllipsisVertical size={16} strokeWidth={2} aria-hidden="true" />
         </button>
@@ -105,7 +105,7 @@ export function StudentInfo({
                 setMenuOpen(false)
                 item.onSelect()
               }}
-              className="press text-ink hover:bg-surface-2 flex h-9 w-full items-center px-3.5 text-left text-[14px]"
+              className="press flex h-9 w-full items-center px-3.5 text-left text-[14px] text-ink hover:bg-surface-2"
             >
               {item.label}
             </button>
@@ -113,12 +113,12 @@ export function StudentInfo({
         </Popover>
       </div>
 
-      <div className="border-callout-edge bg-callout mt-2.5 rounded-r-[4px] border-l-[3px] px-3 py-2.5">
-        <p className="text-ink flex items-center gap-1.5 text-[13.5px] font-medium">
+      <div className="mt-2.5 rounded-r-[4px] border-l-[3px] border-callout-edge bg-callout px-3 py-2.5">
+        <p className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink">
           <MessageSquare size={13} strokeWidth={2} aria-hidden="true" />
           Special requirement
         </p>
-        <p className="text-ink-soft mt-1 text-[13.5px] italic leading-[21px]">
+        <p className="mt-1 text-[13.5px] leading-[21px] text-ink-soft italic">
           {student.specialRequirement}
         </p>
       </div>

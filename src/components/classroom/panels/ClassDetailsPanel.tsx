@@ -53,12 +53,12 @@ export function ClassDetailsPanel({
       labelId="class-details-title"
       onClose={onClose}
       footer={
-        <div className="border-line flex h-[68px] shrink-0 items-center border-t px-4">
+        <div className="flex h-[68px] shrink-0 items-center border-t border-line px-4">
           <Link
             to="/classroom/tour"
             target="_blank"
             rel="noreferrer"
-            className="text-ink group flex w-full items-center justify-between text-[15px] font-medium"
+            className="group flex w-full items-center justify-between text-[15px] font-medium text-ink"
           >
             <span className="group-hover:text-brand">Classroom tour</span>
             <ExternalLink
@@ -88,7 +88,7 @@ export function ClassDetailsPanel({
           <Link
             to={`/classroom/${classroomId}/material`}
             target="_blank"
-            className="text-brand inline-flex items-center gap-1.5 text-[13.5px] font-medium hover:underline"
+            className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-brand hover:underline"
           >
             <ExternalLink size={14} strokeWidth={2} aria-hidden="true" />
             Open in new tab
@@ -120,25 +120,25 @@ export function ClassDetailsPanel({
               {projects.map((project) => (
                 <li
                   key={project.id}
-                  className="bg-surface-2 rounded-[6px] px-3 py-2.5"
+                  className="rounded-[6px] bg-surface-2 px-3 py-2.5"
                 >
-                  <p className="text-ink text-[14px] font-semibold">
+                  <p className="text-[14px] font-semibold text-ink">
                     {project.activity}
                   </p>
                   <a
                     href={project.link}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-brand block break-all text-[13px] hover:underline"
+                    className="block text-[13px] break-all text-brand hover:underline"
                   >
                     {project.link}
                   </a>
                   {project.note && (
-                    <p className="text-ink-soft mt-1 text-[13px] leading-5">
+                    <p className="mt-1 text-[13px] leading-5 text-ink-soft">
                       {project.note}
                     </p>
                   )}
-                  <p className="text-muted mt-1 text-[12px] tabular-nums">
+                  <p className="mt-1 text-[12px] text-muted tabular-nums">
                     Submitted {formatClock(project.at)}
                   </p>
                 </li>
@@ -164,10 +164,10 @@ export function ClassDetailsPanel({
                 <li key={badge.key} className="flex items-center gap-2.5">
                   <BadgeMedal icon={badge.icon} ornament="none" size={40} />
                   <div className="min-w-0">
-                    <p className="text-ink text-[14px] font-semibold">
+                    <p className="text-[14px] font-semibold text-ink">
                       {badge.name}
                     </p>
-                    <p className="text-muted text-[12.5px] tabular-nums">
+                    <p className="text-[12.5px] text-muted tabular-nums">
                       {student.name} · {formatClock(badge.at)}
                     </p>
                   </div>

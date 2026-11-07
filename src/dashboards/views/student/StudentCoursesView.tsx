@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import {
   BookOpen,
   ChevronRight,
-  ChevronLeft,
   ChevronDown,
   CheckCircle2,
   Circle,
@@ -10,14 +10,14 @@ import {
   AlertCircle,
   FileText,
   Sparkles,
-  Lock,
   Clock,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { FormEvent } from 'react'
 import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
+import { quizOptions } from '../../../lib/quiz'
 
 interface Course {
   id: string
@@ -47,14 +47,14 @@ interface LessonAssignment {
   status: string | null
   submission_link?: string | null
   description?: string | null
-  instruction?: string | null
+  instructions?: string | null
 }
 
 interface QuizQuestion {
   id: string
   question_text: string
   correct_option_index: number
-  options?: string[]
+  options: string[]
 }
 
 interface LessonQuiz {
@@ -69,79 +69,337 @@ interface QuizResult {
   attemptsCount: number
 }
 
-interface HomeworkStats {
-  pending: number
-  submitted: number
-  needs_revision: number
-  completed: number
+const HOMEWORK_STATUSES = [
+  'pending',
+  'submitted',
+  'needs_revision',
+  'completed',
+] as const
+
+type HomeworkStats = Record<(typeof HOMEWORK_STATUSES)[number], number>
+
+interface Syllabus {
+  phases: CoursePhase[]
+  openPhases: Record<string, boolean>
+  firstLesson: Lesson | null
+}
+
+interface StudentWorkspace {
+  courses: Course[]
+  completedIds: Set<string | null>
+  syllabus: Syllabus | null
+}
+
+interface LessonQuizState {
+  quiz: LessonQuiz | null
+  result: QuizResult | null
 }
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
+/** The plain text inside a markdown node, e.g. a heading's title. */
+function textOf(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(textOf).join('')
+  return ''
+}
+
+const LESSON_SECTION_STYLES: Record<string, string> = {
+  'Byte Explains': 'bg-rose-500 border-rose-200 bg-rose-50/50 text-rose-500',
+  'Byte Shows You': 'bg-blue-500 border-blue-200 bg-blue-50/50 text-blue-500',
+  'Byte Asks': 'bg-amber-500 border-amber-200 bg-amber-50/50 text-amber-500',
+  'Remember This':
+    'bg-emerald-500 border-emerald-200 bg-emerald-50/50 text-emerald-500',
+}
+
+function LessonSectionHeading({ children }: { children?: ReactNode }) {
+  const title = textOf(children)
+  const isByteAsks = title === 'Byte Asks'
+
+  const currentStyle =
+    LESSON_SECTION_STYLES[title] ||
+    'bg-purple-500 border-gray-200 bg-gray-50 text-purple-500'
+  const [badgeBg, borderColor, boxBg] = currentStyle.split(' ')
+
+  return (
+    <div
+      className={`my-6 rounded-2xl border ${borderColor} ${boxBg} p-5 dark:border-white/10 dark:bg-white/2`}
+    >
+      <h2
+        className={`${badgeBg} mb-3 inline-flex rounded-r-full px-4 py-2 text-sm font-black text-white uppercase shadow-xs`}
+      >
+        {title}
+      </h2>
+      {isByteAsks && (
+        <textarea
+          aria-label={title}
+          placeholder="Type your answer here..."
+          className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white p-4 text-sm text-gray-900 outline-hidden focus:ring-2 focus:ring-amber-400 dark:bg-white/4 dark:text-white"
+        />
+      )}
+    </div>
+  )
+}
+
+function LessonParagraph({ children }: { children?: ReactNode }) {
+  return (
+    <p className="mb-4 text-base leading-7 text-gray-700 dark:text-gray-300">
+      {children}
+    </p>
+  )
+}
+
+const LESSON_MARKDOWN_COMPONENTS: Components = {
+  h2: LessonSectionHeading,
+  p: LessonParagraph,
+}
+
+const LESSON_REMARK_PLUGINS = [remarkGfm]
+
 function LessonRenderer({ content }: { content: string }) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        h2: ({ children }) => {
-          const title = String(children)
-          const isByteAsks = title === 'Byte Asks'
-
-          const styles: Record<string, string> = {
-            'Byte Explains':
-              'bg-rose-500 border-rose-200 bg-rose-50/50 text-rose-500',
-            'Byte Shows You':
-              'bg-blue-500 border-blue-200 bg-blue-50/50 text-blue-500',
-            'Byte Asks':
-              'bg-amber-500 border-amber-200 bg-amber-50/50 text-amber-500',
-            'Remember This':
-              'bg-emerald-500 border-emerald-200 bg-emerald-50/50 text-emerald-500',
-          }
-
-          const currentStyle =
-            styles[title] ||
-            'bg-purple-500 border-gray-200 bg-gray-50 text-purple-500'
-          const [badgeBg, borderColor, boxBg] = currentStyle.split(' ')
-
-          return (
-            <div
-              className={`my-6 rounded-2xl border ${borderColor} ${boxBg} p-5 dark:border-white/10 dark:bg-white/2`}
-            >
-              <h2
-                className={`${badgeBg} mb-3 inline-flex rounded-r-full px-4 py-2 text-sm font-black uppercase text-white shadow-xs`}
-              >
-                {title}
-              </h2>
-              {isByteAsks && (
-                <textarea
-                  placeholder="Type your answer here..."
-                  className="mt-2 min-h-[120px] w-full rounded-xl border border-amber-200 bg-white p-4 text-sm text-gray-900 outline-hidden focus:ring-2 focus:ring-amber-400 dark:bg-white/4 dark:text-white"
-                />
-              )}
-            </div>
-          )
-        },
-        p: ({ children }) => (
-          <p className="mb-4 text-base leading-7 text-gray-700 dark:text-gray-300">
-            {children}
-          </p>
-        ),
-      }}
+      remarkPlugins={LESSON_REMARK_PLUGINS}
+      components={LESSON_MARKDOWN_COMPONENTS}
     >
       {content}
     </ReactMarkdown>
   )
 }
 
-export default function StudentCoursesView({
-  userId,
-  courseId,
-}: {
-  userId: string
-  courseId?: string | null
-}) {
+async function loadAssignedCourses(userId: string): Promise<Course[]> {
+  const { data: enrollments, error: enrollError } = await supabase
+    .from('student_enrollments')
+    .select('course_id, courses (*)')
+    .eq('student_id', userId)
+
+  if (enrollError) throw enrollError
+
+  const enrolledCourses = enrollments.flatMap((enrollment) =>
+    enrollment.courses ? [enrollment.courses] : [],
+  )
+  if (enrolledCourses.length > 0) return enrolledCourses
+
+  // No enrollments: fall back to the course assigned directly on the user
+  const { data: userData } = await supabase
+    .from('users')
+    .select('assigned_course_id, courses:assigned_course_id (*)')
+    .eq('id', userId)
+    .single()
+
+  return userData?.courses ? [userData.courses] : []
+}
+
+async function loadCompletedLessonIds(
+  userId: string,
+): Promise<Set<string | null>> {
+  try {
+    const { data: progressData, error } = await supabase
+      .from('student_lesson_progress')
+      .select('lesson_id, status')
+      .eq('student_id', userId)
+      .eq('status', 'completed')
+
+    if (error) throw error
+    return new Set(progressData.map((p) => p.lesson_id))
+  } catch (err) {
+    console.error('Error fetching progress:', getErrorMessage(err))
+    return new Set()
+  }
+}
+
+async function loadSyllabus(
+  courseId: string,
+  completedIds: Set<string | null>,
+): Promise<Syllabus> {
+  const { data: phaseData, error } = await supabase
+    .from('course_phases')
+    .select(
+      `
+          id,
+          phase_number,
+          title,
+          focus,
+          course_lessons (
+            id,
+            title,
+            position,
+            created_at
+          )
+        `,
+    )
+    .eq('course_id', courseId)
+    .order('phase_number', { ascending: true })
+
+  if (error) throw error
+
+  const { data: notesData } = await supabase
+    .from('notes')
+    .select('*')
+    .eq('course_id', courseId)
+
+  const phases: CoursePhase[] = phaseData.map((phase) => ({
+    id: phase.id,
+    phase_number: phase.phase_number,
+    title: phase.title,
+    focus: phase.focus,
+    course_lessons: phase.course_lessons
+      .toSorted((a, b) => (a.position || 0) - (b.position || 0))
+      .map((lesson) => {
+        const matchingNote = (notesData || []).find(
+          (n) =>
+            n.lesson_id === lesson.id ||
+            (n.title && n.title.toLowerCase() === lesson.title.toLowerCase()),
+        )
+        return {
+          id: lesson.id,
+          title: lesson.title,
+          position: lesson.position,
+          created_at: lesson.created_at,
+          content: matchingNote?.content || '',
+          video_url: matchingNote?.video_url || '',
+        }
+      }),
+  }))
+
+  const activePhase =
+    phases.find((phase) =>
+      phase.course_lessons.some((lesson) => !completedIds.has(lesson.id)),
+    ) || phases[0]
+
+  const openPhases: Record<string, boolean> = {}
+  for (const phase of phases) {
+    openPhases[phase.id] = phase.id === activePhase?.id
+  }
+
+  const firstLesson =
+    activePhase?.course_lessons.find((l) => !completedIds.has(l.id)) ||
+    activePhase?.course_lessons[0] ||
+    null
+
+  return { phases, openPhases, firstLesson }
+}
+
+async function loadStudentWorkspace(userId: string): Promise<StudentWorkspace> {
+  const courses = await loadAssignedCourses(userId)
+  const defaultCourse = courses[0]
+  if (!defaultCourse) {
+    return { courses, completedIds: new Set(), syllabus: null }
+  }
+
+  const completedIds = await loadCompletedLessonIds(userId)
+  let syllabus: Syllabus | null = null
+  try {
+    syllabus = await loadSyllabus(defaultCourse.id, completedIds)
+  } catch (err) {
+    console.error('Error fetching syllabus:', getErrorMessage(err))
+  }
+  return { courses, completedIds, syllabus }
+}
+
+/** Counts the student's homework by status; `null` when it can't be loaded. */
+async function loadHomeworkStats(
+  userId: string,
+): Promise<HomeworkStats | null> {
+  try {
+    const { data, error } = await supabase
+      .from('student_assignments')
+      .select('status')
+      .eq('student_id', userId)
+
+    if (error) throw error
+
+    const stats: HomeworkStats = {
+      pending: 0,
+      submitted: 0,
+      needs_revision: 0,
+      completed: 0,
+    }
+    for (const item of data) {
+      const status = HOMEWORK_STATUSES.find(
+        (known) => known === (item.status || 'pending'),
+      )
+      if (status) stats[status]++
+    }
+    return stats
+  } catch (err) {
+    console.error('Error fetching homework stats:', getErrorMessage(err))
+    return null
+  }
+}
+
+async function loadLessonAssignment(
+  userId: string,
+  lessonId: string,
+): Promise<LessonAssignment | null> {
+  try {
+    const { data, error } = await supabase
+      .from('student_assignments')
+      .select('*')
+      .eq('student_id', userId)
+      .eq('lesson_id', lessonId)
+      .maybeSingle()
+
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.error('Error fetching lesson homework:', getErrorMessage(err))
+    return null
+  }
+}
+
+async function loadLessonQuiz(
+  userId: string,
+  lessonId: string,
+): Promise<LessonQuizState> {
+  try {
+    const { data: quizData, error: qErr } = await supabase
+      .from('quizzes')
+      .select('*, quiz_questions(*)')
+      .eq('lesson_id', lessonId)
+      .maybeSingle()
+
+    if (qErr) throw qErr
+    if (!quizData) return { quiz: null, result: null }
+
+    const quiz: LessonQuiz = {
+      id: quizData.id,
+      passing_score: quizData.passing_score,
+      quiz_questions: quizData.quiz_questions.map((q) => ({
+        id: q.id,
+        question_text: q.question_text,
+        correct_option_index: q.correct_option_index,
+        options: quizOptions(q.options),
+      })),
+    }
+
+    const { data: attempts, error: attErr } = await supabase
+      .from('student_quiz_attempts')
+      .select('*')
+      .eq('student_id', userId)
+      .eq('quiz_id', quizData.id)
+      .order('completed_at', { ascending: false })
+
+    const latestAttempt = attErr ? undefined : attempts[0]
+    return {
+      quiz,
+      result: latestAttempt
+        ? {
+            score: latestAttempt.score,
+            passed: latestAttempt.passed,
+            attemptsCount: attempts?.length ?? 0,
+          }
+        : null,
+    }
+  } catch (err) {
+    console.error('Error fetching lesson data:', getErrorMessage(err))
+    return { quiz: null, result: null }
+  }
+}
+
+export default function StudentCoursesView({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<Course[]>([])
   const [activeCourse, setActiveCourse] = useState<Course | null>(null)
@@ -151,10 +409,12 @@ export default function StudentCoursesView({
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [completedLessonIds, setCompletedLessonIds] = useState<
     Set<string | null>
-  >(new Set())
+  >(() => new Set())
 
   // Track open/collapsed phases by phase ID
-  const [openPhases, setOpenPhases] = useState<Record<string, boolean>>({})
+  const [openPhases, setOpenPhases] = useState<
+    Record<string, boolean | undefined>
+  >({})
 
   // Quiz state for active lesson
   const [lessonQuiz, setLessonQuiz] = useState<LessonQuiz | null>(null)
@@ -169,7 +429,6 @@ export default function StudentCoursesView({
     useState<LessonAssignment | null>(null)
   const [submissionText, setSubmissionText] = useState('')
   const [submittingHomework, setSubmittingHomework] = useState(false)
-  const [homeworkOpen, setHomeworkOpen] = useState(false)
 
   // Overall student homework stats for sidebar
   const [homeworkStats, setHomeworkStats] = useState<HomeworkStats>({
@@ -179,32 +438,65 @@ export default function StudentCoursesView({
     completed: 0,
   })
 
-  useEffect(() => {
-    if (userId) {
-      initialLoad()
-      fetchHomeworkStats()
-    }
-  }, [userId, courseId])
+  const selectedLessonId = selectedLesson?.id
 
   useEffect(() => {
-    if (selectedLesson) {
-      setLessonQuiz(null)
-      setQuizAnswers({})
-      setQuizResult(null)
-      setCanRetakeQuiz(true)
-      setRetakeCountdown('')
-      setLessonAssignment(null)
-      setSubmissionText('')
-      setHomeworkOpen(false)
+    if (!userId) return undefined
+    let cancelled = false
 
-      fetchLessonData(selectedLesson.id)
-      fetchLessonHomework(selectedLesson.id)
+    loadStudentWorkspace(userId).then(
+      (workspace) => {
+        if (cancelled) return
+        setCourses(workspace.courses)
+        setActiveCourse(workspace.courses[0] ?? null)
+        setCompletedLessonIds(workspace.completedIds)
+        if (workspace.syllabus) {
+          setPhases(workspace.syllabus.phases)
+          setOpenPhases(workspace.syllabus.openPhases)
+          setSelectedLesson(workspace.syllabus.firstLesson)
+        }
+        setLoading(false)
+      },
+      (err: unknown) => {
+        console.error('Error fetching student data:', getErrorMessage(err))
+        if (!cancelled) setLoading(false)
+      },
+    )
+
+    void loadHomeworkStats(userId).then((stats) => {
+      if (!cancelled && stats) setHomeworkStats(stats)
+    })
+
+    return () => {
+      cancelled = true
     }
-  }, [selectedLesson?.id])
+  }, [userId])
+
+  // Load the quiz and homework for the selected lesson
+  useEffect(() => {
+    if (!selectedLessonId) return undefined
+    let cancelled = false
+
+    void loadLessonQuiz(userId, selectedLessonId).then(({ quiz, result }) => {
+      if (cancelled) return
+      setLessonQuiz(quiz)
+      setQuizResult(result)
+    })
+
+    void loadLessonAssignment(userId, selectedLessonId).then((assignment) => {
+      if (cancelled) return
+      setLessonAssignment(assignment)
+      setSubmissionText(assignment?.submission_link || '')
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [userId, selectedLessonId])
 
   // Countdown timer checker for Saturday retakes
   useEffect(() => {
-    if (!quizResult || quizResult.passed) return
+    if (!quizResult || quizResult.passed) return undefined
 
     const updateCountdown = () => {
       const now = new Date()
@@ -240,231 +532,33 @@ export default function StudentCoursesView({
     return () => clearInterval(interval)
   }, [quizResult])
 
-  const initialLoad = async () => {
-    try {
-      setLoading(true)
-
-      const { data: enrollments, error: enrollError } = await supabase
-        .from('student_enrollments')
-        .select('course_id, courses (*)')
-        .eq('student_id', userId)
-
-      if (enrollError) throw enrollError
-
-      const enrollmentRows = (enrollments || []) as Array<{
-        courses: Course | Course[] | null
-      }>
-      let assignedCourses: Course[] = enrollmentRows.flatMap((enrollment) => {
-        if (!enrollment.courses) return []
-        return Array.isArray(enrollment.courses)
-          ? enrollment.courses
-          : [enrollment.courses]
-      })
-
-      if (assignedCourses.length === 0) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('assigned_course_id, courses:assigned_course_id (*)')
-          .eq('id', userId)
-          .single()
-
-        if (userData?.courses) {
-          const assignedCourse = userData.courses as Course | Course[]
-          assignedCourses = Array.isArray(assignedCourse)
-            ? assignedCourse
-            : [assignedCourse]
-        }
-      }
-
-      setCourses(assignedCourses)
-
-      const defaultCourse = assignedCourses[0] || null
-      setActiveCourse(defaultCourse)
-
-      if (defaultCourse) {
-        const completedIds = await fetchLessonProgress()
-        await fetchCourseSyllabus(defaultCourse.id, completedIds)
-      }
-    } catch (err) {
-      console.error('Error fetching student data:', getErrorMessage(err))
-    } finally {
-      setLoading(false)
+  /** Switches lessons, clearing the previous lesson's quiz and homework. */
+  const selectLesson = (lesson: Lesson | null) => {
+    if (lesson?.id !== selectedLessonId) {
+      setLessonQuiz(null)
+      setQuizAnswers({})
+      setQuizResult(null)
+      setCanRetakeQuiz(true)
+      setRetakeCountdown('')
+      setLessonAssignment(null)
+      setSubmissionText('')
     }
+    setSelectedLesson(lesson)
   }
 
-  const fetchHomeworkStats = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('student_assignments')
-        .select('status')
-        .eq('student_id', userId)
-
-      if (error) throw error
-
-      const stats = {
-        pending: 0,
-        submitted: 0,
-        needs_revision: 0,
-        completed: 0,
-      }
-
-      ;(data || []).forEach((item) => {
-        const status = item.status || 'pending'
-        if (status in stats) {
-          stats[status as keyof HomeworkStats]++
-        } else if (status === 'pending') {
-          stats.pending++
-        }
-      })
-
-      setHomeworkStats(stats)
-    } catch (err) {
-      console.error('Error fetching homework stats:', getErrorMessage(err))
-    }
+  const refreshHomeworkStats = async () => {
+    const stats = await loadHomeworkStats(userId)
+    if (stats) setHomeworkStats(stats)
   }
 
-  const fetchLessonProgress = async (): Promise<Set<string | null>> => {
+  const showCourseSyllabus = async (targetCourseId: string) => {
     try {
-      const { data: progressData, error } = await supabase
-        .from('student_lesson_progress')
-        .select('lesson_id, status')
-        .eq('student_id', userId)
-        .eq('status', 'completed')
-
-      if (error) throw error
-
-      const completedSet = new Set(progressData.map((p) => p.lesson_id))
-      setCompletedLessonIds(completedSet)
-      return completedSet
-    } catch (err) {
-      console.error('Error fetching progress:', getErrorMessage(err))
-      return new Set()
-    }
-  }
-
-  const fetchCourseSyllabus = async (
-    targetCourseId: string,
-    completedIds: Set<string | null> = completedLessonIds,
-  ) => {
-    try {
-      const { data: phaseData, error } = await supabase
-        .from('course_phases')
-        .select(
-          `
-          id,
-          phase_number,
-          title,
-          focus,
-          course_lessons (
-            id,
-            title,
-            position,
-            created_at
-          )
-        `,
-        )
-        .eq('course_id', targetCourseId)
-        .order('phase_number', { ascending: true })
-
-      if (error) throw error
-
-      const { data: notesData } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('course_id', targetCourseId)
-
-      const structuredPhases = (phaseData || []).map((phase) => ({
-        ...phase,
-        course_lessons: (phase.course_lessons || [])
-          .sort((a, b) => (a.position || 0) - (b.position || 0))
-          .map((lesson) => {
-            const matchingNote = (notesData || []).find(
-              (n) =>
-                n.lesson_id === lesson.id ||
-                (n.title &&
-                  n.title.toLowerCase() === lesson.title.toLowerCase()),
-            )
-            return {
-              ...lesson,
-              content: matchingNote?.content || '',
-              video_url: matchingNote?.video_url || '',
-            }
-          }),
-      }))
-
-      setPhases(structuredPhases)
-
-      const activePhase =
-        structuredPhases.find((phase) =>
-          phase.course_lessons?.some((lesson) => !completedIds.has(lesson.id)),
-        ) || structuredPhases[0]
-
-      const initialOpenState: Record<string, boolean> = {}
-      structuredPhases.forEach((p) => {
-        initialOpenState[p.id] = p.id === activePhase?.id
-      })
-
-      setOpenPhases(initialOpenState)
-
-      const firstIncompleteLesson =
-        activePhase?.course_lessons?.find((l) => !completedIds.has(l.id)) ||
-        activePhase?.course_lessons?.[0] ||
-        null
-
-      setSelectedLesson(firstIncompleteLesson)
+      const syllabus = await loadSyllabus(targetCourseId, completedLessonIds)
+      setPhases(syllabus.phases)
+      setOpenPhases(syllabus.openPhases)
+      setSelectedLesson(syllabus.firstLesson)
     } catch (err) {
       console.error('Error fetching syllabus:', getErrorMessage(err))
-    }
-  }
-
-  const fetchLessonHomework = async (lessonId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('student_assignments')
-        .select('*')
-        .eq('student_id', userId)
-        .eq('lesson_id', lessonId)
-        .maybeSingle()
-
-      if (error) throw error
-      setLessonAssignment(data || null)
-      setSubmissionText(data?.submission_link || '')
-    } catch (err) {
-      console.error('Error fetching lesson homework:', getErrorMessage(err))
-    }
-  }
-
-  const fetchLessonData = async (lessonId: string) => {
-    try {
-      const { data: quizData, error: qErr } = await supabase
-        .from('quizzes')
-        .select('*, quiz_questions(*)')
-        .eq('lesson_id', lessonId)
-        .maybeSingle()
-
-      if (qErr) throw qErr
-      setLessonQuiz(quizData || null)
-
-      if (quizData) {
-        const { data: attempts, error: attErr } = await supabase
-          .from('student_quiz_attempts')
-          .select('*')
-          .eq('student_id', userId)
-          .eq('quiz_id', quizData.id)
-          .order('completed_at', { ascending: false })
-
-        if (!attErr && attempts && attempts.length > 0) {
-          const latestAttempt = attempts[0]
-          setQuizResult({
-            score: latestAttempt.score,
-            passed: latestAttempt.passed,
-            attemptsCount: attempts.length,
-          })
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching lesson data:', getErrorMessage(err))
-      setLessonQuiz(null)
     }
   }
 
@@ -500,10 +594,7 @@ export default function StudentCoursesView({
     currentHomeworkSubmitted: LessonAssignment | null,
   ) => {
     if (!selectedLesson) return
-    const hasQuiz =
-      lessonQuiz &&
-      lessonQuiz.quiz_questions &&
-      lessonQuiz.quiz_questions.length > 0
+    const hasQuiz = lessonQuiz && lessonQuiz.quiz_questions.length > 0
     const quizPassed =
       !hasQuiz || (currentQuizPassed && currentQuizPassed.passed)
 
@@ -519,24 +610,20 @@ export default function StudentCoursesView({
       homeworkSubmitted &&
       !completedLessonIds.has(selectedLesson.id)
     ) {
-      markLessonComplete(selectedLesson.id)
+      void markLessonComplete(selectedLesson.id)
     }
   }
 
   const handleQuizSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!lessonQuiz || !lessonQuiz.quiz_questions) return
+    if (!lessonQuiz) return
 
     setSubmittingQuiz(true)
     try {
       const questions = lessonQuiz.quiz_questions
-      let correctCount = 0
-
-      questions.forEach((q, idx) => {
-        if (quizAnswers[idx] === q.correct_option_index) {
-          correctCount++
-        }
-      })
+      const correctCount = questions.filter(
+        (q, idx) => quizAnswers[idx] === q.correct_option_index,
+      ).length
 
       const score = Math.round((correctCount / questions.length) * 100)
       const passingScore = lessonQuiz.passing_score || 70
@@ -595,12 +682,10 @@ export default function StudentCoursesView({
         ...lessonAssignment,
         submission_link: submissionText,
         status: 'submitted',
-        submitted_at: timestamp,
-        updated_at: timestamp,
       }
 
       setLessonAssignment(updatedAssignment)
-      fetchHomeworkStats()
+      void refreshHomeworkStats()
       toast.success('Homework submitted successfully! 🎉')
 
       checkAndAutoComplete(quizResult, updatedAssignment)
@@ -614,9 +699,9 @@ export default function StudentCoursesView({
 
   const handleSelectCourse = (course: Course) => {
     setOpenPhases({})
-    setSelectedLesson(null)
+    selectLesson(null)
     setActiveCourse(course)
-    fetchCourseSyllabus(course.id)
+    void showCourseSyllabus(course.id)
   }
 
   const togglePhaseAccordion = (phaseId: string) => {
@@ -627,7 +712,7 @@ export default function StudentCoursesView({
   }
 
   const isPhaseCompleted = (phase: CoursePhase) => {
-    if (!phase.course_lessons || phase.course_lessons.length === 0) return false
+    if (phase.course_lessons.length === 0) return false
     return phase.course_lessons.every((lesson) =>
       completedLessonIds.has(lesson.id),
     )
@@ -650,10 +735,10 @@ export default function StudentCoursesView({
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 text-gray-900 dark:text-white md:p-8">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 text-gray-900 md:p-8 dark:text-white">
       {courses.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="scrollbar-none flex items-center gap-3 overflow-x-auto pb-2">
+          <div className="flex scrollbar-none items-center gap-3 overflow-x-auto pb-2">
             {courses.map((course) => {
               const isSelected = activeCourse?.id === course.id
               return (
@@ -691,7 +776,7 @@ export default function StudentCoursesView({
           </div>
 
           <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-2 shadow-lg backdrop-blur-2xl dark:border-white/10 dark:bg-white/4">
-            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1.5 text-xs font-black tracking-wider text-gray-500 uppercase dark:text-gray-400">
               <FileText size={14} className="text-blue-500" /> Homework:
             </span>
             <div className="flex items-center gap-3 text-center">
@@ -755,13 +840,13 @@ export default function StudentCoursesView({
                         size={36}
                         className="mx-auto mb-1 text-white/80"
                       />
-                      <span className="text-xs font-bold uppercase tracking-widest text-white/70">
+                      <span className="text-xs font-bold tracking-widest text-white/70 uppercase">
                         Course Track
                       </span>
                     </div>
                   )}
                   <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
-                  <h2 className="absolute bottom-3 left-4 right-4 line-clamp-1 text-base font-black text-white">
+                  <h2 className="absolute right-4 bottom-3 left-4 line-clamp-1 text-base font-black text-white">
                     {activeCourse.title}
                   </h2>
                 </div>
@@ -785,7 +870,7 @@ export default function StudentCoursesView({
 
                 <div className="space-y-2">
                   {phases.map((phase) => {
-                    const isOpen = !!openPhases[phase.id]
+                    const isOpen = openPhases[phase.id] ?? false
                     const phaseDone = isPhaseCompleted(phase)
 
                     return (
@@ -807,10 +892,10 @@ export default function StudentCoursesView({
                               <div className="h-4 w-4 shrink-0 rounded-full border-2 border-purple-500/40" />
                             )}
                             <div>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                              <span className="text-[10px] font-black tracking-wider text-purple-600 uppercase dark:text-purple-400">
                                 Phase {phase.phase_number}
                               </span>
-                              <h4 className="line-clamp-1 text-xs font-bold text-gray-900 dark:text-white md:text-sm">
+                              <h4 className="line-clamp-1 text-xs font-bold text-gray-900 md:text-sm dark:text-white">
                                 {phase.title}
                               </h4>
                             </div>
@@ -839,7 +924,7 @@ export default function StudentCoursesView({
                               return (
                                 <button
                                   key={lesson.id}
-                                  onClick={() => setSelectedLesson(lesson)}
+                                  onClick={() => selectLesson(lesson)}
                                   className={`flex w-full items-center justify-between rounded-xl border p-2.5 text-left transition-all ${
                                     isSelected
                                       ? 'border-transparent bg-purple-600 text-white shadow-md'
@@ -897,15 +982,15 @@ export default function StudentCoursesView({
             </div>
 
             <div className="lg:col-span-8">
-              <div className="rounded-[32px] border border-gray-200 bg-white p-6 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/4 md:p-8">
+              <div className="rounded-[32px] border border-gray-200 bg-white p-6 shadow-xl backdrop-blur-2xl md:p-8 dark:border-white/10 dark:bg-white/4">
                 {selectedLesson ? (
                   <div>
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                       <div>
-                        <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                        <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-black tracking-wider text-purple-600 uppercase dark:text-purple-400">
                           Active Lesson
                         </span>
-                        <h2 className="mt-2 text-2xl font-black text-gray-900 dark:text-white md:text-3xl">
+                        <h2 className="mt-2 text-2xl font-black text-gray-900 md:text-3xl dark:text-white">
                           {selectedLesson.title}
                         </h2>
                       </div>
@@ -933,6 +1018,7 @@ export default function StudentCoursesView({
                     <div className="space-y-6 border-t border-gray-100 pt-6 dark:border-white/8">
                       {selectedLesson.video_url && (
                         <div className="relative aspect-video overflow-hidden rounded-2xl border border-gray-200/20 bg-black shadow-lg dark:border-white/10">
+                          {/* oxlint-disable-next-line react/iframe-missing-sandbox -- admin-entered video embeds (YouTube etc.) need scripts and same-origin storage to play, which a sandbox would block */}
                           <iframe
                             src={selectedLesson.video_url}
                             title="Lesson Video"
@@ -965,8 +1051,8 @@ export default function StudentCoursesView({
                       )}
 
                       {selectedLesson.content && (
-                        <div className="space-y-6 rounded-2xl border border-gray-200/60 bg-gray-50/80 p-6 dark:border-white/5 dark:bg-white/2 md:p-8">
-                          <div className="prose max-w-none text-sm leading-relaxed dark:prose-invert md:text-base">
+                        <div className="space-y-6 rounded-2xl border border-gray-200/60 bg-gray-50/80 p-6 md:p-8 dark:border-white/5 dark:bg-white/2">
+                          <div className="prose max-w-none text-sm leading-relaxed md:text-base dark:prose-invert">
                             <LessonRenderer content={selectedLesson.content} />
                           </div>
                         </div>
@@ -976,7 +1062,7 @@ export default function StudentCoursesView({
                       {lessonQuiz &&
                         lessonQuiz.quiz_questions &&
                         lessonQuiz.quiz_questions.length > 0 && (
-                          <div className="space-y-6 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-6 dark:bg-purple-500/2 md:p-8">
+                          <div className="space-y-6 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-6 md:p-8 dark:bg-purple-500/2">
                             <div className="flex items-center justify-between">
                               <h3 className="flex items-center gap-2 text-lg font-black text-gray-900 dark:text-white">
                                 <Sparkles
@@ -988,20 +1074,21 @@ export default function StudentCoursesView({
                             </div>
 
                             <form
-                              onSubmit={handleQuizSubmit}
+                              onSubmit={(e) => void handleQuizSubmit(e)}
                               className="space-y-6"
                             >
                               {lessonQuiz.quiz_questions.map((q, qIdx) => (
                                 <div
-                                  key={q.id || qIdx}
+                                  key={q.id}
                                   className="space-y-3 rounded-xl border border-gray-200/50 bg-white p-5 dark:border-white/5 dark:bg-white/4"
                                 >
                                   <p className="text-sm font-bold text-gray-900 dark:text-white">
                                     {qIdx + 1}. {q.question_text}
                                   </p>
                                   <div className="space-y-2">
-                                    {q.options?.map((opt, oIdx) => (
+                                    {q.options.map((opt, oIdx) => (
                                       <label
+                                        // oxlint-disable-next-line react/no-array-index-key -- a question's options are a fixed list that is never reordered, so the position is the option's identity
                                         key={oIdx}
                                         className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-xs transition-all md:text-sm ${
                                           quizAnswers[qIdx] === oIdx
@@ -1068,7 +1155,7 @@ export default function StudentCoursesView({
 
                       {/* Homework Section */}
                       {lessonAssignment && (
-                        <div className="space-y-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6 dark:bg-blue-500/2 md:p-8">
+                        <div className="space-y-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6 md:p-8 dark:bg-blue-500/2">
                           <div className="flex items-center justify-between">
                             <h3 className="flex items-center gap-2 text-lg font-black text-gray-900 dark:text-white">
                               <FileText size={18} className="text-blue-500" />{' '}
@@ -1088,13 +1175,13 @@ export default function StudentCoursesView({
 
                           <div className="space-y-4">
                             <p className="text-sm text-gray-700 dark:text-gray-300">
-                              {lessonAssignment.instruction ||
+                              {lessonAssignment.instructions ||
                                 lessonAssignment.description ||
                                 'Complete the assigned task and submit your link or code repository below.'}
                             </p>
 
                             <form
-                              onSubmit={handleSubmitHomework}
+                              onSubmit={(e) => void handleSubmitHomework(e)}
                               className="space-y-4"
                             >
                               <input

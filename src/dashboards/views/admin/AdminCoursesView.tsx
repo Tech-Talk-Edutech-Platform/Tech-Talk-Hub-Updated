@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   BookOpen,
@@ -14,8 +14,6 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   Edit3,
-  FileText,
-  HelpCircle,
 } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
@@ -31,12 +29,12 @@ interface CourseLesson {
 interface CoursePhase {
   id: string
   title: string
-  phase_number: number
+  phase_number: number | null
   course_lessons?: CourseLesson[]
 }
 
 interface StudentProgress {
-  lesson_id: string
+  lesson_id: string | null
   status: string
 }
 
@@ -44,7 +42,7 @@ interface CourseStudent {
   id: string
   full_name: string | null
   email: string | null
-  role: string
+  role: string | null
   student_lesson_progress?: StudentProgress[]
 }
 
@@ -69,14 +67,39 @@ interface CourseSummary extends Omit<Course, 'course_phases'> {
   course_phases?: CourseSummaryPhase[]
 }
 
-interface QuizQuestionDraft {
-  question_text: string
-  options: string[]
-  correct_option_index: number
-}
-
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
+}
+
+async function loadCourseSummaries(): Promise<CourseSummary[]> {
+  const { data, error } = await supabase
+    .from('courses')
+    .select(
+      `
+          *,
+          course_phases (
+            id,
+            course_lessons ( id )
+          )
+        `,
+    )
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  const { data: usersData } = await supabase
+    .from('users')
+    .select('id, role, assigned_course_id')
+
+  return data.map((course) => {
+    const assignedUsers = (usersData ?? []).filter(
+      (u) => u.assigned_course_id === course.id,
+    )
+    return Object.assign(course, {
+      student_count: assignedUsers.filter((u) => u.role === 'student').length,
+      tutor_count: assignedUsers.filter((u) => u.role === 'tutor').length,
+    })
+  })
 }
 
 export default function AdminCoursesView() {
@@ -108,67 +131,36 @@ export default function AdminCoursesView() {
   >({})
   const [creatingPhase, setCreatingPhase] = useState(false)
 
-  // Lesson Detail / Content Modal State (Notes & Quiz Builder)
+  // Lesson whose notes & quiz are open in the QuizBuilderModal
   const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(
     null,
   )
-  const [lessonContentType, setLessonContentType] = useState('notes') // 'notes' or 'quiz'
-
-  // Lesson Notes Form State
-  const [lessonNoteTitle, setLessonNoteTitle] = useState('')
-  const [lessonNoteContent, setLessonNoteContent] = useState('')
-  const [lessonVideoUrl, setLessonVideoUrl] = useState('')
-  const [savingNotes, setSavingNotes] = useState(false)
-
-  // Lesson Quiz Form State
-  const [quizTitle, setQuizTitle] = useState('')
-  const [passingScore, setPassingScore] = useState(70)
-  const [questions, setQuestions] = useState<QuizQuestionDraft[]>([
-    { question_text: '', options: ['', '', '', ''], correct_option_index: 0 },
-  ])
-  const [savingQuiz, setSavingQuiz] = useState(false)
-
-  const [currentView, setCurrentView] = useState('list') // 'list', 'course_details', 'lesson_editor'
 
   useEffect(() => {
-    fetchCourses()
+    let cancelled = false
+
+    loadCourseSummaries().then(
+      (summaries) => {
+        if (cancelled) return
+        setCourses(summaries)
+        setLoading(false)
+      },
+      (err: unknown) => {
+        if (cancelled) return
+        toast.error('Failed to load courses: ' + getErrorMessage(err))
+        setLoading(false)
+      },
+    )
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const fetchCourses = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('courses')
-        .select(
-          `
-          *,
-          course_phases (
-            id,
-            course_lessons ( id )
-          )
-        `,
-        )
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('id, role, assigned_course_id')
-
-      const enrichedCourses = (data || []).map((course) => {
-        const assignedUsers = (usersData || []).filter(
-          (u) => u.assigned_course_id === course.id,
-        )
-        return {
-          ...course,
-          student_count: assignedUsers.filter((u) => u.role === 'student')
-            .length,
-          tutor_count: assignedUsers.filter((u) => u.role === 'tutor').length,
-        }
-      })
-
-      setCourses(enrichedCourses)
+      setCourses(await loadCourseSummaries())
     } catch (err) {
       toast.error('Failed to load courses: ' + getErrorMessage(err))
     } finally {
@@ -200,52 +192,61 @@ export default function AdminCoursesView() {
 
       if (courseError) throw courseError
 
-      // Fetch students via enrollments AND direct assignment fallback
+      // Students come from enrollments AND direct assignment. `student_enrollments`
+      // has no foreign key to `users`, so load the enrolled users by id.
       const { data: enrollmentsData } = await supabase
         .from('student_enrollments')
-        .select(
-          `
-          student_id,
-          users:student_id (
-            id, full_name, email, role,
-            student_lesson_progress (lesson_id, status)
-          )
-        `,
-        )
+        .select('student_id')
         .eq('course_id', courseId)
+
+      const enrolledIds = (enrollmentsData ?? []).flatMap((enrollment) =>
+        enrollment.student_id ? [enrollment.student_id] : [],
+      )
+
+      let enrolledUsers: Omit<CourseStudent, 'student_lesson_progress'>[] = []
+      if (enrolledIds.length > 0) {
+        const { data } = await supabase
+          .from('users')
+          .select('id, full_name, email, role')
+          .in('id', enrolledIds)
+        enrolledUsers = data ?? []
+      }
 
       const { data: directUsersData } = await supabase
         .from('users')
-        .select(
-          `
-          id, full_name, email, role, assigned_course_id,
-          student_lesson_progress (lesson_id, status)
-        `,
-        )
+        .select('id, full_name, email, role')
         .eq('assigned_course_id', courseId)
         .eq('role', 'student')
 
-      // Merge and deduplicate students from both tables
-      const enrolledStudentsMap = new Map()
+      // Merge and deduplicate students from both sources
+      const studentsById = new Map<string, CourseStudent>()
+      for (const student of [...enrolledUsers, ...(directUsersData ?? [])]) {
+        studentsById.set(student.id, {
+          ...student,
+          student_lesson_progress: [],
+        })
+      }
 
-      ;(enrollmentsData || []).forEach((enrollment) => {
-        const users = enrollment.users as CourseStudent | CourseStudent[] | null
-        if (Array.isArray(users)) {
-          users.forEach((student) =>
-            enrolledStudentsMap.set(student.id, student),
-          )
-        } else if (users) {
-          enrolledStudentsMap.set(users.id, users)
+      // `student_lesson_progress` has no foreign key to `users` either, so load
+      // it separately and attach each row to its student.
+      const studentIds = Array.from(studentsById.keys())
+      if (studentIds.length > 0) {
+        const { data: progressData } = await supabase
+          .from('student_lesson_progress')
+          .select('student_id, lesson_id, status')
+          .in('student_id', studentIds)
+        for (const row of progressData ?? []) {
+          if (!row.student_id) continue
+          studentsById.get(row.student_id)?.student_lesson_progress?.push({
+            lesson_id: row.lesson_id,
+            status: row.status,
+          })
         }
-      })
-
-      ;(directUsersData || []).forEach((u) => {
-        if (u) enrolledStudentsMap.set(u.id, u)
-      })
+      }
 
       setSelectedCourse({
         ...courseData,
-        enrolled_users: Array.from(enrolledStudentsMap.values()),
+        enrolled_users: Array.from(studentsById.values()),
       })
     } catch (err) {
       toast.error('Failed to load course details: ' + getErrorMessage(err))
@@ -253,71 +254,10 @@ export default function AdminCoursesView() {
       setDetailsLoading(false)
     }
   }
-  const fetchLessonExtras = async (lesson: CourseLesson) => {
-    if (!selectedCourse) return
-    setSelectedLesson(lesson)
-    setLessonContentType('notes')
 
-    // Fetch existing note for this lesson/course if any
-    try {
-      const { data: noteData } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('course_id', selectedCourse.id)
-        .ilike('title', `%${lesson.title}%`)
-        .maybeSingle()
-
-      if (noteData) {
-        setLessonNoteTitle(noteData.title || lesson.title)
-        setLessonNoteContent(noteData.content || '')
-        setLessonVideoUrl(noteData.video_url || '')
-      } else {
-        setLessonNoteTitle(lesson.title)
-        setLessonNoteContent('')
-        setLessonVideoUrl('')
-      }
-
-      // Fetch existing quiz for this phase/course if any
-      const { data: quizData } = await supabase
-        .from('quizzes')
-        .select('*, quiz_questions(*)')
-        .eq('phase_id', lesson.phase_id)
-        .maybeSingle()
-
-      if (quizData) {
-        setQuizTitle(quizData.title)
-        setPassingScore(quizData.passing_score || 70)
-        if (quizData.quiz_questions && quizData.quiz_questions.length > 0) {
-          setQuestions(
-            (quizData.quiz_questions as QuizQuestionDraft[]).map((q) => ({
-              question_text: q.question_text,
-              options: q.options,
-              correct_option_index: q.correct_option_index,
-            })),
-          )
-        } else {
-          setQuestions([
-            {
-              question_text: '',
-              options: ['', '', '', ''],
-              correct_option_index: 0,
-            },
-          ])
-        }
-      } else {
-        setQuizTitle(`${lesson.title} Assessment`)
-        setPassingScore(70)
-        setQuestions([
-          {
-            question_text: '',
-            options: ['', '', '', ''],
-            correct_option_index: 0,
-          },
-        ])
-      }
-    } catch (err) {
-      console.error('Error fetching lesson content:', err)
-    }
+  const openCourse = (courseId: string) => {
+    void fetchCourseDetails(courseId)
+    setActiveTab('curriculum')
   }
 
   const handleDeletePhase = async (phaseId: string) => {
@@ -336,140 +276,27 @@ export default function AdminCoursesView() {
       if (error) throw error
       toast.success('Phase and dependent data deleted!')
       await fetchCourseDetails(selectedCourse.id)
-      fetchCourses()
+      await fetchCourses()
     } catch (err) {
       toast.error('Failed to delete phase: ' + getErrorMessage(err))
     }
   }
 
-  const handleSaveNotes = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!selectedLesson || !selectedCourse) return
-    setSavingNotes(true)
-
-    try {
-      // Check if note already exists for this course and title
-      const { data: existing } = await supabase
-        .from('notes')
-        .select('id')
-        .eq('course_id', selectedCourse.id)
-        .eq('title', lessonNoteTitle.trim() || selectedLesson.title)
-        .maybeSingle()
-
-      let error
-      if (existing) {
-        // Update
-        const res = await supabase
-          .from('notes')
-          .update({
-            content: lessonNoteContent,
-            video_url: lessonVideoUrl.trim() || null,
-          })
-          .eq('id', existing.id)
-        error = res.error
-      } else {
-        // Insert new
-        const res = await supabase.from('notes').insert([
-          {
-            course_id: selectedCourse.id,
-            title: lessonNoteTitle.trim() || selectedLesson.title,
-            content: lessonNoteContent,
-            video_url: lessonVideoUrl.trim() || null,
-          },
-        ])
-        error = res.error
-      }
-
-      if (error) throw error
-      toast.success('Lesson notes & materials saved!')
-    } catch (err) {
-      console.error('Notes save error:', err)
-      toast.error('Failed to save notes: ' + getErrorMessage(err))
-    } finally {
-      setSavingNotes(false)
-    }
-  }
-
-  const handleSaveQuiz = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!selectedLesson || !selectedCourse) return
-    setSavingQuiz(true)
-
-    try {
-      // 1. Check if quiz already exists for this phase
-      const { data: existingQuiz } = await supabase
-        .from('quizzes')
-        .select('id')
-        .eq('phase_id', selectedLesson.phase_id)
-        .maybeSingle()
-
-      let quizId
-      if (existingQuiz) {
-        quizId = existingQuiz.id
-        const { error: updateErr } = await supabase
-          .from('quizzes')
-          .update({
-            title: quizTitle.trim() || `${selectedLesson.title} Quiz`,
-            passing_score: Number(passingScore) || 70,
-          })
-          .eq('id', quizId)
-        if (updateErr) throw updateErr
-      } else {
-        const { data: newQuiz, error: insertErr } = await supabase
-          .from('quizzes')
-          .insert([
-            {
-              course_id: selectedCourse.id,
-              phase_id: selectedLesson.phase_id,
-              title: quizTitle.trim() || `${selectedLesson.title} Quiz`,
-              type: 'phase_quiz',
-              passing_score: Number(passingScore) || 70,
-            },
-          ])
-          .select()
-          .single()
-        if (insertErr) throw insertErr
-        quizId = newQuiz.id
-      }
-
-      // 2. Clear old questions for this quiz
-      await supabase.from('quiz_questions').delete().eq('quiz_id', quizId)
-
-      // 3. Insert fresh questions
-      const formattedQuestions = questions.map((q, idx) => ({
-        quiz_id: quizId,
-        question_text: q.question_text,
-        options: q.options,
-        correct_option_index: q.correct_option_index,
-        position: idx + 1,
-      }))
-
-      const { error: qError } = await supabase
-        .from('quiz_questions')
-        .insert(formattedQuestions)
-      if (qError) throw qError
-
-      toast.success('Quiz assessment published successfully!')
-    } catch (err) {
-      console.error('Quiz save error:', err)
-      toast.error('Failed to save quiz: ' + getErrorMessage(err))
-    } finally {
-      setSavingQuiz(false)
-    }
-  }
-
   const handleCreateCourse = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!newTitle.trim()) return toast.error('Course title is required')
+    if (!newTitle.trim()) {
+      toast.error('Course title is required')
+      return
+    }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('courses')
         .insert([
           {
             title: newTitle,
             description: newDescription,
-            duration_lessons: Number(newDuration) || 0,
+            duration_lessons: newDuration || 0,
             thumbnail_url: newThumbnailUrl.trim() || null,
           },
         ])
@@ -479,7 +306,7 @@ export default function AdminCoursesView() {
       if (error) throw error
 
       toast.success('Course created successfully!')
-      fetchCourses()
+      void fetchCourses()
       setNewTitle('')
       setNewDescription('')
       setNewDuration(0)
@@ -505,7 +332,7 @@ export default function AdminCoursesView() {
 
       toast.success('Course cover updated!')
       setEditingCourseCover(null)
-      fetchCourses()
+      void fetchCourses()
       if (selectedCourse?.id === editingCourseCover.id) {
         setSelectedCourse({
           ...selectedCourse,
@@ -558,7 +385,7 @@ export default function AdminCoursesView() {
       setNewPhaseTitle('')
 
       await fetchCourseDetails(selectedCourse.id)
-      fetchCourses()
+      await fetchCourses()
     } catch (err) {
       toast.error('Failed to add phase: ' + getErrorMessage(err))
     } finally {
@@ -586,8 +413,8 @@ export default function AdminCoursesView() {
       if (error) throw error
       toast.success('Lesson added!')
       setNewLessonTitles({ ...newLessonTitles, [phaseId]: '' })
-      fetchCourseDetails(selectedCourse.id)
-      fetchCourses()
+      await fetchCourseDetails(selectedCourse.id)
+      await fetchCourses()
     } catch (err) {
       toast.error('Failed to add lesson: ' + getErrorMessage(err))
     }
@@ -607,14 +434,12 @@ export default function AdminCoursesView() {
     return Math.round((completedLessons / totalLessons) * 100)
   }
 
-  const sortedStudents = [...(selectedCourse?.enrolled_users || [])].sort(
-    (a, b) => {
-      return calculateStudentProgress(b) - calculateStudentProgress(a)
-    },
+  const sortedStudents = (selectedCourse?.enrolled_users ?? []).toSorted(
+    (a, b) => calculateStudentProgress(b) - calculateStudentProgress(a),
   )
 
   return (
-    <div className="shadow-2xs space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 dark:border-white/10 dark:bg-white/5 md:p-8">
+    <div className="space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 shadow-2xs md:p-8 dark:border-white/10 dark:bg-white/5">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="flex items-center gap-3 text-2xl font-black text-slate-900 dark:text-white">
@@ -627,7 +452,7 @@ export default function AdminCoursesView() {
         </div>
         <button
           onClick={() => setIsCreating(!isCreating)}
-          className="flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-md transition-all hover:bg-blue-700"
+          className="flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-bold tracking-wider text-white uppercase shadow-md transition-all hover:bg-blue-700"
         >
           <Plus size={16} /> {isCreating ? 'Cancel' : 'Add Course'}
         </button>
@@ -636,10 +461,10 @@ export default function AdminCoursesView() {
       {/* Creation Modal / Inline Drawer */}
       {isCreating && (
         <form
-          onSubmit={handleCreateCourse}
+          onSubmit={(e) => void handleCreateCourse(e)}
           className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5"
         >
-          <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-white">
+          <h3 className="text-sm font-black tracking-wider text-slate-800 uppercase dark:text-white">
             Create New Course Track
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -675,7 +500,7 @@ export default function AdminCoursesView() {
           />
           <button
             type="submit"
-            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-500/20 transition-all hover:bg-emerald-700"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black tracking-wider text-white uppercase shadow-md shadow-emerald-500/20 transition-all hover:bg-emerald-700"
           >
             Save Course
           </button>
@@ -699,15 +524,17 @@ export default function AdminCoursesView() {
             return (
               <div
                 key={course.id}
-                onClick={() => {
-                  fetchCourseDetails(course.id)
-                  setActiveTab('curriculum')
-                }}
-                className="group flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 transition-all hover:bg-white hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 transition-all hover:bg-white hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
               >
+                <button
+                  type="button"
+                  aria-label={`Manage ${course.title}`}
+                  onClick={() => openCourse(course.id)}
+                  className="absolute inset-0 z-0 cursor-pointer rounded-2xl"
+                />
                 <div>
                   {/* Thumbnail Banner */}
-                  <div className="relative flex h-36 w-full items-center justify-center overflow-hidden bg-slate-200 dark:bg-slate-800">
+                  <div className="pointer-events-none relative flex h-36 w-full items-center justify-center overflow-hidden bg-slate-200 dark:bg-slate-800">
                     {course.thumbnail_url ? (
                       <img
                         src={course.thumbnail_url}
@@ -717,25 +544,26 @@ export default function AdminCoursesView() {
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-slate-400">
                         <ImageIcon size={28} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">
+                        <span className="text-[10px] font-bold tracking-wider uppercase">
                           No Cover Image
                         </span>
                       </div>
                     )}
-                    <div className="absolute right-3 top-3 flex items-center gap-2">
+                    <div className="absolute top-3 right-3 flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation()
                           setEditingCourseCover(course)
                           setEditThumbnailUrl(course.thumbnail_url || '')
                         }}
-                        className="shadow-2xs rounded-lg bg-slate-900/80 p-1.5 text-white backdrop-blur-md transition-colors hover:bg-slate-900"
+                        className="pointer-events-auto rounded-lg bg-slate-900/80 p-1.5 text-white shadow-2xs backdrop-blur-md transition-colors hover:bg-slate-900"
                         title="Change Cover Image"
                       >
                         <Edit3 size={14} />
                       </button>
                       <span
-                        className={`shadow-2xs rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider backdrop-blur-md ${course.is_active ? 'border-emerald-400/30 bg-emerald-500/90 text-white' : 'border-white/10 bg-slate-900/80 text-slate-300'}`}
+                        className={`rounded-lg border px-2.5 py-1 text-[10px] font-black tracking-wider uppercase shadow-2xs backdrop-blur-md ${course.is_active ? 'border-emerald-400/30 bg-emerald-500/90 text-white' : 'border-white/10 bg-slate-900/80 text-slate-300'}`}
                       >
                         {course.is_active ? 'Active' : 'Draft'}
                       </span>
@@ -743,7 +571,7 @@ export default function AdminCoursesView() {
                   </div>
 
                   <div className="p-5 pb-3">
-                    <h4 className="truncate text-base font-black leading-tight text-slate-900 dark:text-white">
+                    <h4 className="truncate text-base leading-tight font-black text-slate-900 dark:text-white">
                       {course.title}
                     </h4>
                     <p className="mt-1.5 line-clamp-2 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -785,21 +613,22 @@ export default function AdminCoursesView() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="relative z-10 flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          fetchCourseDetails(course.id)
-                          setActiveTab('curriculum')
+                          openCourse(course.id)
                         }}
-                        className="rounded-xl bg-blue-50 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-blue-600 transition-colors hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+                        className="rounded-xl bg-blue-50 px-3.5 py-1.5 text-xs font-black tracking-wider text-blue-600 uppercase transition-colors hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
                       >
                         Manage
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleDeleteCourse(course.id)
+                          void handleDeleteCourse(course.id)
                         }}
                         className="rounded-xl p-1.5 text-rose-500 transition-colors hover:bg-rose-50 dark:hover:bg-rose-500/10"
                         title="Delete Course"
@@ -818,7 +647,7 @@ export default function AdminCoursesView() {
       {/* EDIT COURSE COVER MODAL */}
       {editingCourseCover && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900 md:p-8">
+          <div className="w-full max-w-md space-y-6 rounded-[32px] border border-slate-100 bg-white p-6 shadow-2xl md:p-8 dark:border-white/10 dark:bg-slate-900">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white">
@@ -836,12 +665,19 @@ export default function AdminCoursesView() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateCourseCover} className="space-y-4">
+            <form
+              onSubmit={(e) => void handleUpdateCourseCover(e)}
+              className="space-y-4"
+            >
               <div>
-                <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                <label
+                  htmlFor="course-cover-url"
+                  className="mb-1.5 block text-xs font-black tracking-wider text-slate-500 uppercase"
+                >
                   Thumbnail Image URL
                 </label>
                 <input
+                  id="course-cover-url"
                   type="url"
                   placeholder="https://example.com/image.jpg"
                   value={editThumbnailUrl}
@@ -867,14 +703,14 @@ export default function AdminCoursesView() {
                 <button
                   type="button"
                   onClick={() => setEditingCourseCover(null)}
-                  className="rounded-2xl bg-slate-100 px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-600 transition-all hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+                  className="rounded-2xl bg-slate-100 px-5 py-3 text-xs font-black tracking-wider text-slate-600 uppercase transition-all hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={updatingCover}
-                  className="flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-blue-500/20 transition-all hover:bg-blue-700"
+                  className="flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-xs font-black tracking-wider text-white uppercase shadow-md shadow-blue-500/20 transition-all hover:bg-blue-700"
                 >
                   {updatingCover ? 'Updating...' : 'Save Cover'}
                 </button>
@@ -889,7 +725,7 @@ export default function AdminCoursesView() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
           <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900">
             {/* Modal Header */}
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6 dark:border-white/10 md:p-8">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6 md:p-8 dark:border-white/10">
               <div className="flex items-start gap-4">
                 {selectedCourse.thumbnail_url && (
                   <img
@@ -899,10 +735,10 @@ export default function AdminCoursesView() {
                   />
                 )}
                 <div>
-                  <span className="mb-2 inline-block rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
+                  <span className="mb-2 inline-block rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black tracking-wider text-blue-600 uppercase dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
                     Course Management
                   </span>
-                  <h3 className="text-2xl font-black leading-tight text-slate-900 dark:text-white">
+                  <h3 className="text-2xl leading-tight font-black text-slate-900 dark:text-white">
                     {selectedCourse.title}
                   </h3>
                   <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
@@ -919,16 +755,16 @@ export default function AdminCoursesView() {
             </div>
 
             {/* Modal Tabs */}
-            <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50/50 px-6 dark:border-white/10 dark:bg-white/5 md:px-8">
+            <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50/50 px-6 md:px-8 dark:border-white/10 dark:bg-white/5">
               <button
                 onClick={() => setActiveTab('curriculum')}
-                className={`flex items-center gap-2 border-b-2 px-4 py-4 text-xs font-black uppercase tracking-wider transition-all ${activeTab === 'curriculum' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                className={`flex items-center gap-2 border-b-2 px-4 py-4 text-xs font-black tracking-wider uppercase transition-all ${activeTab === 'curriculum' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
               >
                 <LayoutList size={16} /> Curriculum Builder
               </button>
               <button
                 onClick={() => setActiveTab('students')}
-                className={`flex items-center gap-2 border-b-2 px-4 py-4 text-xs font-black uppercase tracking-wider transition-all ${activeTab === 'students' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                className={`flex items-center gap-2 border-b-2 px-4 py-4 text-xs font-black tracking-wider uppercase transition-all ${activeTab === 'students' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
               >
                 <Activity size={16} /> Student Progress (
                 {selectedCourse.enrolled_users?.length || 0})
@@ -936,7 +772,7 @@ export default function AdminCoursesView() {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto bg-slate-50/30 p-6 dark:bg-transparent md:p-8">
+            <div className="flex-1 overflow-y-auto bg-slate-50/30 p-6 md:p-8 dark:bg-transparent">
               {detailsLoading ? (
                 <div className="flex items-center justify-center gap-3 py-12 text-center text-sm font-bold text-slate-400">
                   <span className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -949,17 +785,18 @@ export default function AdminCoursesView() {
                     <div className="space-y-8">
                       {/* Persistent Add Phase Form (Always Visible) */}
                       <form
-                        onSubmit={async (e) => {
-                          e.preventDefault()
-                          await handleCreatePhase(e)
-                        }}
-                        className="flex flex-col items-stretch gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-xs dark:border-blue-500/20 dark:bg-blue-500/5 sm:flex-row sm:items-center"
+                        onSubmit={(e) => void handleCreatePhase(e)}
+                        className="flex flex-col items-stretch gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-xs sm:flex-row sm:items-center dark:border-blue-500/20 dark:bg-blue-500/5"
                       >
                         <div className="flex-1">
-                          <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                          <label
+                            htmlFor="new-phase-title"
+                            className="mb-1 block text-[10px] font-black tracking-wider text-blue-600 uppercase dark:text-blue-400"
+                          >
                             Add New Phase
                           </label>
                           <input
+                            id="new-phase-title"
                             type="text"
                             placeholder="Phase Title (e.g., Introduction to Syntax)"
                             value={newPhaseTitle}
@@ -971,7 +808,7 @@ export default function AdminCoursesView() {
                         <button
                           type="submit"
                           disabled={creatingPhase || !newPhaseTitle.trim()}
-                          className="shrink-0 rounded-xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition-all hover:bg-blue-700 disabled:opacity-50 sm:mt-5"
+                          className="shrink-0 rounded-xl bg-blue-600 px-5 py-3 text-xs font-black tracking-wider text-white uppercase transition-all hover:bg-blue-700 disabled:opacity-50 sm:mt-5"
                         >
                           {creatingPhase ? 'Creating...' : 'Create Phase'}
                         </button>
@@ -980,7 +817,10 @@ export default function AdminCoursesView() {
                       {/* Existing Phases */}
                       <div className="space-y-4">
                         {selectedCourse.course_phases
-                          ?.sort((a, b) => a.phase_number - b.phase_number)
+                          ?.toSorted(
+                            (a, b) =>
+                              (a.phase_number ?? 0) - (b.phase_number ?? 0),
+                          )
                           .map((phase) => (
                             <div
                               key={phase.id}
@@ -998,7 +838,9 @@ export default function AdminCoursesView() {
                                     {phase.course_lessons?.length || 0} Lessons
                                   </span>
                                   <button
-                                    onClick={() => handleDeletePhase(phase.id)}
+                                    onClick={() =>
+                                      void handleDeletePhase(phase.id)
+                                    }
                                     className="rounded-xl p-1.5 text-rose-500 transition-colors hover:bg-rose-50 dark:hover:bg-rose-500/10"
                                     title="Delete Phase"
                                   >
@@ -1014,10 +856,11 @@ export default function AdminCoursesView() {
                                       (a.position ?? 0) - (b.position ?? 0),
                                   )
                                   .map((lesson, idx) => (
-                                    <div
+                                    <button
+                                      type="button"
                                       key={lesson.id}
-                                      onClick={() => fetchLessonExtras(lesson)}
-                                      className="group flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition-all hover:bg-blue-50/50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-blue-500/10"
+                                      onClick={() => setSelectedLesson(lesson)}
+                                      className="group flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-left transition-all hover:bg-blue-50/50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-blue-500/10"
                                     >
                                       <div className="flex items-center gap-3">
                                         <div className="w-6 text-sm font-black text-slate-300 dark:text-slate-600">
@@ -1029,16 +872,16 @@ export default function AdminCoursesView() {
                                           {lesson.title}
                                         </div>
                                       </div>
-                                      <span className="group-hover:opacity-150 rounded-lg bg-blue-100 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-blue-600 opacity-0 transition-opacity dark:bg-blue-500/20 dark:text-blue-400">
+                                      <span className="rounded-lg bg-blue-100 px-2 py-1 text-[10px] font-black tracking-wider text-blue-600 uppercase opacity-0 transition-opacity group-hover:opacity-150 dark:bg-blue-500/20 dark:text-blue-400">
                                         Edit Notes / Quiz &rarr;
                                       </span>
-                                    </div>
+                                    </button>
                                   ))}
 
                                 {/* Add Lesson inline form */}
                                 <form
                                   onSubmit={(e) =>
-                                    handleCreateLesson(e, phase.id)
+                                    void handleCreateLesson(e, phase.id)
                                   }
                                   className="mt-2 flex items-center gap-2 pt-2"
                                 >
@@ -1116,7 +959,7 @@ export default function AdminCoursesView() {
 
                                 {/* Progress Bar UI */}
                                 <div>
-                                  <div className="mb-1.5 flex justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                  <div className="mb-1.5 flex justify-between text-[10px] font-black tracking-wider text-slate-400 uppercase">
                                     <span>Course Progress</span>
                                     {progress === 100 && (
                                       <span className="flex items-center gap-1 text-emerald-500">
@@ -1145,7 +988,7 @@ export default function AdminCoursesView() {
         </div>
       )}
 
-      {selectedLesson && (
+      {selectedLesson && selectedCourse && (
         <QuizBuilderModal
           selectedLesson={selectedLesson}
           selectedCourse={selectedCourse}

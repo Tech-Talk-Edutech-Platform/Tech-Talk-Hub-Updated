@@ -13,7 +13,7 @@ export function FooterLinkColumn({ title, links }: FooterLinkColumnProps) {
 
   return (
     <div>
-      <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-white">
+      <h3 className="text-sm font-bold tracking-[0.12em] text-white uppercase">
         {title}
       </h3>
 

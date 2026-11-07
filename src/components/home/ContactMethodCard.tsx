@@ -32,7 +32,7 @@ export function ContactMethodCard({
       </span>
 
       <span className={breakValue ? 'min-w-0' : undefined}>
-        <span className="block text-xs font-semibold uppercase tracking-wide text-blue-200">
+        <span className="block text-xs font-semibold tracking-wide text-blue-200 uppercase">
           {label}
         </span>
 

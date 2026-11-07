@@ -36,7 +36,10 @@
     "import/no-cycle": "error",
     "import/no-duplicates": "error",
     "import/no-self-import": "error",
-    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+    "import/no-unassigned-import": [
+      "error",
+      { "allow": ["**/*.css", "dotenv/config"] }
+    ],
 
     "no-console": ["error", { "allow": ["warn", "error"] }],
     "eqeqeq": ["error", "always", { "null": "ignore" }],

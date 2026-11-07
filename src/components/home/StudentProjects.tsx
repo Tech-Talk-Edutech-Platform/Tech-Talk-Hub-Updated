@@ -8,11 +8,11 @@ export function StudentProjects() {
   return (
     <section className="relative overflow-hidden border-t border-gray-100 bg-background py-24 dark:border-gray-800/60">
       {/* Background glow */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary/5 blur-[100px]" />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary/5 blur-[100px]" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-6">
         <div className="mx-auto mb-16 max-w-3xl text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-secondary/20 bg-secondary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-secondary shadow-sm">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-secondary/20 bg-secondary/10 px-4 py-1.5 text-xs font-semibold tracking-widest text-secondary uppercase shadow-sm">
             <Sparkles size={14} /> Student Showcase
           </div>
 

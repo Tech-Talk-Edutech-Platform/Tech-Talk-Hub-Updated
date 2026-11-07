@@ -31,6 +31,11 @@ export const queryKeys = {
     all: ['notes'] as const,
     byTopic: (topicId: string) => ['notes', 'topic', topicId] as const,
   },
+  schedule: {
+    global: ['schedule', 'global'] as const,
+    calendar: (userId: string | null, role: string | null) =>
+      ['schedule', 'calendar', userId, role] as const,
+  },
   site: {
     program: (slug: string) => ['site', 'program', slug] as const,
     products: (program?: string) =>

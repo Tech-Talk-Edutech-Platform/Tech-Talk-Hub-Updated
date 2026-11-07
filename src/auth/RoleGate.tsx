@@ -92,7 +92,7 @@ export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
       <div className="flex h-screen animate-pulse items-center justify-center bg-slate-50 font-black">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-          <span className="text-xs uppercase tracking-widest text-slate-900">
+          <span className="text-xs tracking-widest text-slate-900 uppercase">
             Verifying Access...
           </span>
         </div>
@@ -127,7 +127,7 @@ export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
         <button
           type="button"
           onClick={() => void signInWithDifferentAccount()}
-          className="mt-8 rounded-[20px] bg-slate-900 px-8 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-slate-200 transition-all hover:bg-blue-600"
+          className="mt-8 rounded-[20px] bg-slate-900 px-8 py-4 text-xs font-black tracking-widest text-white uppercase shadow-xl shadow-slate-200 transition-all hover:bg-blue-600"
         >
           Login with Different Account
         </button>
@@ -135,5 +135,5 @@ export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
     )
   }
 
-  return <>{children}</>
+  return children
 }

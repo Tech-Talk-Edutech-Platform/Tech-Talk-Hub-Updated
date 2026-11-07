@@ -46,17 +46,17 @@ export default function UnifiedDashboard() {
 
         // Enforce correct URL matching actual DB role
         if (urlRole && urlRole !== dbRole) {
-          navigate(`/${dbRole}`, { replace: true })
+          void navigate(`/${dbRole}`, { replace: true })
         }
       } catch (err) {
         console.error('Unexpected error in fetchUserAndRole:', err)
-        navigate('/', { replace: true })
+        void navigate('/', { replace: true })
       } finally {
         setLoading(false)
       }
     }
 
-    fetchUserAndRole()
+    void fetchUserAndRole()
   }, [urlRole, navigate])
 
   if (loading) {

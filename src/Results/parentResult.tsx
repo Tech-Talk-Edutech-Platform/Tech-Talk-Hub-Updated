@@ -123,7 +123,7 @@ const StudentDashboard = () => {
       {latest.project_url && (
         <div className="p-4">
           <div className="rounded-2xl bg-linear-to-br from-orange-500 to-pink-500 p-5 text-white shadow-lg">
-            <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold tracking-widest uppercase">
               <Rocket size={18} /> Student Project
             </div>
 
@@ -146,7 +146,7 @@ const StudentDashboard = () => {
       {/* OVERALL */}
       <div className="p-4">
         <div className="rounded-2xl border border-gray-50 bg-white p-5 shadow-xs">
-          <h2 className="mb-4 px-1 text-sm font-bold uppercase tracking-wide text-gray-800">
+          <h2 className="mb-4 px-1 text-sm font-bold tracking-wide text-gray-800 uppercase">
             Overall Performance
           </h2>
 
@@ -156,7 +156,7 @@ const StudentDashboard = () => {
                 <span className="text-2xl font-black text-gray-800">
                   {latest.overall_score}%
                 </span>
-                <p className="text-[8px] font-bold uppercase text-green-500">
+                <p className="text-[8px] font-bold text-green-500 uppercase">
                   {latest.performance_label || 'Score'}
                 </p>
               </div>
@@ -192,7 +192,7 @@ const StudentDashboard = () => {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-bold leading-tight text-gray-800">
+                  <h3 className="text-sm leading-tight font-bold text-gray-800">
                     {item.exam_title}
                   </h3>
 
@@ -217,7 +217,7 @@ const StudentDashboard = () => {
 
       {/* 🔥 IMPROVED AVERAGE SUMMARY (ONLY CHANGE) */}
       <div className="p-4">
-        <h2 className="mb-3 px-1 text-sm font-bold uppercase tracking-wide text-gray-800">
+        <h2 className="mb-3 px-1 text-sm font-bold tracking-wide text-gray-800 uppercase">
           Average Summary
         </h2>
 
@@ -261,7 +261,7 @@ const StudentDashboard = () => {
 
       {/* BREAKDOWN */}
       <div className="p-4">
-        <h2 className="mb-3 px-1 text-sm font-bold uppercase tracking-wide text-gray-800">
+        <h2 className="mb-3 px-1 text-sm font-bold tracking-wide text-gray-800 uppercase">
           Section Breakdown
         </h2>
 
@@ -296,11 +296,11 @@ const StudentDashboard = () => {
       {/* FEEDBACK */}
       <div className="px-4">
         <div className="rounded-2xl bg-indigo-600 p-5 shadow-lg">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold uppercase text-white">
+          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white uppercase">
             <MessageSquare size={18} /> Tutor Feedback
           </div>
 
-          <p className="whitespace-pre-line text-sm font-medium italic leading-relaxed text-indigo-50">
+          <p className="text-sm leading-relaxed font-medium whitespace-pre-line text-indigo-50 italic">
             "{latest.tutor_feedback}"
           </p>
         </div>
@@ -324,7 +324,7 @@ const StatRow = ({
     <div className="mb-1 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <div className={`${color} rounded-lg p-1.5`}>{icon}</div>
-        <span className="text-xs font-bold uppercase tracking-tighter text-gray-600">
+        <span className="text-xs font-bold tracking-tighter text-gray-600 uppercase">
           {label}
         </span>
       </div>

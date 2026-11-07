@@ -19,13 +19,13 @@ export default function LandingOrDashboard() {
           .eq('id', user.id)
           .single()
         if (profile?.role) {
-          navigate(`/${profile.role}`, { replace: true })
+          void navigate(`/${profile.role}`, { replace: true })
           return
         }
       }
       setLoading(false)
     }
-    checkUser()
+    void checkUser()
   }, [navigate])
 
   if (loading)

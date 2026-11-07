@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { supabase } from '../../supabase'
 import {
   Video,
@@ -23,56 +24,83 @@ type Recording = Tables<'class_recordings'> & {
 
 type UserOption = Pick<Tables<'users'>, 'id' | 'full_name'>
 
+interface RecordingLibrary {
+  recordings: Recording[]
+  students: UserOption[]
+  tutors: UserOption[]
+}
+
+async function loadRecordingLibrary(): Promise<RecordingLibrary> {
+  const { data: recs } = await supabase
+    .from('class_recordings')
+    .select(
+      `
+        *,
+        tutor:users!tutor_id(full_name),
+        student:users!student_id(full_name)
+      `,
+    )
+    .order('created_at', { ascending: false })
+
+  const { data: studentList } = await supabase
+    .from('users')
+    .select('id, full_name')
+    .eq('role', 'student')
+
+  const { data: tutorList } = await supabase
+    .from('users')
+    .select('id, full_name')
+    .in('role', ['tutor', 'owner', 'operations_admin', 'tech_admin'])
+
+  return {
+    recordings: recs || [],
+    students: studentList || [],
+    tutors: tutorList || [],
+  }
+}
+
 export default function ClassRecordingsManager() {
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [students, setStudents] = useState<UserOption[]>([])
   const [tutors, setTutors] = useState<UserOption[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
   // Form state
   const [title, setTitle] = useState('')
-  const [courseName, setCourseName] = useState('')
   const [recordingUrl, setRecordingUrl] = useState('')
   const [thumbnailUrl, setThumbnailUrl] = useState('')
   const [studentId, setStudentId] = useState('')
   const [tutorId, setTutorId] = useState('')
 
+  const applyLibrary = (library: RecordingLibrary) => {
+    setRecordings(library.recordings)
+    setStudents(library.students)
+    setTutors(library.tutors)
+  }
+
   const fetchData = async () => {
     setLoading(true)
-    const { data: recs } = await supabase
-      .from('class_recordings')
-      .select(
-        `
-        *,
-        tutor:users!tutor_id(full_name),
-        student:users!student_id(full_name)
-      `,
-      )
-      .order('created_at', { ascending: false })
-
-    const { data: studentList } = await supabase
-      .from('users')
-      .select('id, full_name')
-      .eq('role', 'student')
-
-    const { data: tutorList } = await supabase
-      .from('users')
-      .select('id, full_name')
-      .in('role', ['tutor', 'owner', 'operations_admin', 'tech_admin'])
-
-    setRecordings(recs || [])
-    setStudents(studentList || [])
-    setTutors(tutorList || [])
+    applyLibrary(await loadRecordingLibrary())
     setLoading(false)
   }
 
   useEffect(() => {
-    fetchData()
+    let cancelled = false
+    void loadRecordingLibrary().then((library) => {
+      if (cancelled) return
+      setRecordings(library.recordings)
+      setStudents(library.students)
+      setTutors(library.tutors)
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleUpload = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!title || !recordingUrl) {
       alert('Please provide at least a title and recording URL.')
@@ -82,7 +110,6 @@ export default function ClassRecordingsManager() {
     const { error } = await supabase.from('class_recordings').insert([
       {
         title,
-        course_name: courseName || null,
         recording_url: recordingUrl,
         thumbnail_url: thumbnailUrl || null,
         student_id: studentId || null,
@@ -95,12 +122,11 @@ export default function ClassRecordingsManager() {
     } else {
       setIsModalOpen(false)
       setTitle('')
-      setCourseName('')
       setRecordingUrl('')
       setThumbnailUrl('')
       setStudentId('')
       setTutorId('')
-      fetchData()
+      await fetchData()
     }
   }
 
@@ -121,8 +147,6 @@ export default function ClassRecordingsManager() {
   const filteredRecordings = recordings.filter(
     (rec) =>
       rec.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (rec.course_name &&
-        rec.course_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (rec.student?.full_name &&
         rec.student.full_name
           .toLowerCase()
@@ -130,14 +154,14 @@ export default function ClassRecordingsManager() {
   )
 
   return (
-    <div className="mx-auto min-h-screen max-w-7xl space-y-8 bg-slate-50 p-6 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100 md:p-10">
+    <div className="mx-auto min-h-screen max-w-7xl space-y-8 bg-slate-50 p-6 text-slate-900 transition-colors md:p-10 dark:bg-slate-950 dark:text-slate-100">
       {/* Header Section */}
-      <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 md:flex-row md:items-center">
+      <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-xs md:flex-row md:items-center dark:border-slate-800 dark:bg-slate-900/60">
         <div className="relative z-10 space-y-1">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-600 dark:border-purple-500/25 dark:bg-purple-500/10 dark:text-purple-400">
             <Sparkles size={13} /> Session Library
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white md:text-3xl">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl dark:text-white">
             Class Recordings
           </h2>
           <p className="max-w-xl text-sm text-slate-600 dark:text-slate-400">
@@ -157,15 +181,15 @@ export default function ClassRecordingsManager() {
       <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-slate-800 dark:bg-slate-900/40">
         <div className="relative max-w-md flex-1">
           <Search
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400"
             size={17}
           />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search recordings by title, course, or student..."
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-500"
+            placeholder="Search recordings by title or student..."
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-10 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-500"
           />
         </div>
         <div className="px-2 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -230,11 +254,6 @@ export default function ClassRecordingsManager() {
 
               {/* Card Meta Content */}
               <div className="flex-1 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="rounded-md border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-purple-600 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
-                    {rec.course_name || 'General Session'}
-                  </span>
-                </div>
                 <h3 className="line-clamp-1 text-sm font-semibold text-slate-900 transition-colors group-hover:text-purple-600 dark:text-slate-100 dark:group-hover:text-purple-300">
                   {rec.title}
                 </h3>
@@ -270,14 +289,18 @@ export default function ClassRecordingsManager() {
                     size={13}
                     className="text-slate-400 dark:text-slate-500"
                   />{' '}
-                  {new Date(rec.created_at).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  {rec.created_at
+                    ? new Date(rec.created_at).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : ''}
                 </span>
                 <button
-                  onClick={() => handleDelete(rec.id)}
+                  type="button"
+                  aria-label={`Delete ${rec.title}`}
+                  onClick={() => void handleDelete(rec.id)}
                   className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
                   title="Delete Recording"
                 >
@@ -307,7 +330,7 @@ export default function ClassRecordingsManager() {
       {/* Upload Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs dark:bg-slate-950/80">
-          <div className="w-full max-w-lg space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+          <div className="w-full max-w-lg space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8 dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl border border-purple-200 bg-purple-50 p-2.5 text-purple-600 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
@@ -330,12 +353,16 @@ export default function ClassRecordingsManager() {
               </button>
             </div>
 
-            <form onSubmit={handleUpload} className="space-y-4">
+            <form onSubmit={(e) => void handleUpload(e)} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                <label
+                  htmlFor="recording-title"
+                  className="text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+                >
                   Session Title *
                 </label>
                 <input
+                  id="recording-title"
                   type="text"
                   required
                   value={title}
@@ -346,23 +373,14 @@ export default function ClassRecordingsManager() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  Course Name
-                </label>
-                <input
-                  type="text"
-                  value={courseName}
-                  onChange={(e) => setCourseName(e.target.value)}
-                  placeholder="e.g. Python Fundamentals"
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:placeholder-slate-600"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                <label
+                  htmlFor="recording-url"
+                  className="text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+                >
                   Recording URL (YouTube/Drive/Loom) *
                 </label>
                 <input
+                  id="recording-url"
                   type="url"
                   required
                   value={recordingUrl}
@@ -373,10 +391,14 @@ export default function ClassRecordingsManager() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                <label
+                  htmlFor="recording-thumbnail"
+                  className="text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+                >
                   Thumbnail Image URL (Optional)
                 </label>
                 <input
+                  id="recording-thumbnail"
                   type="url"
                   value={thumbnailUrl}
                   onChange={(e) => setThumbnailUrl(e.target.value)}
@@ -387,10 +409,14 @@ export default function ClassRecordingsManager() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <label
+                    htmlFor="recording-tutor"
+                    className="text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+                  >
                     Assign Tutor
                   </label>
                   <select
+                    id="recording-tutor"
                     value={tutorId}
                     onChange={(e) => setTutorId(e.target.value)}
                     className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
@@ -405,10 +431,14 @@ export default function ClassRecordingsManager() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <label
+                    htmlFor="recording-student"
+                    className="text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+                  >
                     Target Student
                   </label>
                   <select
+                    id="recording-student"
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
                     className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"

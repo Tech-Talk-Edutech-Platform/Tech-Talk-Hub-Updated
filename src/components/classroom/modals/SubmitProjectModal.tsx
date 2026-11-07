@@ -56,11 +56,11 @@ export function SubmitProjectModal({
     <Modal open={open} onClose={onClose} width={512} labelledBy="submit-title">
       <h2
         id="submit-title"
-        className="text-ink pr-10 text-[20px] font-semibold leading-[30px]"
+        className="pr-10 text-[20px] leading-[30px] font-semibold text-ink"
       >
         You are submitting this activity on behalf of {student.name}
       </h2>
-      <p className="text-brand mt-4 text-[11.5px] font-medium">
+      <p className="mt-4 text-[11.5px] font-medium text-brand">
         Step {step} of 2
       </p>
 
@@ -71,10 +71,10 @@ export function SubmitProjectModal({
             if (activity) setStep(2)
           }}
         >
-          <h3 className="text-ink mt-1 text-[17px]">
+          <h3 className="mt-1 text-[17px] text-ink">
             Choose student & activity
           </h3>
-          <p className="text-ink-soft mt-0.5 text-[13px]">
+          <p className="mt-0.5 text-[13px] text-ink-soft">
             Pick the student and the classroom activity you&apos;re submitting.
           </p>
           <div className="mt-8">
@@ -89,7 +89,7 @@ export function SubmitProjectModal({
             <button
               type="submit"
               disabled={!activity}
-              className="press bg-brand hover:bg-brand-strong disabled:bg-brand-faded h-10 w-[147px] rounded-[4px] text-[15px] font-medium text-white"
+              className="press h-10 w-[147px] rounded-[4px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong disabled:bg-brand-faded"
             >
               Continue
             </button>
@@ -97,15 +97,15 @@ export function SubmitProjectModal({
         </form>
       ) : (
         <form onSubmit={submit} noValidate>
-          <h3 className="text-ink mt-1 text-[17px]">Add the project</h3>
-          <p className="text-ink-soft mt-0.5 text-[13px]">
+          <h3 className="mt-1 text-[17px] text-ink">Add the project</h3>
+          <p className="mt-0.5 text-[13px] text-ink-soft">
             {activity.title} · paste the link to {student.name}&apos;s saved
             project.
           </p>
 
           <label
             htmlFor="project-link"
-            className="text-ink mb-2 mt-8 block text-[15px] font-medium"
+            className="mt-8 mb-2 block text-[15px] font-medium text-ink"
           >
             Project link
           </label>
@@ -121,14 +121,14 @@ export function SubmitProjectModal({
             placeholder={activity.project}
             aria-invalid={!!linkError}
             aria-describedby={linkError ? 'project-link-error' : undefined}
-            className={`text-ink placeholder:text-faint focus:border-brand h-10 w-full rounded-[4px] border px-2.5 text-[15px] outline-none ${
+            className={`h-10 w-full rounded-[4px] border px-2.5 text-[15px] text-ink outline-none placeholder:text-faint focus:border-brand ${
               linkError ? 'border-brand' : 'border-line-strong'
             }`}
           />
           {linkError && (
             <p
               id="project-link-error"
-              className="text-brand mt-1.5 text-[13px]"
+              className="mt-1.5 text-[13px] text-brand"
             >
               {linkError}
             </p>
@@ -136,10 +136,10 @@ export function SubmitProjectModal({
 
           <label
             htmlFor="project-note"
-            className="text-ink mb-2 mt-5 block text-[15px] font-medium"
+            className="mt-5 mb-2 block text-[15px] font-medium text-ink"
           >
             Note for the student{' '}
-            <span className="text-muted font-normal">(optional)</span>
+            <span className="font-normal text-muted">(optional)</span>
           </label>
           <textarea
             id="project-note"
@@ -147,20 +147,20 @@ export function SubmitProjectModal({
             value={note}
             onChange={(event) => setNote(event.target.value)}
             placeholder="What went well, what to try next"
-            className="border-line-strong text-ink placeholder:text-faint focus:border-brand w-full resize-none rounded-[4px] border px-2.5 py-2 text-[15px] leading-[22px] outline-none"
+            className="w-full resize-none rounded-[4px] border border-line-strong px-2.5 py-2 text-[15px] leading-[22px] text-ink outline-none placeholder:text-faint focus:border-brand"
           />
 
           <div className="mt-8 flex items-center justify-between">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="press text-ink-soft hover:text-ink -ml-2 flex h-10 items-center gap-1 rounded-[4px] px-2 text-[15px] font-medium"
+              className="press -ml-2 flex h-10 items-center gap-1 rounded-[4px] px-2 text-[15px] font-medium text-ink-soft hover:text-ink"
             >
               <ChevronLeft size={18} aria-hidden="true" /> Back
             </button>
             <button
               type="submit"
-              className="press bg-brand hover:bg-brand-strong h-10 w-[147px] rounded-[4px] text-[15px] font-medium text-white"
+              className="press h-10 w-[147px] rounded-[4px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong"
             >
               Submit
             </button>

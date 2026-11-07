@@ -46,7 +46,7 @@ export default function Login() {
           .single()
 
         if (profile?.role) {
-          navigate(`/${profile.role}`, { replace: true })
+          void navigate(`/${profile.role}`, { replace: true })
           return
         }
       }
@@ -54,7 +54,7 @@ export default function Login() {
       setAuthChecking(false)
     }
 
-    checkUser()
+    void checkUser()
 
     // Only listen to auth changes for redirect AFTER login
     const { data: listener } = supabase.auth.onAuthStateChange(
@@ -66,7 +66,8 @@ export default function Login() {
             .eq('id', session.user.id)
             .single()
 
-          if (profile?.role) navigate(`/${profile.role}`, { replace: true })
+          if (profile?.role)
+            void navigate(`/${profile.role}`, { replace: true })
         }
       },
     )
@@ -121,7 +122,7 @@ export default function Login() {
     }
 
     toast.success('Welcome back!')
-    navigate(`/${profile.role}`, { replace: true })
+    void navigate(`/${profile.role}`, { replace: true })
   }
 
   // 3️⃣ Google OAuth login (forces account selection)
@@ -154,12 +155,12 @@ export default function Login() {
       <div className="w-full max-w-md rounded-[32px] border border-white bg-white p-10 shadow-xl">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-200">
-            <span className="text-2xl font-black italic text-white">TT</span>
+            <span className="text-2xl font-black text-white italic">TT</span>
           </div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900">
             Portal Login
           </h1>
-          <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+          <p className="mt-2 text-xs font-bold tracking-[0.2em] text-slate-400 uppercase">
             African Tech Talk
           </p>
         </div>
@@ -174,7 +175,7 @@ export default function Login() {
         )}
 
         <button
-          onClick={handleGoogleLogin}
+          onClick={() => void handleGoogleLogin()}
           type="button"
           className="mb-6 flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-3.5 font-bold text-slate-700 transition-all hover:bg-slate-50"
         >

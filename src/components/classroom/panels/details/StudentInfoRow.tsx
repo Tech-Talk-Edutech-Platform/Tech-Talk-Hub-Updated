@@ -14,12 +14,12 @@ export function StudentInfoRow({
   children,
 }: StudentInfoRowProps) {
   return (
-    <li className="text-ink-soft flex gap-2.5 text-[13.5px] leading-[22px]">
+    <li className="flex gap-2.5 text-[13.5px] leading-[22px] text-ink-soft">
       <Icon
         size={14}
         strokeWidth={1.8}
         aria-hidden="true"
-        className="text-muted mt-[4px] shrink-0"
+        className="mt-[4px] shrink-0 text-muted"
       />
       <span className="min-w-0">
         {label}: <span className="text-ink">{children}</span>

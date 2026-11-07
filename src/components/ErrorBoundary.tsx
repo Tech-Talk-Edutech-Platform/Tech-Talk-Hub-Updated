@@ -35,7 +35,7 @@ export default class ErrorBoundary extends Component<
             {isDevelopment ? <Bug size={28} /> : <AlertTriangle size={28} />}
           </div>
 
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-rose-300">
+          <p className="text-xs font-bold tracking-[0.22em] text-rose-300 uppercase">
             {isDevelopment ? 'Development error' : 'Unexpected error'}
           </p>
           <h1 className="mt-3 text-2xl font-black sm:text-3xl">
@@ -50,10 +50,10 @@ export default class ErrorBoundary extends Component<
           {isDevelopment && (
             <div className="mt-7 space-y-4">
               <div className="rounded-xl border border-rose-400/20 bg-black/30 p-4">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-rose-200">
+                <h2 className="text-xs font-bold tracking-wider text-rose-200 uppercase">
                   {error.name}
                 </h2>
-                <pre className="mt-2 overflow-auto whitespace-pre-wrap wrap-break-word text-sm text-rose-100">
+                <pre className="mt-2 overflow-auto text-sm wrap-break-word whitespace-pre-wrap text-rose-100">
                   {error.message}
                 </pre>
               </div>
@@ -62,7 +62,7 @@ export default class ErrorBoundary extends Component<
                   <summary className="cursor-pointer text-sm font-semibold text-slate-200">
                     JavaScript stack trace
                   </summary>
-                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap wrap-break-word text-xs leading-5 text-slate-400">
+                  <pre className="mt-3 max-h-64 overflow-auto text-xs leading-5 wrap-break-word whitespace-pre-wrap text-slate-400">
                     {error.stack}
                   </pre>
                 </details>
@@ -72,7 +72,7 @@ export default class ErrorBoundary extends Component<
                   <summary className="cursor-pointer text-sm font-semibold text-slate-200">
                     React component stack
                   </summary>
-                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap wrap-break-word text-xs leading-5 text-slate-400">
+                  <pre className="mt-3 max-h-64 overflow-auto text-xs leading-5 wrap-break-word whitespace-pre-wrap text-slate-400">
                     {componentStack}
                   </pre>
                 </details>
@@ -84,13 +84,13 @@ export default class ErrorBoundary extends Component<
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-400 focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-hidden"
             >
               <RefreshCw size={16} /> Try again
             </button>
             <a
               href="/"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/5 focus:outline-hidden focus:ring-2 focus:ring-slate-300"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/5 focus:ring-2 focus:ring-slate-300 focus:outline-hidden"
             >
               <ArrowLeft size={16} /> Go to home
             </a>

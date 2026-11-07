@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import type { ReactNode } from 'react'
 
 import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import {
@@ -15,6 +15,13 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
+
+import {
+  calculateReadingTime,
+  createHeadingId,
+  extractHeadings,
+  getNodeText,
+} from '../../../lib/blog'
 
 interface PreviewArticle {
   title: string
@@ -30,70 +37,6 @@ interface BlogArticlePreviewProps {
   onClose: () => void
   onPublish?: () => unknown
   publishing?: boolean
-}
-
-function countWords(content = '') {
-  const text = content
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/[#>*_`~-]/g, '')
-    .trim()
-
-  return text.split(/\s+/).filter(Boolean).length
-}
-
-function getReadingTime(content = '') {
-  return Math.max(1, Math.ceil(countWords(content) / 220))
-}
-
-function createHeadingId(value = '') {
-  return String(value)
-    .toLowerCase()
-    .trim()
-    .replace(/['’]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-function getText(value: ReactNode): string {
-  if (typeof value === 'string') {
-    return value
-  }
-
-  if (typeof value === 'number') {
-    return String(value)
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(getText).join('')
-  }
-
-  if (value?.props?.children) {
-    return getText(value.props.children)
-  }
-
-  return ''
-}
-
-function extractHeadings(content = '') {
-  return content
-    .split('\n')
-    .map((line) => {
-      const match = line.match(/^##\s+(.+)$/)
-
-      if (!match) {
-        return null
-      }
-
-      const title = match[1].trim()
-
-      return {
-        title,
-
-        id: createHeadingId(title),
-      }
-    })
-    .filter(Boolean)
 }
 
 function formatDate(value: string | null) {
@@ -123,7 +66,7 @@ function PreviewArticleImage({ src, alt }: { src?: string; alt?: string }) {
       </div>
 
       {alt && (
-        <figcaption className="mt-3 text-center text-sm italic text-slate-400">
+        <figcaption className="mt-3 text-center text-sm text-slate-400 italic">
           {alt}
         </figcaption>
       )}
@@ -131,196 +74,194 @@ function PreviewArticleImage({ src, alt }: { src?: string; alt?: string }) {
   )
 }
 
+const PREVIEW_COMPONENTS: Components = {
+  h1({ children }) {
+    return (
+      <h2
+        id={createHeadingId(getNodeText(children))}
+        className="mt-14 mb-5 scroll-mt-28 text-3xl leading-tight font-black tracking-tight text-[#2947C7] sm:text-4xl"
+      >
+        {children}
+      </h2>
+    )
+  },
+
+  h2({ children }) {
+    return (
+      <h2
+        id={createHeadingId(getNodeText(children))}
+        className="mt-14 mb-5 scroll-mt-28 text-2xl leading-tight font-black tracking-tight text-[#2947C7] sm:mt-16 sm:text-3xl"
+      >
+        {children}
+      </h2>
+    )
+  },
+
+  h3({ children }) {
+    return (
+      <h3
+        id={createHeadingId(getNodeText(children))}
+        className="mt-10 mb-4 scroll-mt-28 text-xl leading-snug font-extrabold text-[#172554] sm:text-2xl"
+      >
+        {children}
+      </h3>
+    )
+  },
+
+  h4({ children }) {
+    return (
+      <h4 className="mt-8 mb-3 text-lg font-bold text-[#172554]">{children}</h4>
+    )
+  },
+
+  p({ children, node }) {
+    // Images render as <figure>, which can't sit inside a <p>.
+    const containsImage =
+      node?.children.some(
+        (child) => child.type === 'element' && child.tagName === 'img',
+      ) ?? false
+
+    if (containsImage) {
+      return children
+    }
+
+    return (
+      <p className="my-5 text-base leading-[1.95] text-slate-600 sm:text-[17px]">
+        {children}
+      </p>
+    )
+  },
+
+  strong({ children }) {
+    return <strong className="font-extrabold text-[#172554]">{children}</strong>
+  },
+
+  em({ children }) {
+    return <em className="text-slate-700">{children}</em>
+  },
+
+  ul({ children }) {
+    return (
+      <ul className="my-7 list-disc space-y-3 pl-6 marker:text-[#FF3F7F]">
+        {children}
+      </ul>
+    )
+  },
+
+  ol({ children }) {
+    return (
+      <ol className="my-7 list-decimal space-y-3 pl-6 marker:font-bold marker:text-[#FF3F7F]">
+        {children}
+      </ol>
+    )
+  },
+
+  li({ children }) {
+    return (
+      <li className="pl-2 text-base leading-8 text-slate-600 sm:text-[17px] [&_p]:my-0">
+        {children}
+      </li>
+    )
+  },
+
+  blockquote({ children }) {
+    return (
+      <blockquote className="my-10 rounded-r-[1.75rem] border-l-[5px] border-[#FF3F7F] bg-linear-to-r from-[#FFF5F8] to-[#FBF8FF] px-6 py-5 sm:px-8">
+        <div className="text-lg leading-8 font-semibold text-[#2947C7] italic [&_p]:my-1 [&_p]:text-[#2947C7]">
+          {children}
+        </div>
+      </blockquote>
+    )
+  },
+
+  a({ href, children }) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="font-bold text-[#FF3F7F] underline decoration-pink-200 underline-offset-4 transition hover:text-[#E92C70]"
+      >
+        {children}
+      </a>
+    )
+  },
+
+  img({ src, alt }) {
+    return (
+      <PreviewArticleImage
+        src={typeof src === 'string' ? src : undefined}
+        alt={alt}
+      />
+    )
+  },
+
+  hr() {
+    return <hr className="my-12 border-slate-200" />
+  },
+
+  table({ children }) {
+    return (
+      <div className="my-8 overflow-x-auto rounded-2xl border border-slate-200">
+        <table className="min-w-full border-collapse text-left text-sm">
+          {children}
+        </table>
+      </div>
+    )
+  },
+
+  thead({ children }) {
+    return <thead className="bg-[#F8F5FF] text-[#2947C7]">{children}</thead>
+  },
+
+  th({ children }) {
+    return <th className="px-5 py-4 font-black">{children}</th>
+  },
+
+  td({ children }) {
+    return (
+      <td className="border-t border-slate-100 px-5 py-4 text-slate-600">
+        {children}
+      </td>
+    )
+  },
+
+  pre({ children }) {
+    return (
+      <pre className="my-8 overflow-x-auto rounded-2xl bg-[#172554] p-5 text-sm leading-7 text-white">
+        {children}
+      </pre>
+    )
+  },
+
+  code({ children, className, node: _node, ...props }) {
+    // Fenced blocks carry a language class; inline code doesn't.
+    if (className) {
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      )
+    }
+
+    return (
+      <code
+        className="rounded-md bg-purple-50 px-1.5 py-0.5 text-[0.9em] font-semibold text-[#7C3AED]"
+        {...props}
+      >
+        {children}
+      </code>
+    )
+  },
+}
+
+const PREVIEW_REMARK_PLUGINS = [remarkGfm]
+
 function PreviewArticleContent({ content }: { content: string }) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        h1({ children }) {
-          const title = getText(children)
-
-          return (
-            <h2
-              id={createHeadingId(title)}
-              className="mb-5 mt-14 scroll-mt-28 text-3xl font-black leading-tight tracking-tight text-[#2947C7] sm:text-4xl"
-            >
-              {children}
-            </h2>
-          )
-        },
-
-        h2({ children }) {
-          const title = getText(children)
-
-          return (
-            <h2
-              id={createHeadingId(title)}
-              className="mb-5 mt-14 scroll-mt-28 text-2xl font-black leading-tight tracking-tight text-[#2947C7] sm:mt-16 sm:text-3xl"
-            >
-              {children}
-            </h2>
-          )
-        },
-
-        h3({ children }) {
-          const title = getText(children)
-
-          return (
-            <h3
-              id={createHeadingId(title)}
-              className="mb-4 mt-10 scroll-mt-28 text-xl font-extrabold leading-snug text-[#172554] sm:text-2xl"
-            >
-              {children}
-            </h3>
-          )
-        },
-
-        h4({ children }) {
-          return (
-            <h4 className="mb-3 mt-8 text-lg font-bold text-[#172554]">
-              {children}
-            </h4>
-          )
-        },
-
-        p({ children, node }) {
-          const containsImage = node?.children?.some(
-            (child: { tagName?: string }) => child.tagName === 'img',
-          )
-
-          if (containsImage) {
-            return <>{children}</>
-          }
-
-          return (
-            <p className="my-5 text-base leading-[1.95] text-slate-600 sm:text-[17px]">
-              {children}
-            </p>
-          )
-        },
-
-        strong({ children }) {
-          return (
-            <strong className="font-extrabold text-[#172554]">
-              {children}
-            </strong>
-          )
-        },
-
-        em({ children }) {
-          return <em className="text-slate-700">{children}</em>
-        },
-
-        ul({ children }) {
-          return (
-            <ul className="my-7 list-disc space-y-3 pl-6 marker:text-[#FF3F7F]">
-              {children}
-            </ul>
-          )
-        },
-
-        ol({ children }) {
-          return (
-            <ol className="my-7 list-decimal space-y-3 pl-6 marker:font-bold marker:text-[#FF3F7F]">
-              {children}
-            </ol>
-          )
-        },
-
-        li({ children }) {
-          return (
-            <li className="pl-2 text-base leading-8 text-slate-600 sm:text-[17px] [&_p]:my-0">
-              {children}
-            </li>
-          )
-        },
-
-        blockquote({ children }) {
-          return (
-            <blockquote className="my-10 rounded-r-[1.75rem] border-l-[5px] border-[#FF3F7F] bg-linear-to-r from-[#FFF5F8] to-[#FBF8FF] px-6 py-5 sm:px-8">
-              <div className="text-lg font-semibold italic leading-8 text-[#2947C7] [&_p]:my-1 [&_p]:text-[#2947C7]">
-                {children}
-              </div>
-            </blockquote>
-          )
-        },
-
-        a({ href, children }) {
-          return (
-            <a
-              href={href}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="font-bold text-[#FF3F7F] underline decoration-pink-200 underline-offset-4 transition hover:text-[#E92C70]"
-            >
-              {children}
-            </a>
-          )
-        },
-
-        img({ src, alt }) {
-          return <PreviewArticleImage src={src} alt={alt} />
-        },
-
-        hr() {
-          return <hr className="my-12 border-slate-200" />
-        },
-
-        table({ children }) {
-          return (
-            <div className="my-8 overflow-x-auto rounded-2xl border border-slate-200">
-              <table className="min-w-full border-collapse text-left text-sm">
-                {children}
-              </table>
-            </div>
-          )
-        },
-
-        thead({ children }) {
-          return (
-            <thead className="bg-[#F8F5FF] text-[#2947C7]">{children}</thead>
-          )
-        },
-
-        th({ children }) {
-          return <th className="px-5 py-4 font-black">{children}</th>
-        },
-
-        td({ children }) {
-          return (
-            <td className="border-t border-slate-100 px-5 py-4 text-slate-600">
-              {children}
-            </td>
-          )
-        },
-
-        pre({ children }) {
-          return (
-            <pre className="my-8 overflow-x-auto rounded-2xl bg-[#172554] p-5 text-sm leading-7 text-white">
-              {children}
-            </pre>
-          )
-        },
-
-        code({ children, className, ...props }) {
-          if (className) {
-            return (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            )
-          }
-
-          return (
-            <code
-              className="rounded-md bg-purple-50 px-1.5 py-0.5 text-[0.9em] font-semibold text-[#7C3AED]"
-              {...props}
-            >
-              {children}
-            </code>
-          )
-        },
-      }}
+      remarkPlugins={PREVIEW_REMARK_PLUGINS}
+      components={PREVIEW_COMPONENTS}
     >
       {content || ''}
     </ReactMarkdown>
@@ -334,32 +275,28 @@ export default function BlogArticlePreview({
   publishing = false,
 }: BlogArticlePreviewProps) {
   const headings = useMemo(
-    () => extractHeadings(article?.content || ''),
+    () => extractHeadings(article.content || ''),
 
-    [article?.content],
+    [article.content],
   )
 
   const readingTime = useMemo(
-    () => getReadingTime(article?.content || ''),
+    () => calculateReadingTime(article.content || ''),
 
-    [article?.content],
+    [article.content],
   )
 
-  if (!article) {
-    return null
-  }
-
   return (
-    <div
-      role="dialog"
+    <dialog
+      open
       aria-modal="true"
       aria-label="Article preview"
-      className="fixed inset-0 z-100 overflow-y-auto bg-white"
+      className="fixed inset-0 z-100 m-0 h-full max-h-none w-full max-w-none overflow-y-auto border-0 bg-white p-0"
     >
       <div className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-600">
+            <p className="text-xs font-black tracking-[0.16em] text-purple-600 uppercase">
               Article Preview
             </p>
 
@@ -394,19 +331,19 @@ export default function BlogArticlePreview({
       </div>
 
       <main className="min-h-screen bg-white text-[#172554]">
-        <header className="relative overflow-hidden bg-linear-to-br from-white via-[#FBF9FF] to-[#F0E8FF] px-6 pb-20 pt-16 lg:px-8 lg:pb-24">
-          <div className="pointer-events-none absolute -left-32 top-12 h-80 w-80 rounded-full bg-[#9B6CFF]/10 blur-[100px]" />
+        <header className="relative overflow-hidden bg-linear-to-br from-white via-[#FBF9FF] to-[#F0E8FF] px-6 pt-16 pb-20 lg:px-8 lg:pb-24">
+          <div className="pointer-events-none absolute top-12 -left-32 h-80 w-80 rounded-full bg-[#9B6CFF]/10 blur-[100px]" />
 
-          <div className="pointer-events-none absolute -right-32 top-0 h-96 w-96 rounded-full bg-[#FF3F7F]/10 blur-[110px]" />
+          <div className="pointer-events-none absolute top-0 -right-32 h-96 w-96 rounded-full bg-[#FF3F7F]/10 blur-[110px]" />
 
           <div className="relative mx-auto max-w-5xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#FF3F7F]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-4 py-2 text-xs font-black tracking-[0.16em] text-[#FF3F7F] uppercase">
               <Sparkles size={14} />
 
               {article.category || 'Tech Talk Hub'}
             </span>
 
-            <h1 className="mt-6 max-w-4xl text-4xl font-black leading-[1.08] tracking-tight text-[#2947C7] sm:text-5xl lg:text-6xl">
+            <h1 className="mt-6 max-w-4xl text-4xl leading-[1.08] font-black tracking-tight text-[#2947C7] sm:text-5xl lg:text-6xl">
               {article.title || 'Untitled article'}
             </h1>
 
@@ -454,15 +391,15 @@ export default function BlogArticlePreview({
               <div className="sticky top-28 space-y-8">
                 {headings.length > 0 && (
                   <div className="rounded-[1.75rem] border border-purple-100 bg-[#FCFAFF] p-5">
-                    <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#2947C7]">
+                    <p className="flex items-center gap-2 text-xs font-black tracking-[0.14em] text-[#2947C7] uppercase">
                       <List size={16} />
                       In this article
                     </p>
 
                     <nav className="mt-5 space-y-3">
-                      {headings.map((heading, index) => (
+                      {headings.map((heading) => (
                         <a
-                          key={`${heading.id}-${index}`}
+                          key={heading.key}
                           href={`#${heading.id}`}
                           className="block border-l-2 border-transparent pl-3 text-sm leading-6 text-slate-500 transition hover:border-[#FF3F7F] hover:text-[#2947C7]"
                         >
@@ -474,11 +411,11 @@ export default function BlogArticlePreview({
                 )}
 
                 <div className="rounded-[1.75rem] bg-linear-to-br from-[#2947C7] to-[#7C3AED] p-5 text-white">
-                  <p className="text-xs font-black uppercase tracking-[0.15em] text-white/70">
+                  <p className="text-xs font-black tracking-[0.15em] text-white/70 uppercase">
                     Tech Talk Hub
                   </p>
 
-                  <h3 className="mt-3 text-lg font-black leading-snug">
+                  <h3 className="mt-3 text-lg leading-snug font-black">
                     Help your child start coding.
                   </h3>
 
@@ -505,9 +442,9 @@ export default function BlogArticlePreview({
                   </summary>
 
                   <nav className="mt-4 space-y-3">
-                    {headings.map((heading, index) => (
+                    {headings.map((heading) => (
                       <a
-                        key={`${heading.id}-${index}`}
+                        key={heading.key}
                         href={`#${heading.id}`}
                         className="block text-sm leading-6 text-slate-600 hover:text-[#FF3F7F]"
                       >
@@ -533,11 +470,11 @@ export default function BlogArticlePreview({
                   </span>
 
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.14em] text-[#FF3F7F]">
+                    <p className="text-xs font-black tracking-[0.14em] text-[#FF3F7F] uppercase">
                       Start their journey
                     </p>
 
-                    <h2 className="mt-2 text-2xl font-black leading-tight text-[#2947C7]">
+                    <h2 className="mt-2 text-2xl leading-tight font-black text-[#2947C7]">
                       Help your child become a creator of technology.
                     </h2>
 
@@ -574,6 +511,6 @@ export default function BlogArticlePreview({
           </div>
         </section>
       </main>
-    </div>
+    </dialog>
   )
 }

@@ -44,7 +44,7 @@ export function LeadMagnetForm({ onClose }: LeadMagnetFormProps) {
 
   return (
     <form
-      onSubmit={handleSubmit(submit)}
+      onSubmit={(event) => void handleSubmit(submit)(event)}
       noValidate
       className="flex flex-col gap-3"
     >

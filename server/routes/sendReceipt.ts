@@ -37,28 +37,26 @@ interface ReceiptRequestBody {
   receiptNumber: string
 }
 
-router.post(
-  '/api/receipts',
-  async (
-    req: Request<Record<string, string>, unknown, ReceiptRequestBody>,
-    res: Response,
-  ) => {
-    try {
-      const {
-        studentName,
-        parentEmail,
-        planName,
-        billingCycle,
-        currency,
-        amountPaid,
-        gatewayMethod,
-        transactionId,
-        receiptNumber,
-      } = req.body
+async function sendReceiptEmail(
+  req: Request<Record<string, string>, unknown, ReceiptRequestBody>,
+  res: Response,
+) {
+  try {
+    const {
+      studentName,
+      parentEmail,
+      planName,
+      billingCycle,
+      currency,
+      amountPaid,
+      gatewayMethod,
+      transactionId,
+      receiptNumber,
+    } = req.body
 
-      const verificationUrl = `${BASE_URL}/receipt/${encodeURIComponent(receiptNumber)}`
+    const verificationUrl = `${BASE_URL}/receipt/${encodeURIComponent(receiptNumber)}`
 
-      const html = `
+    const html = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:14px;background:#ffffff;">
 
       <table style="width:100%;border-collapse:collapse;margin-bottom:28px;">
@@ -126,92 +124,99 @@ router.post(
     </div>
     `
 
-      const data = await resend.emails.send({
-        from: 'Tech Talk Hub <admin@techtalk-hub.com>',
-        to: [parentEmail],
-        subject: `Receipt #${receiptNumber} - Payment Confirmed`,
-        html,
-      })
+    const data = await resend.emails.send({
+      from: 'Tech Talk Hub <admin@techtalk-hub.com>',
+      to: [parentEmail],
+      subject: `Receipt #${receiptNumber} - Payment Confirmed`,
+      html,
+    })
 
-      return res.json({ success: true, data })
-    } catch (err) {
-      console.error('Email API Processing Error:', err)
-      return res
-        .status(500)
-        .json({ success: false, error: 'Internal Server Error' })
-    }
-  },
-)
+    return res.json({ success: true, data })
+  } catch (err) {
+    console.error('Email API Processing Error:', err)
+    return res
+      .status(500)
+      .json({ success: false, error: 'Internal Server Error' })
+  }
+}
+
+router.post('/api/receipts', (req, res) => {
+  void sendReceiptEmail(req, res)
+})
 
 // =========================================================================
 // 2. WEB ROUTE: THE LIVE PAGE ACCESSED BY SCANNING THE QR CODE (SUPABASE)
 // =========================================================================
-router.get(
-  '/receipt/:receiptNumber',
-  async (req: Request<{ receiptNumber: string }>, res: Response) => {
-    try {
-      const { receiptNumber } = req.params
+async function showReceipt(
+  req: Request<{ receiptNumber: string }>,
+  res: Response,
+) {
+  try {
+    const { receiptNumber } = req.params
 
-      // Fetch live record from Supabase matching the receipt number
-      const { data, error } = await supabase
-        .from('receipts') // Rename to match your table name (e.g., 'payments' or 'receipts')
-        .select('*')
-        .eq('receipt_number', receiptNumber) // Ensure this column name matches your schema
-        .single()
+    // Fetch live record from Supabase matching the receipt number
+    const { data, error } = await supabase
+      .from('receipts') // Rename to match your table name (e.g., 'payments' or 'receipts')
+      .select('*')
+      .eq('receipt_number', receiptNumber) // Ensure this column name matches your schema
+      .single()
 
-      // If receipt doesn't exist or a database error occurs, block the UI cleanly
-      const payment: {
-        receipt_number: string
-        student_name: string
-        plan_name: string
-        billing_cycle: string
-        currency: string | null
-        amount_paid: number | string
-        gateway_method: string
-        transaction_id: string
-      } | null = data
+    // If receipt doesn't exist or a database error occurs, block the UI cleanly
+    const payment: {
+      receipt_number: string
+      student_name: string
+      plan_name: string
+      billing_cycle: string
+      currency: string | null
+      amount_paid: number | string
+      gateway_method: string
+      transaction_id: string
+    } | null = data
 
-      if (error || !payment) {
-        return res.status(404).send(`
+    if (error || !payment) {
+      return res.status(404).send(`
         <div style="font-family:sans-serif; text-align:center; padding:50px; color:#374151;">
           <h2>Invalid Receipt Reference</h2>
           <p>This receipt record could not be verified or found in our secure ledger database.</p>
         </div>
       `)
-      }
-
-      // Format verification timestamp dynamically using East Africa Time (Nairobi)
-      const verifiedAtStr = new Date().toLocaleDateString('en-KE', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Africa/Nairobi',
-      })
-
-      // Remap Supabase database columns down into the UI template generator
-      const templateData = {
-        receiptNumber: payment.receipt_number,
-        studentName: payment.student_name,
-        planName: payment.plan_name,
-        billingCycle: payment.billing_cycle,
-        currency: payment.currency || 'KES',
-        amountPaid: payment.amount_paid,
-        gatewayMethod: payment.gateway_method,
-        transactionId: payment.transaction_id,
-        verifiedAt: verifiedAtStr,
-      }
-
-      return res.send(generateVerificationPage(templateData))
-    } catch (err) {
-      console.error('QR Verification System Failure:', err)
-      return res
-        .status(500)
-        .send('Verification system offline. Please try again later.')
     }
-  },
-)
+
+    // Format verification timestamp dynamically using East Africa Time (Nairobi)
+    const verifiedAtStr = new Date().toLocaleDateString('en-KE', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Africa/Nairobi',
+    })
+
+    // Remap Supabase database columns down into the UI template generator
+    const templateData = {
+      receiptNumber: payment.receipt_number,
+      studentName: payment.student_name,
+      planName: payment.plan_name,
+      billingCycle: payment.billing_cycle,
+      currency: payment.currency || 'KES',
+      amountPaid: payment.amount_paid,
+      gatewayMethod: payment.gateway_method,
+      transactionId: payment.transaction_id,
+      verifiedAt: verifiedAtStr,
+    }
+
+    return res.send(generateVerificationPage(templateData))
+  } catch (err) {
+    console.error('QR Verification System Failure:', err)
+    return res
+      .status(500)
+      .send('Verification system offline. Please try again later.')
+  }
+}
+
+router.get('/receipt/:receiptNumber', (req, res) => {
+  void showReceipt(req, res)
+})
 
 // =========================================================================
 // 3. UI GENERATOR: COMPILES SMARTPHONE OPTIMIZED HTML VIEW

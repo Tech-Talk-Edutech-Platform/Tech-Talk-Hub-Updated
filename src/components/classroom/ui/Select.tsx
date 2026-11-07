@@ -78,7 +78,7 @@ export function Select({
 
   return (
     <div ref={root} className="relative">
-      <div id={labelId} className="text-ink mb-2 text-[15px] font-medium">
+      <div id={labelId} className="mb-2 text-[15px] font-medium text-ink">
         {label}
       </div>
       <button
@@ -91,7 +91,7 @@ export function Select({
         aria-activedescendant={open ? `${listId}-${active}` : undefined}
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKeyDown}
-        className={`flex h-10 w-full items-center rounded-[4px] border bg-white pl-2.5 text-left text-[15px] outline-none transition-colors duration-150 ${
+        className={`flex h-10 w-full items-center rounded-[4px] border bg-white pl-2.5 text-left text-[15px] transition-colors duration-150 outline-none ${
           open
             ? 'border-brand'
             : 'border-line-strong hover:border-faint focus-visible:border-brand'
@@ -102,8 +102,8 @@ export function Select({
         >
           {selected ? selected.label : placeholder}
         </span>
-        <span aria-hidden="true" className="bg-line-strong h-5 w-px" />
-        <span className="text-ink-soft grid w-9 place-items-center">
+        <span aria-hidden="true" className="h-5 w-px bg-line-strong" />
+        <span className="grid w-9 place-items-center text-ink-soft">
           <ChevronDown size={18} strokeWidth={2} />
         </span>
       </button>
@@ -113,7 +113,7 @@ export function Select({
           // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- the combobox's popup listbox (WAI-ARIA pattern)
           role="listbox"
           aria-labelledby={labelId}
-          className="pop absolute left-0 right-0 top-full z-10 mt-1.5 max-h-[232px] origin-top overflow-y-auto rounded-[4px] bg-white py-1 shadow-[0_8px_28px_-6px_rgb(0_0_0/0.22),0_0_0_1px_rgb(0_0_0/0.06)]"
+          className="pop absolute top-full right-0 left-0 z-10 mt-1.5 max-h-[232px] origin-top overflow-y-auto rounded-[4px] bg-white py-1 shadow-[0_8px_28px_-6px_rgb(0_0_0/0.22),0_0_0_1px_rgb(0_0_0/0.06)]"
         >
           {options.map((option, i) => (
             // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard selection runs through the combobox (aria-activedescendant)
@@ -125,7 +125,7 @@ export function Select({
               aria-selected={option.value === value}
               onPointerEnter={() => setActive(i)}
               onClick={() => choose(option)}
-              className={`text-ink flex h-10 cursor-pointer items-center px-3 text-[15px] ${
+              className={`flex h-10 cursor-pointer items-center px-3 text-[15px] text-ink ${
                 i === active ? 'bg-brand-soft' : ''
               } ${option.value === value ? 'font-medium' : ''}`}
             >

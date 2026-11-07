@@ -1,9 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
+import type { EventClickArg } from '@fullcalendar/core'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../supabase'
+import { queryKeys } from '../../lib/queryClient'
+import { useNow } from '../../hooks/useNow'
+import type { Tables, TablesUpdate } from '../../types/database'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -28,60 +33,41 @@ import '../../../src/fullcalendar.css'
 import type { ReactNode, MouseEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
-import { ADMIN_ROLES, isAdminRole } from '../../types/roles'
+import { isAdminRole } from '../../types/roles'
 
-interface ScheduleRow {
-  id: string
-  role?: string | null
-  is_active?: boolean | null
-  email?: string | null
-  name?: string | null
-  first_name?: string | null
-  last_name?: string | null
-  title?: string | null
-  status?: string | null
-  action?: string | null
-  event_id?: string | null
-  calendar_event_id?: string | null
-  class_id?: string | null
-  student_id?: string | null
-  tutor_id?: string | null
-  assigned_tutor_id?: string | null
-  full_name?: string | null
-  student_name?: string | null
-  parent_name?: string | null
-  phone?: string | null
-  start_time?: string | null
-  end_time?: string | null
-  requested_start?: string | null
-  started_at?: string | null
-  ended_at?: string | null
-  booking_status?: string | null
-  session_status?: string | null
-  class_type?: string | null
-  merged_class?: boolean | null
-  meet_link?: string | null
-  personal_meet_link?: string | null
-  file_url?: string | null
-  class_material_url?: string | null
-  recording_url?: string | null
-  resource_type?: string | null
-  tutor_response?: string | null
-  [field: string]: string | number | boolean | null | undefined
+type AppUser = Tables<'users'>
+type Lead = Tables<'leads'>
+type CalendarEvent = Tables<'calendar_events'>
+type Attendance = Tables<'event_attendance'>
+type BookingRequest = Tables<'class_booking_requests'>
+type ClassResource = Tables<'class_resources'>
+type SessionStatus = 'ongoing' | 'completed'
+type ResourceType = 'material' | 'recording'
+
+interface ScheduleSnapshot {
+  authUser: User
+  profile: AppUser
+  users: AppUser[]
+  leads: Lead[]
+  calendarEvents: CalendarEvent[]
+  attendance: Attendance[]
+  bookingRequests: BookingRequest[]
+  resources: ClassResource[]
 }
 
 const STORAGE_BUCKET = 'class-resources'
 const BREAK_MINUTES = 15
 
-const displayName = (u: ScheduleRow | null | undefined): string => {
+const NO_USERS: AppUser[] = []
+const NO_LEADS: Lead[] = []
+const NO_EVENTS: CalendarEvent[] = []
+const NO_ATTENDANCE: Attendance[] = []
+const NO_REQUESTS: BookingRequest[] = []
+const NO_RESOURCES: ClassResource[] = []
+
+const displayName = (u: AppUser | null | undefined): string => {
   if (!u) return 'Unknown user'
-  return (
-    u.full_name ||
-    u.name ||
-    [u.first_name, u.last_name].filter(Boolean).join(' ') ||
-    u.email ||
-    'Unnamed user'
-  )
+  return u.full_name || u.email || 'Unnamed user'
 }
 const prettyDate = (value: string | null | undefined): string =>
   value
@@ -108,11 +94,92 @@ const getErrorMessage = (error: unknown): string => {
     return error.details
   return 'Something went wrong. Please try again.'
 }
-const isFreeSlot = (event: ScheduleRow | null | undefined): boolean =>
+const isFreeSlot = (event: CalendarEvent | null | undefined): boolean =>
   event?.title === 'Free Slot' &&
   !event?.class_id &&
   event?.booking_status !== 'cancelled'
 const isAdmin = isAdminRole
+const startTimeOf = (e: CalendarEvent) => new Date(e.start_time).getTime()
+
+/** Loads everything the schedule shows; `null` when nobody is signed in. */
+async function loadSchedule(): Promise<ScheduleSnapshot | null> {
+  try {
+    const { data: authData, error: authError } = await supabase.auth.getUser()
+    if (authError) throw authError
+    if (!authData?.user) {
+      toast.error('Please sign in to view the schedule.')
+      return null
+    }
+    const { data: myProfile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', authData.user.id)
+      .maybeSingle()
+    if (profileError) throw profileError
+    if (!myProfile)
+      throw new Error('Your user profile was not found in the users table.')
+
+    const [eventsRes, attendanceRes, requestsRes, usersRes] = await Promise.all(
+      [
+        supabase
+          .from('calendar_events')
+          .select('*')
+          .order('start_time', { ascending: true }),
+        supabase.from('event_attendance').select('*'),
+        supabase
+          .from('class_booking_requests')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase.from('users').select('*'),
+      ],
+    )
+    if (eventsRes.error) throw eventsRes.error
+    if (attendanceRes.error) throw attendanceRes.error
+    if (
+      requestsRes.error &&
+      !/class_booking_requests|does not exist/i.test(
+        requestsRes.error.message || '',
+      )
+    )
+      throw requestsRes.error
+    if (usersRes.error) throw usersRes.error
+
+    let leads: Lead[] = []
+    if (isAdminRole(myProfile.role)) {
+      const { data: leadRows, error: leadsError } = await supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (leadsError) throw leadsError
+      leads = leadRows
+    }
+
+    const { data: resourceRows, error: resourceError } = await supabase
+      .from('class_resources')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (
+      resourceError &&
+      !/class_resources|does not exist/i.test(resourceError.message || '')
+    )
+      throw resourceError
+
+    return {
+      authUser: authData.user,
+      profile: myProfile,
+      users: usersRes.data,
+      leads,
+      calendarEvents: eventsRes.data,
+      attendance: attendanceRes.data,
+      bookingRequests: requestsRes.data ?? [],
+      resources: resourceRows ?? [],
+    }
+  } catch (error) {
+    console.error('GlobalScheduleView load error:', error)
+    toast.error(`Could not load schedule: ${getErrorMessage(error)}`)
+    throw error
+  }
+}
 
 interface PanelProps {
   title: string
@@ -144,11 +211,13 @@ interface ModalProps {
 
 function Modal({ title, onClose, children }: ModalProps) {
   return (
+    // `presentation`: the backdrop only catches clicks outside the dialog.
     <div
+      role="presentation"
       className="fixed inset-0 z-1000 flex items-center justify-center bg-slate-950/60 p-4"
-      onMouseDown={(e: MouseEvent<HTMLDivElement>) =>
-        e.target === e.currentTarget && onClose()
-      }
+      onMouseDown={(e: MouseEvent<HTMLDivElement>) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900">
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -156,6 +225,7 @@ function Modal({ title, onClose, children }: ModalProps) {
             {title}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
             aria-label="Close"
@@ -171,18 +241,10 @@ function Modal({ title, onClose, children }: ModalProps) {
 
 export default function GlobalScheduleView() {
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
+  const now = useNow(60_000)
   const [saving, setSaving] = useState(false)
-  const [authUser, setAuthUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<ScheduleRow | null>(null)
-  const [users, setUsers] = useState<ScheduleRow[]>([])
-  const [leads, setLeads] = useState<ScheduleRow[]>([])
-  const [calendarEvents, setCalendarEvents] = useState<ScheduleRow[]>([])
-  const [attendance, setAttendance] = useState<ScheduleRow[]>([])
-  const [bookingRequests, setBookingRequests] = useState<ScheduleRow[]>([])
-  const [resources, setResources] = useState<ScheduleRow[]>([])
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
-  const [selectedEvent, setSelectedEvent] = useState<ScheduleRow | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [showAvailability, setShowAvailability] = useState(false)
   const [showMeetingLink, setShowMeetingLink] = useState(false)
   const [showMerge, setShowMerge] = useState(false)
@@ -191,9 +253,32 @@ export default function GlobalScheduleView() {
   const [selectedStudentToMerge, setSelectedStudentToMerge] = useState('')
   const [reassignTutorId, setReassignTutorId] = useState('')
   const [responseNote, setResponseNote] = useState('')
-  const [refreshing, setRefreshing] = useState(false)
 
-  const role = profile?.role || ''
+  const scheduleQuery = useQuery({
+    queryKey: queryKeys.schedule.global,
+    queryFn: loadSchedule,
+    // Per-user data under a fixed key: always reload on mount, never reuse it
+    // after the view closes (e.g. for the next person who signs in).
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  })
+  const loading = scheduleQuery.isPending
+  const refreshing = scheduleQuery.isFetching && !scheduleQuery.isPending
+  const snapshot = scheduleQuery.data ?? null
+  const authUser = snapshot?.authUser ?? null
+  const profile = snapshot?.profile ?? null
+  const users = snapshot?.users ?? NO_USERS
+  const leads = snapshot?.leads ?? NO_LEADS
+  const calendarEvents = snapshot?.calendarEvents ?? NO_EVENTS
+  const attendance = snapshot?.attendance ?? NO_ATTENDANCE
+  const bookingRequests = snapshot?.bookingRequests ?? NO_REQUESTS
+  const resources = snapshot?.resources ?? NO_RESOURCES
+  const reload = async () => {
+    await scheduleQuery.refetch()
+  }
+
+  const role = profile?.role ?? null
   const admin = isAdmin(role)
   const tutor = role === 'tutor'
   const student = role === 'student'
@@ -206,99 +291,21 @@ export default function GlobalScheduleView() {
     [users],
   )
   const attendanceByEvent = useMemo(() => {
-    const map: Record<string, ScheduleRow[]> = {}
+    const map: Record<string, Attendance[] | undefined> = {}
     attendance.forEach((row) => {
-      ;(map[row.event_id] ||= []).push(row)
+      if (row.event_id) (map[row.event_id] ||= []).push(row)
     })
     return map
   }, [attendance])
-  const usersById = useMemo(
-    () => Object.fromEntries(users.map((u) => [u.id, u])),
-    [users],
+  const usersById = useMemo(() => {
+    const map = new Map<string, AppUser>()
+    for (const u of users) map.set(u.id, u)
+    return map
+  }, [users])
+  const findUser = useCallback(
+    (id: string | null | undefined) => (id ? usersById.get(id) : undefined),
+    [usersById],
   )
-
-  const loadData = useCallback(async (initial = false) => {
-    if (initial) setLoading(true)
-    else setRefreshing(true)
-    try {
-      const { data: authData, error: authError } = await supabase.auth.getUser()
-      if (authError) throw authError
-      if (!authData?.user) {
-        toast.error('Please sign in to view the schedule.')
-        setLoading(false)
-        setRefreshing(false)
-        return
-      }
-      setAuthUser(authData.user)
-      const { data: myProfile, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authData.user.id)
-        .maybeSingle()
-      if (profileError) throw profileError
-      if (!myProfile)
-        throw new Error('Your user profile was not found in the users table.')
-      setProfile(myProfile)
-
-      const [eventsRes, attendanceRes, requestsRes, usersRes] =
-        await Promise.all([
-          supabase
-            .from('calendar_events')
-            .select('*')
-            .order('start_time', { ascending: true }),
-          supabase.from('event_attendance').select('*'),
-          supabase
-            .from('class_booking_requests')
-            .select('*')
-            .order('created_at', { ascending: false }),
-          supabase.from('users').select('*'),
-        ])
-      if (eventsRes.error) throw eventsRes.error
-      if (attendanceRes.error) throw attendanceRes.error
-      if (
-        requestsRes.error &&
-        !/class_booking_requests|does not exist/i.test(
-          requestsRes.error.message || '',
-        )
-      )
-        throw requestsRes.error
-      if (usersRes.error) throw usersRes.error
-      setCalendarEvents(eventsRes.data || [])
-      setAttendance(attendanceRes.data || [])
-      setBookingRequests(requestsRes.data || [])
-      setUsers(usersRes.data || [])
-
-      if (ADMIN_ROLES.includes(myProfile.role)) {
-        const { data: leadRows, error: leadsError } = await supabase
-          .from('leads')
-          .select('*')
-          .order('created_at', { ascending: false })
-        if (leadsError) throw leadsError
-        setLeads(leadRows || [])
-      } else setLeads([])
-
-      const { data: resourceRows, error: resourceError } = await supabase
-        .from('class_resources')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (
-        resourceError &&
-        !/class_resources|does not exist/i.test(resourceError.message || '')
-      )
-        throw resourceError
-      setResources(resourceRows || [])
-    } catch (error) {
-      console.error('GlobalScheduleView load error:', error)
-      toast.error(`Could not load schedule: ${getErrorMessage(error)}`)
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadData(true)
-  }, [loadData])
 
   // Class recordings/materials are stored in a PRIVATE bucket. Generate short-lived
   // signed URLs only for resources the current user is allowed to read.
@@ -318,8 +325,8 @@ export default function GlobalScheduleView() {
       return () => {
         cancelled = true
       }
-    ;(async () => {
-      const next = {}
+    const signUrls = async () => {
+      const next: Record<string, string> = {}
       await Promise.all(
         [...paths].map(async (path) => {
           const { data, error } = await supabase.storage
@@ -329,20 +336,21 @@ export default function GlobalScheduleView() {
         }),
       )
       if (!cancelled) setSignedUrls((old) => ({ ...old, ...next }))
-    })()
+    }
+    void signUrls()
     return () => {
       cancelled = true
     }
   }, [resources, calendarEvents])
 
-  const resourceHref = (path) => {
+  const resourceHref = (path: string | null) => {
     if (!path) return ''
     if (/^https?:\/\//i.test(path)) return path
     return signedUrls[path] || '#'
   }
 
   const canSeeEvent = useCallback(
-    (event) => {
+    (event: CalendarEvent) => {
       if (admin) return true
       if (event.tutor_id === authUser?.id) return true
       if (
@@ -352,7 +360,7 @@ export default function GlobalScheduleView() {
       if (
         student &&
         isFreeSlot(event) &&
-        new Date(event.start_time) > new Date()
+        new Date(event.start_time).getTime() > now
       )
         return true
       if (
@@ -365,7 +373,7 @@ export default function GlobalScheduleView() {
         return true
       return false
     },
-    [admin, authUser?.id, attendanceByEvent, bookingRequests, student],
+    [admin, authUser?.id, attendanceByEvent, bookingRequests, student, now],
   )
 
   const visibleEvents = useMemo(
@@ -375,7 +383,7 @@ export default function GlobalScheduleView() {
   const fullCalendarEvents = useMemo(
     () =>
       visibleEvents.map((event) => {
-        const tutorName = displayName(usersById[event.tutor_id])
+        const tutorName = displayName(findUser(event.tutor_id))
         const attendees = attendanceByEvent[event.id] || []
         const isFree = isFreeSlot(event)
         const title = isFree
@@ -394,13 +402,12 @@ export default function GlobalScheduleView() {
           backgroundColor: color,
           borderColor: color,
           extendedProps: {
-            raw: event,
             tutorName,
             attendeeCount: attendees.length,
           },
         }
       }),
-    [visibleEvents, usersById, attendanceByEvent],
+    [visibleEvents, findUser, attendanceByEvent],
   )
 
   const unassignedLeads = useMemo(
@@ -419,10 +426,10 @@ export default function GlobalScheduleView() {
       calendarEvents.filter(
         (e) =>
           e.tutor_id === authUser?.id &&
-          new Date(e.start_time) >= new Date() &&
+          new Date(e.start_time).getTime() >= now &&
           e.booking_status !== 'cancelled',
       ),
-    [calendarEvents, authUser?.id],
+    [calendarEvents, authUser?.id, now],
   )
   const myBookedCount = useMemo(
     () => myUpcoming.filter((e) => !isFreeSlot(e)).length,
@@ -433,12 +440,12 @@ export default function GlobalScheduleView() {
     [myUpcoming],
   )
 
-  const runAction = async (fn, successMessage) => {
+  const runAction = async (fn: () => Promise<void>, successMessage: string) => {
     setSaving(true)
     try {
       await fn()
       toast.success(successMessage)
-      await loadData(false)
+      await reload()
     } catch (error) {
       console.error(error)
       toast.error(getErrorMessage(error))
@@ -461,9 +468,9 @@ export default function GlobalScheduleView() {
       setAvailabilityStart('')
     }, 'One-hour availability slot created. A 15-minute break is enforced.')
 
-  const requestBooking = (event) =>
+  const requestBooking = (event: CalendarEvent) =>
     runAction(async () => {
-      if (!student)
+      if (!student || !authUser)
         throw new Error(
           'Only subscribed students can request a class from this calendar.',
         )
@@ -493,7 +500,10 @@ export default function GlobalScheduleView() {
       setSelectedEvent(null)
     }, 'Booking request sent to the tutor.')
 
-  const respondToRequest = (request, decision) =>
+  const respondToRequest = (
+    request: BookingRequest,
+    decision: 'accept' | 'reject',
+  ) =>
     runAction(
       async () => {
         const { error } = await supabase.rpc(
@@ -501,7 +511,7 @@ export default function GlobalScheduleView() {
           {
             p_request_id: request.id,
             p_decision: decision,
-            p_response: responseNote.trim() || null,
+            p_response: responseNote.trim() || undefined,
           },
         )
         if (error) throw error
@@ -513,18 +523,19 @@ export default function GlobalScheduleView() {
         : 'Booking rejected. Admins have been notified.',
     )
 
-  const assignTrial = (lead) =>
+  const assignTrial = (lead: Lead) =>
     runAction(async () => {
       // Pick the earliest future free slot. The slot is converted into a trial event,
       // so it cannot be offered to a second learner at the same time.
+      const currentTime = Date.now()
       let candidates = calendarEvents
-        .filter((e) => isFreeSlot(e) && new Date(e.start_time) > new Date())
-        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+        .filter((e) => isFreeSlot(e) && startTimeOf(e) > currentTime)
+        .toSorted((a, b) => startTimeOf(a) - startTimeOf(b))
       // If the parent selected a specific time, only use a slot at that time.
       // Do not silently move the trial to a different time when the requested slot is unavailable.
       if (lead.class_date && lead.class_time) {
-        const wantedDate = String(lead.class_date).slice(0, 10)
-        const wantedTime = String(lead.class_time).slice(0, 5)
+        const wantedDate = lead.class_date.slice(0, 10)
+        const wantedTime = lead.class_time.slice(0, 5)
         candidates = candidates.filter((e) => {
           const local = new Date(e.start_time)
           const date = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`
@@ -532,12 +543,12 @@ export default function GlobalScheduleView() {
           return date === wantedDate && time === wantedTime
         })
       }
-      if (!candidates.length)
+      const chosen = candidates[0]
+      if (!chosen)
         throw new Error(
           'No tutor slot is available at the requested trial time. The trial remains unassigned at the top of the queue.',
         )
-      const chosen = candidates[0]
-      const studentName = lead.student_name || lead.name || 'Trial student'
+      const studentName = lead.student_name || 'Trial student'
       const { error: eventError } = await supabase
         .from('calendar_events')
         .update({
@@ -650,22 +661,24 @@ export default function GlobalScheduleView() {
       setSelectedEvent(null)
     }, 'Student added to the class.')
 
-  const setSessionStatus = (event, status) =>
+  const setSessionStatus = (event: CalendarEvent, status: SessionStatus) =>
     runAction(
       async () => {
-        if (!event) throw new Error('Select a class first.')
         if (status === 'ongoing' && event.session_status === 'completed')
           throw new Error('Completed classes cannot be restarted.')
-        const update = { session_status: status }
-        if (status === 'ongoing') update.started_at = new Date().toISOString()
-        if (status === 'completed') update.ended_at = new Date().toISOString()
+        const timestamp = new Date().toISOString()
+        const update: TablesUpdate<'calendar_events'> & {
+          session_status: SessionStatus
+        } = { session_status: status }
+        if (status === 'ongoing') update.started_at = timestamp
+        if (status === 'completed') update.ended_at = timestamp
         const { error } = await supabase
           .from('calendar_events')
           .update(update)
           .eq('id', event.id)
         if (error) throw error
         if (event.class_id) {
-          const classUpdate = { status }
+          const classUpdate: TablesUpdate<'classes'> = { status }
           if (status === 'ongoing') classUpdate.started_at = update.started_at
           if (status === 'completed') classUpdate.ended_at = update.ended_at
           const { error: classError } = await supabase
@@ -688,9 +701,8 @@ export default function GlobalScheduleView() {
       const url = meetingLinkDraft.trim()
       if (url && !/^https:\/\//i.test(url))
         throw new Error('Enter a complete HTTPS meeting URL.')
-      const studentId =
-        selectedEvent?.student_id ||
-        (attendanceByEvent[selectedEvent?.id] || [])[0]?.student_id
+      if (!selectedEvent) throw new Error('Select a class first.')
+      const studentId = attendanceByEvent[selectedEvent.id]?.[0]?.student_id
       if (!studentId)
         throw new Error(
           'This event is not linked to a student account. Add the student account to attendance first.',
@@ -714,8 +726,12 @@ export default function GlobalScheduleView() {
       setSelectedEvent(null)
     }, 'Permanent meeting link saved.')
 
-  const uploadResource = async (event, file, resourceType) => {
-    if (!file || !event) return
+  const uploadResource = async (
+    event: CalendarEvent,
+    file: File | undefined,
+    resourceType: ResourceType,
+  ) => {
+    if (!file || !authUser) return
     setSaving(true)
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -760,7 +776,7 @@ export default function GlobalScheduleView() {
           ? 'Recording uploaded.'
           : 'Class material uploaded.',
       )
-      await loadData(false)
+      await reload()
       setSelectedEvent((old) => (old ? { ...old, ...eventPatch } : old))
     } catch (error) {
       console.error(error)
@@ -770,8 +786,9 @@ export default function GlobalScheduleView() {
     }
   }
 
-  const handleEventClick = (info) => {
-    const event = info.event.extendedProps.raw
+  const handleEventClick = (info: EventClickArg) => {
+    const event = calendarEvents.find((e) => e.id === info.event.id)
+    if (!event) return
     setSelectedEvent(event)
     setReassignTutorId(event.tutor_id || '')
     setMeetingLinkDraft(event.meet_link || '')
@@ -794,7 +811,7 @@ export default function GlobalScheduleView() {
   const selectedResources = selectedEvent
     ? resources.filter((r) => r.event_id === selectedEvent.id)
     : []
-  const selectedTutor = selectedEvent ? usersById[selectedEvent.tutor_id] : null
+  const selectedTutor = selectedEvent ? findUser(selectedEvent.tutor_id) : null
   const studentMeetLink = student ? profile?.personal_meet_link : null
 
   if (loading)
@@ -811,7 +828,7 @@ export default function GlobalScheduleView() {
       <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="flex items-start gap-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => void navigate(-1)}
             className="mt-1 rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
             aria-label="Go back"
           >
@@ -828,7 +845,7 @@ export default function GlobalScheduleView() {
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => loadData(false)}
+            onClick={() => void reload()}
             disabled={refreshing}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
           >
@@ -848,7 +865,7 @@ export default function GlobalScheduleView() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
             Upcoming classes
           </p>
           <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">
@@ -856,7 +873,7 @@ export default function GlobalScheduleView() {
               ? calendarEvents.filter(
                   (e) =>
                     !isFreeSlot(e) &&
-                    new Date(e.start_time) > new Date() &&
+                    new Date(e.start_time).getTime() > now &&
                     e.booking_status !== 'cancelled',
                 ).length
               : tutor
@@ -865,12 +882,12 @@ export default function GlobalScheduleView() {
                     (e) =>
                       (attendanceByEvent[e.id] || []).some(
                         (a) => a.student_id === authUser?.id,
-                      ) && new Date(e.start_time) > new Date(),
+                      ) && new Date(e.start_time).getTime() > now,
                   ).length}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
             Tutor availability
           </p>
           <p className="mt-2 text-3xl font-black text-teal-600">
@@ -885,7 +902,7 @@ export default function GlobalScheduleView() {
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
             Pending bookings
           </p>
           <p className="mt-2 text-3xl font-black text-amber-600">
@@ -893,7 +910,7 @@ export default function GlobalScheduleView() {
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
             Unassigned trials
           </p>
           <p className="mt-2 text-3xl font-black text-pink-600">
@@ -908,7 +925,7 @@ export default function GlobalScheduleView() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
-        <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs dark:border-white/10 dark:bg-slate-900 md:p-5">
+        <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs md:p-5 dark:border-white/10 dark:bg-slate-900">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">
               <CalendarDays size={18} className="text-indigo-500" /> Calendar
@@ -963,7 +980,7 @@ export default function GlobalScheduleView() {
                   href={studentMeetLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 break-all text-sm font-bold text-indigo-600 hover:underline"
+                  className="inline-flex items-center gap-2 text-sm font-bold break-all text-indigo-600 hover:underline"
                 >
                   Join Google Meet <ExternalLink size={14} />
                 </a>
@@ -989,7 +1006,7 @@ export default function GlobalScheduleView() {
                     className="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/20 dark:bg-amber-500/10"
                   >
                     <p className="text-sm font-extrabold text-slate-900 dark:text-white">
-                      {displayName(usersById[request.student_id])}
+                      {displayName(findUser(request.student_id))}
                     </p>
                     <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                       {prettyDate(request.requested_start)}
@@ -997,7 +1014,7 @@ export default function GlobalScheduleView() {
                     <div className="mt-3 flex gap-2">
                       <button
                         disabled={saving || (!tutor && !admin)}
-                        onClick={() => respondToRequest(request, 'accept')}
+                        onClick={() => void respondToRequest(request, 'accept')}
                         className="flex-1 rounded-lg bg-teal-600 px-2 py-2 text-xs font-extrabold text-white disabled:opacity-50"
                       >
                         <CheckCircle2 size={13} className="mr-1 inline" />{' '}
@@ -1005,7 +1022,7 @@ export default function GlobalScheduleView() {
                       </button>
                       <button
                         disabled={saving || (!tutor && !admin)}
-                        onClick={() => respondToRequest(request, 'reject')}
+                        onClick={() => void respondToRequest(request, 'reject')}
                         className="flex-1 rounded-lg bg-rose-600 px-2 py-2 text-xs font-extrabold text-white disabled:opacity-50"
                       >
                         <XCircle size={13} className="mr-1 inline" /> Reject
@@ -1038,7 +1055,7 @@ export default function GlobalScheduleView() {
                       className="rounded-xl border border-slate-200 p-3 dark:border-white/10"
                     >
                       <p className="text-sm font-extrabold text-slate-900 dark:text-white">
-                        {lead.student_name || lead.name || 'Trial student'}
+                        {lead.student_name || 'Trial student'}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         {lead.parent_name ||
@@ -1052,10 +1069,10 @@ export default function GlobalScheduleView() {
                           !calendarEvents.some(
                             (e) =>
                               isFreeSlot(e) &&
-                              new Date(e.start_time) > new Date(),
+                              new Date(e.start_time).getTime() > now,
                           )
                         }
-                        onClick={() => assignTrial(lead)}
+                        onClick={() => void assignTrial(lead)}
                         className="mt-3 w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <UserRoundCheck size={13} className="mr-1 inline" />{' '}
@@ -1124,7 +1141,7 @@ export default function GlobalScheduleView() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/5">
-                <p className="text-xs font-bold uppercase text-slate-500">
+                <p className="text-xs font-bold text-slate-500 uppercase">
                   Date and time
                 </p>
                 <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
@@ -1135,7 +1152,7 @@ export default function GlobalScheduleView() {
                 </p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/5">
-                <p className="text-xs font-bold uppercase text-slate-500">
+                <p className="text-xs font-bold text-slate-500 uppercase">
                   Tutor
                 </p>
                 <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
@@ -1153,31 +1170,34 @@ export default function GlobalScheduleView() {
                   Students
                 </h4>
                 <div className="space-y-2">
-                  {eventAttendees.map((row) => (
-                    <div
-                      key={row.id || row.student_id}
-                      className="flex items-center justify-between rounded-xl border border-slate-200 p-3 dark:border-white/10"
-                    >
-                      <div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          {displayName(usersById[row.student_id])}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {usersById[row.student_id]?.email || ''}
-                        </p>
+                  {eventAttendees.map((row) => {
+                    const attendee = findUser(row.student_id)
+                    return (
+                      <div
+                        key={row.id}
+                        className="flex items-center justify-between rounded-xl border border-slate-200 p-3 dark:border-white/10"
+                      >
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            {displayName(attendee)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {attendee?.email || ''}
+                          </p>
+                        </div>
+                        {attendee?.personal_meet_link && (
+                          <a
+                            className="text-xs font-bold text-indigo-600 hover:underline"
+                            href={attendee.personal_meet_link}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Meet link
+                          </a>
+                        )}
                       </div>
-                      {usersById[row.student_id]?.personal_meet_link && (
-                        <a
-                          className="text-xs font-bold text-indigo-600 hover:underline"
-                          href={usersById[row.student_id].personal_meet_link}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Meet link
-                        </a>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -1194,7 +1214,7 @@ export default function GlobalScheduleView() {
             {student && isFreeSlot(selectedEvent) && !myRequestForEvent && (
               <button
                 disabled={saving}
-                onClick={() => requestBooking(selectedEvent)}
+                onClick={() => void requestBooking(selectedEvent)}
                 className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-extrabold text-white disabled:opacity-50"
               >
                 Request this class slot
@@ -1211,7 +1231,9 @@ export default function GlobalScheduleView() {
                   selectedEvent.session_status !== 'completed' && (
                     <button
                       disabled={saving}
-                      onClick={() => setSessionStatus(selectedEvent, 'ongoing')}
+                      onClick={() =>
+                        void setSessionStatus(selectedEvent, 'ongoing')
+                      }
                       className="rounded-xl bg-teal-600 px-3 py-2 text-sm font-extrabold text-white"
                     >
                       <Play size={14} className="mr-1 inline" /> Start class
@@ -1220,7 +1242,9 @@ export default function GlobalScheduleView() {
                 {selectedEvent.session_status === 'ongoing' && (
                   <button
                     disabled={saving}
-                    onClick={() => setSessionStatus(selectedEvent, 'completed')}
+                    onClick={() =>
+                      void setSessionStatus(selectedEvent, 'completed')
+                    }
                     className="rounded-xl bg-slate-800 px-3 py-2 text-sm font-extrabold text-white"
                   >
                     <Square size={13} className="mr-1 inline" /> End class
@@ -1235,7 +1259,7 @@ export default function GlobalScheduleView() {
                   <input
                     type="file"
                     onChange={(e) =>
-                      uploadResource(
+                      void uploadResource(
                         selectedEvent,
                         e.target.files?.[0],
                         'material',
@@ -1251,7 +1275,7 @@ export default function GlobalScheduleView() {
                     type="file"
                     accept="video/*,audio/*,.mp4,.webm,.mov,.mp3,.m4a"
                     onChange={(e) =>
-                      uploadResource(
+                      void uploadResource(
                         selectedEvent,
                         e.target.files?.[0],
                         'recording',
@@ -1276,7 +1300,7 @@ export default function GlobalScheduleView() {
                       href={resourceHref(selectedEvent.class_material_url)}
                       target="_blank"
                       rel="noreferrer"
-                      className="block break-all text-sm font-bold text-indigo-600 hover:underline"
+                      className="block text-sm font-bold break-all text-indigo-600 hover:underline"
                     >
                       <FileText size={14} className="mr-1 inline" /> Open class
                       material
@@ -1287,7 +1311,7 @@ export default function GlobalScheduleView() {
                       href={resourceHref(selectedEvent.recording_url)}
                       target="_blank"
                       rel="noreferrer"
-                      className="block break-all text-sm font-bold text-indigo-600 hover:underline"
+                      className="block text-sm font-bold break-all text-indigo-600 hover:underline"
                     >
                       <Video size={14} className="mr-1 inline" /> Watch class
                       recording
@@ -1299,7 +1323,7 @@ export default function GlobalScheduleView() {
                       href={resourceHref(r.file_url)}
                       target="_blank"
                       rel="noreferrer"
-                      className="block break-all text-sm font-bold text-indigo-600 hover:underline"
+                      className="block text-sm font-bold break-all text-indigo-600 hover:underline"
                     >
                       {r.resource_type === 'recording'
                         ? 'Recording'
@@ -1321,7 +1345,7 @@ export default function GlobalScheduleView() {
                     className="mb-2 rounded-xl border border-slate-200 p-3 text-xs dark:border-white/10"
                   >
                     <p className="font-bold">
-                      {displayName(usersById[r.student_id])} · {r.status}
+                      {displayName(findUser(r.student_id))} · {r.status}
                     </p>
                     {r.tutor_response && (
                       <p className="mt-1 text-slate-500">{r.tutor_response}</p>
@@ -1337,14 +1361,14 @@ export default function GlobalScheduleView() {
                         <div className="mt-2 flex gap-2">
                           <button
                             disabled={saving}
-                            onClick={() => respondToRequest(r, 'accept')}
+                            onClick={() => void respondToRequest(r, 'accept')}
                             className="rounded-lg bg-teal-600 px-3 py-2 font-bold text-white"
                           >
                             Accept
                           </button>
                           <button
                             disabled={saving}
-                            onClick={() => respondToRequest(r, 'reject')}
+                            onClick={() => void respondToRequest(r, 'reject')}
                             className="rounded-lg bg-rose-600 px-3 py-2 font-bold text-white"
                           >
                             Reject
@@ -1376,7 +1400,7 @@ export default function GlobalScheduleView() {
                   </select>
                   <button
                     disabled={saving || !reassignTutorId}
-                    onClick={reassignTutor}
+                    onClick={() => void reassignTutor()}
                     className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-extrabold text-white disabled:opacity-50"
                   >
                     <RefreshCw size={13} className="mr-1 inline" /> Reassign
@@ -1430,7 +1454,7 @@ export default function GlobalScheduleView() {
             <input
               type="datetime-local"
               value={availabilityStart}
-              min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+              min={new Date(now + 60000).toISOString().slice(0, 16)}
               onChange={(e) => setAvailabilityStart(e.target.value)}
               className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm dark:border-white/10 dark:bg-slate-800"
             />
@@ -1444,7 +1468,7 @@ export default function GlobalScheduleView() {
             </button>
             <button
               disabled={saving || !availabilityStart}
-              onClick={createAvailability}
+              onClick={() => void createAvailability()}
               className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Create 1-hour slot'}
@@ -1482,7 +1506,7 @@ export default function GlobalScheduleView() {
             </button>
             <button
               disabled={saving}
-              onClick={savePermanentMeetLink}
+              onClick={() => void savePermanentMeetLink()}
               className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white"
             >
               Save link
@@ -1529,7 +1553,7 @@ export default function GlobalScheduleView() {
             </button>
             <button
               disabled={saving || !selectedStudentToMerge}
-              onClick={mergeStudent}
+              onClick={() => void mergeStudent()}
               className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
             >
               Add student
@@ -1539,7 +1563,7 @@ export default function GlobalScheduleView() {
       )}
 
       {saving && (
-        <div className="fixed bottom-4 right-4 z-1100 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-xl">
+        <div className="fixed right-4 bottom-4 z-1100 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-xl">
           <RefreshCw size={14} className="mr-2 inline animate-spin" /> Saving
           changes…
         </div>
