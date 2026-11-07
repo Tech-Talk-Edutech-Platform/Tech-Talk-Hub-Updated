@@ -7,11 +7,13 @@ import type {
   ClassAlert,
   ClassMaterial,
   Classroom,
+  EndReason,
   HelpTopic,
   Student,
   TourSection,
   VideoPlatform,
 } from '../types/classroom'
+import { CLASSROOM_BRAND } from './classroomBrand'
 
 export const CLASSROOM: Classroom = {
   id: '50813276',
@@ -236,6 +238,52 @@ export const PLATFORMS: VideoPlatform[] = [
     label: 'Google Meet',
     joinUrl: 'https://meet.google.com/',
   },
+]
+
+/** Everyone booked into this class: the End class attendance list. */
+export const CLASS_STUDENTS: Student[] = [STUDENT]
+
+/** The agenda's length. Ending before it asks the teacher to double-check. */
+export const RECOMMENDED_CLASS_MINUTES = MATERIAL.agenda.reduce(
+  (total, item) => total + item.minutes,
+  0,
+)
+
+/** End class › Class completed successfully: where it finished, if not here. */
+export const END_COMPLETED_VIA: EndReason[] = [
+  ...PLATFORMS.filter((platform) => !platform.builtIn).map((platform) => ({
+    id: `moved-${platform.id}`,
+    label: `Moved to ${platform.label}`,
+  })),
+  { id: 'mobile', label: 'Class finished on mobile' },
+]
+
+/** End class › Class not completed: why. */
+export const END_NOT_COMPLETED: EndReason[] = [
+  {
+    id: 'no-show',
+    label: 'Student didn’t show up for the class',
+    note: `A credit will be deducted for the student. Select this only if the student didn’t join and didn’t tell you beforehand. If the parent reaches out to ${CLASSROOM_BRAND.supportName}, the credit may be reversed.`,
+  },
+  {
+    id: 'informed-absence',
+    label: 'Student informed in advance they cannot join',
+  },
+  { id: 'disconnected', label: 'Student got disconnected' },
+  {
+    id: 'glitch-during',
+    label: 'Class could not complete due to a technical glitch',
+  },
+  {
+    id: 'glitch-start',
+    label: 'Class could not start due to a technical glitch',
+  },
+  { id: 'no-laptop', label: 'Student does not have a laptop' },
+  { id: 'partial', label: 'Class partially completed' },
+  { id: 'wrong-grade', label: 'Student selected the wrong grade' },
+  { id: 'language', label: 'Language barrier in teaching the student' },
+  { id: 'connectivity', label: 'Student had an internet or electricity issue' },
+  { id: 'other', label: 'Other reason', detailsRequired: true },
 ]
 
 export const ALERTS: ClassAlert[] = [

@@ -15,6 +15,7 @@ import { Stage } from '../../components/classroom/stage/Stage'
 import { ClassToolbar } from '../../components/classroom/toolbar/ClassToolbar'
 import {
   BUILT_IN_PLATFORM,
+  CLASS_STUDENTS,
   CLASSROOM,
   PLATFORMS,
   STUDENT,
@@ -332,14 +333,19 @@ export function ClassroomPage() {
         media={media}
       />
       <EndClassModal
+        key={`end-${modalKey}`}
         open={modal === 'end'}
         onClose={() => setModal(null)}
         elapsedMs={timer.elapsedMs}
         recording={recording.active}
-        participantCount={participants.length}
-        onConfirm={() => {
+        students={CLASS_STUDENTS}
+        present={participants
+          .filter((person) => !person.isSelf)
+          .map((person) => person.name)}
+        platformId={platformId}
+        onConfirm={(report) => {
           room.endForAll()
-          finish({ reason: 'ended', by: null })
+          finish({ reason: 'ended', by: null, report })
         }}
       />
     </div>

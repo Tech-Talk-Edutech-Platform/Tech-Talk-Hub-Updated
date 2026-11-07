@@ -170,11 +170,35 @@ export type ClassModal = 'submit' | 'ai' | 'platform' | 'settings' | 'end'
 
 export type ToolbarMenu = 'badge' | 'alert'
 
+/** An option in the End class reason lists. */
+export type EndReason = {
+  id: string
+  label: string
+  /** Shown under the option once it's picked. */
+  note?: string
+  /** "Other reason" can't be sent without a description. */
+  detailsRequired?: boolean
+}
+
+export type ClassOutcome = 'completed' | 'not-completed'
+
+/** What the teacher reports when ending the class. */
+export type ClassEndReport = {
+  outcome: ClassOutcome
+  /** Completed: where it finished (null = in this room). Not completed: why. */
+  reasonId: string | null
+  details: string
+  /** studentIds ticked as attended (completed classes only). */
+  attended: string[]
+}
+
 export type ClassEndInfo = {
   reason: 'ended' | 'left'
   /** Who ended it, when another tab did. */
   by?: string | null
   elapsedMs: number
+  /** Filled in when this tab ended the class through the End class modal. */
+  report?: ClassEndReport
 }
 
 export type MenuAction = {

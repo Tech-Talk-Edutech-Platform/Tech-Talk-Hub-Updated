@@ -9,6 +9,11 @@ type ModalProps = {
   labelledBy: string
   padding?: string
   closeLabel?: string
+  /**
+   * Long forms: sits near the top instead of the centre, so it doesn't jump
+   * as options open, and scrolls inside once it reaches the viewport's foot.
+   */
+  tall?: boolean
   children: ReactNode
 }
 
@@ -23,6 +28,7 @@ export function Modal({
   labelledBy,
   padding = 'p-10',
   closeLabel = 'Close',
+  tall = false,
   children,
 }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -46,7 +52,11 @@ export function Modal({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      className="modal m-auto w-[calc(100%-32px)] max-w-none overflow-visible rounded-[8px] bg-white p-0 text-ink shadow-[0_24px_64px_-16px_rgb(0_0_0/0.4)]"
+      className={`modal w-[calc(100%-32px)] max-w-none rounded-[8px] bg-white p-0 text-ink shadow-[0_24px_64px_-16px_rgb(0_0_0/0.4)] ${
+        tall
+          ? 'mx-auto mt-[max(16px,8dvh)] mb-auto max-h-[calc(100dvh_-_max(16px,8dvh)_-_16px)] overflow-y-auto overscroll-contain'
+          : 'm-auto overflow-visible'
+      }`}
       style={{ maxWidth: width }}
     >
       <div className={`relative ${padding} max-sm:px-6 max-sm:py-8`}>

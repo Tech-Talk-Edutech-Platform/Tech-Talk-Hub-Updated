@@ -123,6 +123,8 @@
   --color-brand-strong: #e0442f;
   --color-brand-soft: #fff1ee;
   --color-brand-faded: #f8b2a8;
+  /* Brand as small text on white (form errors): 5.4:1, where brand is 3.2:1 */
+  --color-brand-ink: #c2321f;
 
   /* The video room */
   --color-stage: #b34831;
@@ -144,6 +146,10 @@
   --color-surface-2: #f3f3f5;
   --color-callout: #fff7e5;
   --color-callout-edge: #f4c95d;
+  --color-callout-ink: #a16207;
+  --color-info: #eaf4fb;
+  --color-info-edge: #5aa9e0;
+  --color-info-ink: #1b6aa0;
   --color-warning-soft: #fde4e4;
   --color-warning-ink: #7f1d1d;
   --color-toast: #303030;
@@ -271,6 +277,11 @@
     animation: panel-in 200ms var(--ease-out);
   }
 
+  /* Options that open under the choice that revealed them */
+  .reveal {
+    animation: reveal 200ms var(--ease-out);
+  }
+
   .skeleton {
     background: var(--color-surface-2);
     border-radius: 8px;
@@ -288,6 +299,13 @@
   from {
     opacity: 0;
     transform: translateX(8px);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
   }
 }
 
@@ -357,7 +375,8 @@
     }
   }
   .pop,
-  .panel-in {
+  .panel-in,
+  .reveal {
     animation-name: fade-in-only;
   }
   .reaction-float {
