@@ -89,7 +89,9 @@ function isScratchMessage(data: unknown): data is ScratchMessage {
 export default function ScratchPlayground({
   initialCode = DEFAULT_CODE,
 }: ScratchPlaygroundProps) {
-  const [sprites, setSprites] = useState<Sprite[]>(INITIAL_SPRITES)
+  const [sprites, setSprites] = useState<Sprite[]>(() =>
+    structuredClone(INITIAL_SPRITES),
+  )
   const [activeSpriteId, setActiveSpriteId] = useState('cat')
   const [code, setCode] = useState(initialCode)
   const [isRunning, setIsRunning] = useState(false)
@@ -98,7 +100,7 @@ export default function ScratchPlayground({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number | null>(null)
 
-  const spritesRef = useRef<Sprite[]>(INITIAL_SPRITES)
+  const spritesRef = useRef<Sprite[]>(structuredClone(INITIAL_SPRITES))
   const activeSpriteIdRef = useRef('cat')
 
   const draggingRef = useRef<string | null>(null)
@@ -127,7 +129,7 @@ export default function ScratchPlayground({
     [],
   )
 
-  // API available to the student code.
+  // API available to student code.
   const getAPI = useCallback(() => {
     return {
       move: (amount: number) => {
@@ -187,16 +189,16 @@ export default function ScratchPlayground({
 
       context.clearRect(0, 0, width, height)
 
-      // Draw the stage background.
+      // Draw stage background.
       context.fillStyle = '#f8fafc'
       context.fillRect(0, 0, width, height)
 
-      // Draw the stage border.
+      // Draw stage border.
       context.strokeStyle = '#e2e8f0'
       context.lineWidth = 2
       context.strokeRect(0, 0, width, height)
 
-      // Draw the center guides.
+      // Draw center guides.
       context.setLineDash([5, 5])
       context.strokeStyle = '#e2e8f0'
       context.beginPath()
@@ -225,7 +227,11 @@ export default function ScratchPlayground({
           const radius = sprite.size / 2
 
           if (nextSprite.x < radius) {
-            nextSprite = { ...nextSprite, x: radius, vx: 0 }
+            nextSprite = {
+              ...nextSprite,
+              x: radius,
+              vx: 0,
+            }
           }
 
           if (nextSprite.x > width - radius) {
@@ -237,7 +243,11 @@ export default function ScratchPlayground({
           }
 
           if (nextSprite.y < radius) {
-            nextSprite = { ...nextSprite, y: radius, vy: 0 }
+            nextSprite = {
+              ...nextSprite,
+              y: radius,
+              vy: 0,
+            }
           }
 
           if (nextSprite.y > height - radius) {
@@ -257,7 +267,7 @@ export default function ScratchPlayground({
         setSprites(nextSprites)
       }
 
-      // Draw each sprite.
+      // Draw sprites.
       nextSprites.forEach((sprite) => {
         context.save()
 
@@ -272,7 +282,7 @@ export default function ScratchPlayground({
 
         context.restore()
 
-        // Highlight the selected sprite.
+        // Highlight selected sprite.
         if (sprite.id === activeSpriteIdRef.current) {
           context.beginPath()
           context.arc(sprite.x, sprite.y, sprite.size / 2 + 8, 0, Math.PI * 2)
@@ -298,7 +308,7 @@ export default function ScratchPlayground({
     }
   }, [])
 
-  // Clean up the execution iframe and timeout.
+  // Clean up execution iframe and timeout.
   const cleanupExecution = useCallback(() => {
     if (executionTimeoutRef.current !== null) {
       clearTimeout(executionTimeoutRef.current)
@@ -313,7 +323,7 @@ export default function ScratchPlayground({
     setIsRunning(false)
   }, [])
 
-  // Listen for messages from the student-code iframe.
+  // Listen for messages from student-code iframe.
   useEffect(() => {
     const handleMessage = (event: MessageEvent<unknown>) => {
       const frame = executionFrameRef.current
@@ -383,7 +393,7 @@ export default function ScratchPlayground({
 
     executionFrameRef.current = iframe
 
-    // Prevent student code from accidentally closing the script element.
+    // Prevent student code from closing the script element.
     const safeCode = code.replace(/<\/script/gi, '<\\/script')
 
     const html = `
@@ -486,7 +496,7 @@ export default function ScratchPlayground({
     }
   }, [getAPI])
 
-  // Drag and drop sprites on the stage.
+  // Drag and drop sprites on stage.
   useEffect(() => {
     const canvas = canvasRef.current
 
@@ -506,14 +516,12 @@ export default function ScratchPlayground({
     const onDown = (event: MouseEvent) => {
       const position = getCanvasPosition(event)
 
-      const selectedSprite = [...spritesRef.current]
-        .reverse()
-        .find((sprite) => {
-          const dx = position.x - sprite.x
-          const dy = position.y - sprite.y
+      const selectedSprite = spritesRef.current.toReversed().find((sprite) => {
+        const dx = position.x - sprite.x
+        const dy = position.y - sprite.y
 
-          return Math.sqrt(dx * dx + dy * dy) < sprite.size / 2 + 10
-        })
+        return Math.sqrt(dx * dx + dy * dy) < sprite.size / 2 + 10
+      })
 
       if (!selectedSprite) {
         return
@@ -569,9 +577,7 @@ export default function ScratchPlayground({
 
   // Reset the stage.
   const resetStage = useCallback(() => {
-    const resetSprites = INITIAL_SPRITES.map((sprite) => ({
-      ...sprite,
-    }))
+    const resetSprites = structuredClone(INITIAL_SPRITES)
 
     spritesRef.current = resetSprites
     setSprites(resetSprites)
@@ -583,13 +589,13 @@ export default function ScratchPlayground({
     cleanupExecution()
   }, [cleanupExecution])
 
-  // Stop the currently running code.
+  // Stop currently running code.
   const stopCode = useCallback(() => {
     cleanupExecution()
     setOutput('Execution stopped.')
   }, [cleanupExecution])
 
-  // Clean up when the component unmounts.
+  // Clean up when component unmounts.
   useEffect(() => {
     return function cleanup(): void {
       if (animationRef.current !== null) {
@@ -759,13 +765,12 @@ export default function ScratchPlayground({
 
         {/* Output */}
         {output && (
-          <div
-            role="status"
+          <output
             aria-live="polite"
-            className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700"
+            className="mt-4 block rounded-lg bg-slate-50 p-3 text-sm text-slate-700"
           >
             {output}
-          </div>
+          </output>
         )}
       </section>
     </div>
