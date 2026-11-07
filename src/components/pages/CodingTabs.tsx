@@ -4,7 +4,9 @@ import { useState } from 'react'
 
 export default function CodingTabs() {
   const [tab, setTab] = useState('blocks')
-  const [code, setCode] = useState('')
+  // ScratchPlayground doesn't take the generated code yet: its prop is
+  // `initialCode`, and passing it would replace the default program.
+  const [, setCode] = useState('')
 
   return (
     <div className="h-screen">
@@ -15,7 +17,7 @@ export default function CodingTabs() {
 
       {tab === 'blocks' && <BlocklyEditor setGeneratedCode={setCode} />}
 
-      {tab === 'play' && <ScratchPlayground code={code} />}
+      {tab === 'play' && <ScratchPlayground />}
     </div>
   )
 }

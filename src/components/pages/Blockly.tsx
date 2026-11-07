@@ -202,6 +202,7 @@ export default function BlocklyEditor({
 
     // Define the Blockly theme.
     const darkTheme = Blockly.Theme.defineTheme('darkTheme', {
+      name: 'darkTheme',
       base: Blockly.Themes.Classic,
 
       componentStyles: {
@@ -369,16 +370,19 @@ export default function BlocklyEditor({
         return
       }
 
-      if (!isConsoleMessage(event.data)) {
+      // A const keeps the type guard's narrowing inside the setOutput callbacks.
+      const message = event.data
+
+      if (!isConsoleMessage(message)) {
         return
       }
 
-      if (event.data.type === 'log') {
-        setOutput((previous) => previous + event.data.data + '\n')
+      if (message.type === 'log') {
+        setOutput((previous) => previous + message.data + '\n')
       }
 
-      if (event.data.type === 'error') {
-        setOutput((previous) => previous + `Error: ${event.data.data}\n`)
+      if (message.type === 'error') {
+        setOutput((previous) => previous + `Error: ${message.data}\n`)
       }
     }
 

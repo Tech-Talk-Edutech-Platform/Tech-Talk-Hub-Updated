@@ -1,14 +1,34 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { supabase } from '../../../supabase'
+import { plannedDb } from '../../../lib/plannedDb'
+import type { Tables } from '../../../types/database'
 import { X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
-export default function StudentList({ tutorId }) {
-  const [students, setStudents] = useState([])
-  const [showAllModal, setShowAllModal] = useState(false)
-  const [selectedStudent, setSelectedStudent] = useState(null)
+/**
+ * `users` has no course_name column, so it always renders empty. It stays
+ * optional here rather than being removed, so the markup is unchanged.
+ */
+type Student = Tables<'users'> & { course_name?: string | null }
+type Assignment = Tables<'student_assignments'>
 
-  const [assignments, setAssignments] = useState([])
+interface StudentListProps {
+  tutorId: string
+}
+
+interface ModalProps {
+  title: string
+  children: ReactNode
+  onClose: () => void
+}
+
+export default function StudentList({ tutorId }: StudentListProps) {
+  const [students, setStudents] = useState<Student[]>([])
+  const [showAllModal, setShowAllModal] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+
+  const [assignments, setAssignments] = useState<Assignment[]>([])
   const [notes, setNotes] = useState('')
 
   const [taskName, setTaskName] = useState('')
@@ -45,7 +65,7 @@ export default function StudentList({ tutorId }) {
         .eq('student_id', selectedStudent.id)
         .order('created_at', { ascending: false })
 
-      const { data: notesData } = await supabase
+      const { data: notesData } = await plannedDb
         .from('user_notes_progress')
         .select('*')
         .eq('student_id', selectedStudent.id)
@@ -58,7 +78,7 @@ export default function StudentList({ tutorId }) {
     void fetchStudentData()
   }, [selectedStudent])
 
-  const markComplete = async (id) => {
+  const markComplete = async (id: string) => {
     const { error } = await supabase
       .from('student_assignments')
       .update({ status: 'completed' })
@@ -73,7 +93,7 @@ export default function StudentList({ tutorId }) {
   }
 
   const addAssignment = async () => {
-    if (!taskName) return
+    if (!taskName || !selectedStudent) return
 
     const { error } = await supabase.from('student_assignments').insert({
       student_id: selectedStudent.id,
@@ -90,7 +110,7 @@ export default function StudentList({ tutorId }) {
   }
 
   const sendMessage = async () => {
-    if (!message) return
+    if (!message || !selectedStudent) return
 
     const { error } = await supabase.from('messages').insert({
       sender_id: tutorId,
@@ -106,7 +126,9 @@ export default function StudentList({ tutorId }) {
   }
 
   const saveNotes = async () => {
-    const { error } = await supabase.from('student_notes_progress').upsert({
+    if (!selectedStudent) return
+
+    const { error } = await plannedDb.from('student_notes_progress').upsert({
       student_id: selectedStudent.id,
       tutor_id: tutorId,
       topic: notes,
@@ -115,7 +137,7 @@ export default function StudentList({ tutorId }) {
     if (!error) toast.success('Lesson progress saved')
   }
 
-  const renderStudent = (s) => (
+  const renderStudent = (s: Student) => (
     <button
       key={s.id}
       type="button"
@@ -305,7 +327,7 @@ export default function StudentList({ tutorId }) {
   )
 }
 
-const Modal = ({ title, children, onClose }) => (
+const Modal = ({ title, children, onClose }: ModalProps) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
     <div className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl">
       <button

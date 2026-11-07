@@ -3,15 +3,51 @@ import { supabase } from '../supabase'
 import { toast } from 'react-hot-toast'
 import { X, Send, FilePlus, ChevronRight, RotateCcw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { plannedDb } from '../lib/plannedDb'
+import type { Tables } from '../types/database'
 
-export default function QuickActions({ tutorId, role, studentId }) {
+type ModalType = 'assignment' | 'message'
+
+/**
+ * `student_assignments` has no submission_text column (submissions are in
+ * student_answer), so this is always empty. It stays optional here so
+ * behaviour is unchanged.
+ */
+type StudentTask = Tables<'student_assignments'> & {
+  submission_text?: string | null
+}
+
+/** A student (or, for a student, their tutor) to message or assign to. */
+interface Recipient {
+  id: string
+  full_name: string
+  assigned_course_id?: string | null
+}
+
+/** The class this component expects get_next_class to return a list of. */
+interface UpcomingClass {
+  event_id: string
+  meet_link: string | null
+}
+
+interface QuickActionsProps {
+  tutorId?: string
+  role: string
+  studentId?: string
+}
+
+export default function QuickActions({
+  tutorId,
+  role,
+  studentId,
+}: QuickActionsProps) {
   const navigate = useNavigate()
-  const [modalType, setModalType] = useState(null)
-  const [students, setStudents] = useState([])
-  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [modalType, setModalType] = useState<ModalType | null>(null)
+  const [students, setStudents] = useState<Recipient[]>([])
+  const [selectedStudent, setSelectedStudent] = useState<Recipient | null>(null)
   const [loading, setLoading] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
-  const [studentTasks, setStudentTasks] = useState([]) // Added to store tasks
+  const [studentTasks, setStudentTasks] = useState<StudentTask[]>([]) // Added to store tasks
 
   // Form States
   const [message, setMessage] = useState('')
@@ -19,7 +55,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
   const [category, setCategory] = useState('') // Default empty to handle dynamic course
   const [taskUrl, setTaskUrl] = useState('')
 
-  const fetchStudentTasks = useCallback(async (sId) => {
+  const fetchStudentTasks = useCallback(async (sId: string) => {
     const { data, error } = await supabase
       .from('student_assignments')
       .select('*')
@@ -28,7 +64,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
     if (!error) setStudentTasks(data || [])
   }, [])
 
-  const handleSelectStudent = (student) => {
+  const handleSelectStudent = (student: Recipient) => {
     setSelectedStudent(student)
     setCategory(student.assigned_course_id || '')
     if (modalType === 'assignment') {
@@ -61,7 +97,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
 
   const fetchStudents = async () => {
     setLoading(true)
-    if (role === 'student') {
+    if (role === 'student' && studentId) {
       const { data: userData } = await supabase
         .from('users')
         .select('assigned_tutor_id')
@@ -83,7 +119,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
           }
         }
       }
-    } else if (role === 'tutor') {
+    } else if (role === 'tutor' && tutorId) {
       const { data, error } = await supabase
         .from('users')
         .select('id, full_name, assigned_course_id') // Fetch assigned_course_id here
@@ -98,20 +134,24 @@ export default function QuickActions({ tutorId, role, studentId }) {
   const handleStartClass = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.rpc('get_next_class', {
-        user_id: role === 'tutor' ? tutorId : studentId,
+      // get_next_class doesn't exist yet (see types/plannedTables.ts), and this
+      // component expects a list of classes rather than the planned single
+      // class, so the result is read as unknown and checked to be a list.
+      const { data, error } = await plannedDb.rpc('get_next_class', {
+        user_id: (role === 'tutor' ? tutorId : studentId) ?? '',
         role,
       })
 
       if (error) throw error
 
+      const classes: unknown = data
       // If data is null or an empty array []
-      if (!data || data.length === 0) {
+      if (!Array.isArray(classes) || classes.length === 0) {
         toast.error('No upcoming class found in the calendar.')
         return
       }
 
-      const classData = data[0]
+      const classData: UpcomingClass = classes[0]
       if (!classData.meet_link) {
         toast.error('Class found, but no meeting link is set!')
         return
@@ -127,7 +167,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
     }
   }
 
-  const handleOpenModal = (type) => {
+  const handleOpenModal = (type: ModalType) => {
     setModalType(type)
     void fetchStudents()
   }
@@ -311,7 +351,7 @@ export default function QuickActions({ tutorId, role, studentId }) {
                             {task.status === 'submitted' && (
                               <button
                                 onClick={() =>
-                                  toast(task.submission_text, {
+                                  toast(task.submission_text ?? null, {
                                     icon: '📖',
                                     duration: 6000,
                                   })

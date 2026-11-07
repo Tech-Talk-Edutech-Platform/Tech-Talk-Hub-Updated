@@ -2,8 +2,8 @@ import type { Database, Json } from './database'
 
 /*
  * The schema that parked features (exams, support issues, notes topics,
- * invoices, call costs, sales reporting, marketers and referrals) were
- * written against.
+ * tutors' lesson notes, invoices, call costs, sales reporting, marketers and
+ * referrals) were written against.
  *
  * None of the tables and functions below exist in the database yet, and the
  * planned columns on real tables don't either, so `database.ts` (generated
@@ -238,6 +238,17 @@ type PlannedTables = {
     'course_id' | 'title'
   >
 
+  /** A tutor's lesson-progress note (the topic reached) for a student. */
+  student_notes_progress: PlannedTable<
+    {
+      id: string
+      student_id: string
+      tutor_id: string
+      topic: string | null
+    },
+    'student_id' | 'tutor_id'
+  >
+
   /** Trial students, not yet signed up as users. */
   students: PlannedTable<
     {
@@ -285,6 +296,15 @@ type RealTablesWithPlannedColumns = {
 
   /** Notes are filed under a topic. */
   notes: WithPlannedColumns<'notes', { topic_id: string | null }>
+
+  /**
+   * The tutor's student view reads a student's lesson topic from here (while
+   * it saves to `student_notes_progress`).
+   */
+  user_notes_progress: WithPlannedColumns<
+    'user_notes_progress',
+    { student_id: string | null; topic: string | null }
+  >
 
   /** Marketers sign in with a 'marketer' role. */
   users: WithPlannedColumns<
