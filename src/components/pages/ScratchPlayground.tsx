@@ -14,6 +14,7 @@ interface Sprite {
 
 interface ScratchPlaygroundProps {
   initialCode?: string
+  code?: string
 }
 
 type ScratchMessage =
