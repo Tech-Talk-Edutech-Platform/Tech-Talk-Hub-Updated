@@ -29,6 +29,7 @@ type StageProps = {
   audioPlaybackBlocked: boolean
   onReconnect: () => void
   onEnableAudio: () => void
+  onShareCall: () => void
   reactions: Reaction[]
   recording: Recording
   onToggleRecording: () => void
@@ -53,6 +54,7 @@ export function Stage({
   audioPlaybackBlocked,
   onReconnect,
   onEnableAudio,
+  onShareCall,
   reactions,
   recording,
   onToggleRecording,
@@ -89,6 +91,7 @@ export function Stage({
         audioPlaybackBlocked={audioPlaybackBlocked}
         onReconnect={onReconnect}
         onEnableAudio={onEnableAudio}
+        onShareCall={onShareCall}
         recording={recording.active}
         announcing={recording.announcing}
         pip={pipActive}

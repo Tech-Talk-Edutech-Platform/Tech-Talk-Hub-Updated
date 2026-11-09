@@ -166,7 +166,8 @@ export type SubmittedProject = {
 
 export type PanelName = 'details' | 'chat' | 'people'
 
-export type ClassModal = 'submit' | 'ai' | 'platform' | 'settings' | 'end'
+export type ClassModal =
+  'submit' | 'ai' | 'platform' | 'settings' | 'share' | 'end'
 
 export type ToolbarMenu = 'badge' | 'alert'
 

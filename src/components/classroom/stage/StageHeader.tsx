@@ -3,6 +3,7 @@ import {
   ChartNoAxesColumn,
   Ellipsis,
   PictureInPicture2,
+  Share2,
   Settings,
 } from 'lucide-react'
 import { CLASSROOM_BRAND } from '../../../data/classroomBrand'
@@ -23,6 +24,7 @@ type StageHeaderProps = {
   audioPlaybackBlocked: boolean
   onReconnect: () => void
   onEnableAudio: () => void
+  onShareCall: () => void
   recording: boolean
   announcing: boolean
   pip: boolean
@@ -40,6 +42,7 @@ export function StageHeader({
   audioPlaybackBlocked,
   onReconnect,
   onEnableAudio,
+  onShareCall,
   recording,
   announcing,
   pip,
@@ -69,6 +72,16 @@ export function StageHeader({
       </div>
 
       <div className="pointer-events-auto flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onShareCall}
+          aria-label="Share call invite"
+          aria-haspopup="dialog"
+          className="press flex h-10 items-center gap-2 rounded-[6px] bg-stage-control px-2.5 text-[14px] font-medium text-white hover:bg-stage-control-hover"
+        >
+          <Share2 size={18} strokeWidth={1.9} aria-hidden="true" />
+          <span className="max-md:sr-only">Invite</span>
+        </button>
         <button
           type="button"
           onClick={onTogglePip}

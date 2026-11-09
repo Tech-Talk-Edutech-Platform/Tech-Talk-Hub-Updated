@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { Copy, Link2, LogOut, Maximize, Minimize, Settings } from 'lucide-react'
+import {
+  Copy,
+  Link2,
+  LogOut,
+  Maximize,
+  Minimize,
+  Settings,
+  Share2,
+} from 'lucide-react'
 import { ClassEnded } from '../../components/classroom/ClassEnded'
+import { GuestJoinScreen } from '../../components/classroom/GuestJoinScreen'
 import { NeedHelpWidget } from '../../components/classroom/help/NeedHelpWidget'
 import { AiToolsModal } from '../../components/classroom/modals/AiToolsModal'
 import { EndClassModal } from '../../components/classroom/modals/EndClassModal'
 import { SettingsModal } from '../../components/classroom/modals/SettingsModal'
+import { ShareCallModal } from '../../components/classroom/modals/ShareCallModal'
 import { SubmitProjectModal } from '../../components/classroom/modals/SubmitProjectModal'
 import { SwitchPlatformModal } from '../../components/classroom/modals/SwitchPlatformModal'
 import { ChatPanel } from '../../components/classroom/panels/ChatPanel'
@@ -63,7 +73,11 @@ function toggleFullscreen() {
 export function ClassroomPage() {
   const { classroomId = CLASSROOM.id } = useParams()
   const [params] = useSearchParams()
-  const name = params.get('name')?.trim() || CLASSROOM.teacher.name
+  const guestJoin = params.get('join') === '1'
+  const [name, setName] = useState(() =>
+    guestJoin ? '' : params.get('name')?.trim() || CLASSROOM.teacher.name,
+  )
+  const [joinStarted, setJoinStarted] = useState(!guestJoin)
   const [selfId] = useState(uid)
 
   const media = useLocalMedia()
@@ -118,7 +132,7 @@ export function ClassroomPage() {
     roomId: classroomId,
     identity: selfId,
     name,
-    enabled: !ended,
+    enabled: !ended && joinStarted,
     camera: media.cam,
     microphone: media.mic,
     screen: media.screen,
@@ -126,7 +140,7 @@ export function ClassroomPage() {
   const room = useRoom({
     roomId: classroomId,
     self,
-    enabled: !ended,
+    enabled: !ended && joinStarted,
     connected: liveRoom.connection === 'connected',
     sendMessage: liveRoom.sendMessage,
     onRemoteEnd: (from) => finish({ reason: 'ended', by: from.name }),
@@ -195,7 +209,7 @@ export function ClassroomPage() {
   }
 
   const roomLink = `${window.location.origin}/classroom/${classroomId}`
-  const guestLink = `${roomLink}?name=${encodeURIComponent(STUDENT.name)}`
+  const guestLink = `${roomLink}?join=1`
   const platform =
     PLATFORMS.find((option) => option.id === platformId) ?? BUILT_IN_PLATFORM
 
@@ -214,13 +228,9 @@ export function ClassroomPage() {
     },
     {
       id: 'copy-guest',
-      label: 'Copy guest link',
-      icon: Link2,
-      onSelect: () =>
-        copyText(
-          guestLink,
-          'Guest link copied. Open it in another tab to join.',
-        ),
+      label: 'Share call invite',
+      icon: Share2,
+      onSelect: () => openModal('share'),
     },
     {
       id: 'settings',
@@ -245,6 +255,18 @@ export function ClassroomPage() {
         onRejoin={() => {
           if (ended.reason === 'ended') timer.restart()
           setEnded(null)
+        }}
+      />
+    )
+  }
+
+  if (guestJoin && !joinStarted) {
+    return (
+      <GuestJoinScreen
+        roomTitle={CLASSROOM.title}
+        onJoin={(displayName) => {
+          setName(displayName)
+          setJoinStarted(true)
         }}
       />
     )
@@ -281,6 +303,7 @@ export function ClassroomPage() {
           audioPlaybackBlocked={liveRoom.audioPlaybackBlocked}
           onReconnect={liveRoom.reconnect}
           onEnableAudio={() => void liveRoom.enableAudio()}
+          onShareCall={() => openModal('share')}
           reactions={room.reactions}
           recording={recording}
           onToggleRecording={recording.toggle}
@@ -368,6 +391,11 @@ export function ClassroomPage() {
         open={modal === 'settings'}
         onClose={() => setModal(null)}
         media={media}
+      />
+      <ShareCallModal
+        open={modal === 'share'}
+        onClose={() => setModal(null)}
+        guestLink={guestLink}
       />
       <EndClassModal
         key={`end-${modalKey}`}
