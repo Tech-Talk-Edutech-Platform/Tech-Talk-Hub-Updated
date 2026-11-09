@@ -7,6 +7,6 @@ export const CLASSROOM_BRAND = {
   supportName: 'Tech Talk Hub support',
   /** Used for the recording filename: <fileSlug>-<classroomId>-<date>.webm */
   fileSlug: 'coding-gal',
-  /** The room cap shown in the participant pill ("1/200"). */
-  roomCapacity: 200,
+  /** Maximum participants, including the host, in one LiveKit room. */
+  roomCapacity: 25,
 }

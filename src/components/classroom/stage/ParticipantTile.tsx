@@ -1,11 +1,16 @@
 import { MicOff } from 'lucide-react'
+import type { RemoteAudioTrack, RemoteVideoTrack } from 'livekit-client'
 import type { Participant } from '../../../types/classroom'
 import { HandBadge } from './HandBadge'
+import { AudioView } from './AudioView'
 import { VideoView } from './VideoView'
 
 type ParticipantTileProps = {
   person: Participant
   stream: MediaStream | null
+  audioStream?: MediaStream | null
+  videoTrack?: RemoteVideoTrack | null
+  audioTrack?: RemoteAudioTrack | null
   speaking: boolean
   mirror: boolean
   width: number
@@ -21,6 +26,9 @@ type ParticipantTileProps = {
 export function ParticipantTile({
   person,
   stream,
+  audioStream = null,
+  videoTrack = null,
+  audioTrack = null,
   speaking,
   mirror,
   width,
@@ -28,7 +36,7 @@ export function ParticipantTile({
   compact = false,
 }: ParticipantTileProps) {
   const label = `${person.name}${person.isSelf ? ' (you)' : ''}`
-  const showVideo = person.cam && stream !== null
+  const showVideo = person.cam && (videoTrack !== null || stream !== null)
   // 80px square with a 36px initial, as in the reference; smaller in the share strip.
   const avatar = compact ? 56 : 80
 
@@ -38,13 +46,16 @@ export function ParticipantTile({
       className="group relative grid shrink-0 place-items-center"
       style={{ width, height }}
     >
+      {(audioTrack || audioStream) && (
+        <AudioView stream={audioStream} track={audioTrack} />
+      )}
       {showVideo ? (
         <div
           className={`relative size-full overflow-hidden rounded-[8px] bg-black/25 transition-shadow duration-150 ${
             speaking ? 'shadow-[0_0_0_3px_#fff]' : ''
           }`}
         >
-          <VideoView stream={stream} mirror={mirror} />
+          <VideoView stream={stream} track={videoTrack} mirror={mirror} />
           <figcaption className="absolute bottom-2 left-2 flex max-w-[calc(100%-16px)] items-center gap-1.5 rounded-[4px] bg-black/55 px-2 py-0.5 text-[12.5px] text-white">
             {!person.mic && <MicOff size={12} aria-hidden="true" />}
             <span className="truncate">{label}</span>

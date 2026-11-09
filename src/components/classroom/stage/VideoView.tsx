@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
+import type { RemoteVideoTrack } from 'livekit-client'
 
 type VideoViewProps = {
   stream: MediaStream | null
+  track?: RemoteVideoTrack | null
   mirror?: boolean
   fit?: 'cover' | 'contain'
   className?: string
@@ -10,6 +12,7 @@ type VideoViewProps = {
 /** A muted, autoplaying <video> showing a live stream. */
 export function VideoView({
   stream,
+  track = null,
   mirror = false,
   fit = 'cover',
   className = '',
@@ -18,8 +21,20 @@ export function VideoView({
 
   useEffect(() => {
     const video = ref.current
-    if (video && video.srcObject !== stream) video.srcObject = stream
-  }, [stream])
+    if (!video) return undefined
+
+    if (track) {
+      track.attach(video)
+      return () => {
+        track.detach(video)
+      }
+    }
+
+    video.srcObject = stream
+    return () => {
+      if (video.srcObject === stream) video.srcObject = null
+    }
+  }, [stream, track])
 
   return (
     <video

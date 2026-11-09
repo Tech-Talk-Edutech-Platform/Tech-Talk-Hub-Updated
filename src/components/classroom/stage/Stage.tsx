@@ -1,4 +1,8 @@
 import type { LocalMedia } from '../../../hooks/classroom/useLocalMedia'
+import type {
+  LiveConnectionState,
+  RemoteMedia,
+} from '../../../hooks/classroom/useLiveKitRoom'
 import { usePictureInPicture } from '../../../hooks/classroom/usePictureInPicture'
 import type { Recording } from '../../../hooks/classroom/useRecording'
 import type {
@@ -19,6 +23,12 @@ type StageProps = {
   media: LocalMedia
   self: Participant & { speaking: boolean }
   participants: Participant[]
+  remoteMedia: Record<string, RemoteMedia>
+  liveConnection: LiveConnectionState
+  liveError: string | null
+  audioPlaybackBlocked: boolean
+  onReconnect: () => void
+  onEnableAudio: () => void
   reactions: Reaction[]
   recording: Recording
   onToggleRecording: () => void
@@ -37,6 +47,12 @@ export function Stage({
   media,
   self,
   participants,
+  remoteMedia,
+  liveConnection,
+  liveError,
+  audioPlaybackBlocked,
+  onReconnect,
+  onEnableAudio,
   reactions,
   recording,
   onToggleRecording,
@@ -68,6 +84,11 @@ export function Stage({
     >
       <StageHeader
         participantCount={participants.length}
+        liveConnection={liveConnection}
+        liveError={liveError}
+        audioPlaybackBlocked={audioPlaybackBlocked}
+        onReconnect={onReconnect}
+        onEnableAudio={onEnableAudio}
         recording={recording.active}
         announcing={recording.announcing}
         pip={pipActive}
@@ -89,9 +110,10 @@ export function Stage({
           onSwitchBack={onSwitchBack}
         />
       ) : (
-        <div className="absolute inset-x-3 top-[60px] bottom-[92px]">
+        <div className="absolute inset-x-3 top-[100px] bottom-[92px]">
           <ParticipantGrid
             participants={participants}
+            remoteMedia={remoteMedia}
             self={{
               cam: media.cam,
               screen: media.screen,

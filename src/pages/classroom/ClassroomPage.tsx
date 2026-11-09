@@ -23,6 +23,7 @@ import {
 import { CLASSROOM_BRAND } from '../../data/classroomBrand'
 import { useClassTimer } from '../../hooks/classroom/useClassTimer'
 import { useIsSpeaking } from '../../hooks/classroom/useIsSpeaking'
+import { useLiveKitRoom } from '../../hooks/classroom/useLiveKitRoom'
 import { useLocalMedia } from '../../hooks/classroom/useLocalMedia'
 import { useRecording } from '../../hooks/classroom/useRecording'
 import { useRoom } from '../../hooks/classroom/useRoom'
@@ -101,6 +102,7 @@ export function ClassroomPage() {
     screen: !!media.screen,
     hand,
     isSelf: true,
+    speaking,
   }
 
   const finish = (info: Omit<ClassEndInfo, 'elapsedMs'>) => {
@@ -112,15 +114,44 @@ export function ClassroomPage() {
     setEnded({ elapsedMs: timer.elapsedMs, ...info })
   }
 
+  const liveRoom = useLiveKitRoom({
+    roomId: classroomId,
+    identity: selfId,
+    name,
+    enabled: !ended,
+    camera: media.cam,
+    microphone: media.mic,
+    screen: media.screen,
+  })
   const room = useRoom({
     roomId: classroomId,
     self,
     enabled: !ended,
+    connected: liveRoom.connection === 'connected',
+    sendMessage: liveRoom.sendMessage,
     onRemoteEnd: (from) => finish({ reason: 'ended', by: from.name }),
   })
-  const participants = room.participants.map((person) =>
-    person.id === selfId ? { ...person, speaking } : person,
-  )
+  useEffect(() => {
+    liveRoom.setMessageHandler(room.receiveMessage)
+  }, [liveRoom.setMessageHandler, room.receiveMessage])
+
+  const participants =
+    liveRoom.connection === 'connected'
+      ? [
+          self,
+          ...liveRoom.participants.map((person) => {
+            const state = room.participants.find(
+              (candidate) => candidate.id === person.id,
+            )
+            return {
+              ...person,
+              hand: state?.hand ?? false,
+            }
+          }),
+        ]
+      : room.participants.map((person) =>
+          person.id === selfId ? { ...person, speaking } : person,
+        )
 
   useEffect(() => {
     const onChange = () => setFullscreen(!!document.fullscreenElement)
@@ -244,6 +275,12 @@ export function ClassroomPage() {
           media={media}
           self={{ ...self, speaking }}
           participants={participants}
+          remoteMedia={liveRoom.remoteMedia}
+          liveConnection={liveRoom.connection}
+          liveError={liveRoom.error}
+          audioPlaybackBlocked={liveRoom.audioPlaybackBlocked}
+          onReconnect={liveRoom.reconnect}
+          onEnableAudio={() => void liveRoom.enableAudio()}
           reactions={room.reactions}
           recording={recording}
           onToggleRecording={recording.toggle}
@@ -343,8 +380,8 @@ export function ClassroomPage() {
           .filter((person) => !person.isSelf)
           .map((person) => person.name)}
         platformId={platformId}
-        onConfirm={(report) => {
-          room.endForAll()
+        onConfirm={async (report) => {
+          await room.endForAll()
           finish({ reason: 'ended', by: null, report })
         }}
       />

@@ -4,6 +4,7 @@ import WebPush from 'web-push'
 import { startReminderScheduler } from './reminderScheduler'
 import sendReceiptRoute from './routes/sendReceipt'
 import sendCurriculumRoute from './routes/sendCurriculum'
+import classroomTokenRoute from './routes/classroomToken'
 import { allowOrigins } from './middleware/cors'
 import { requireServerEnv } from './env'
 import { supabase } from './supabase'
@@ -44,6 +45,7 @@ app.use((req, res, next) => {
 // =========================
 app.use('/api/send-receipt', sendReceiptRoute)
 app.use('/api/send-curriculum', sendCurriculumRoute)
+app.use('/api/classroom/token', classroomTokenRoute)
 
 // =========================
 // PUSH SETUP

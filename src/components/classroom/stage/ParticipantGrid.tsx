@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useElementSize } from '../../../hooks/useElementSize'
+import type { RemoteMedia } from '../../../hooks/classroom/useLiveKitRoom'
 import type { Participant } from '../../../types/classroom'
 import { ParticipantTile } from './ParticipantTile'
 import { VideoView } from './VideoView'
@@ -31,31 +32,62 @@ export type GridSelf = {
 type ParticipantGridProps = {
   participants: Participant[]
   self: GridSelf
+  remoteMedia: Record<string, RemoteMedia>
 }
 
-export function ParticipantGrid({ participants, self }: ParticipantGridProps) {
+export function ParticipantGrid({
+  participants,
+  self,
+  remoteMedia,
+}: ParticipantGridProps) {
   const box = useRef<HTMLDivElement>(null)
   const { width, height } = useElementSize(box)
 
   const tileMedia = (person: Participant) =>
     person.isSelf
-      ? { stream: self.cam, speaking: self.speaking, mirror: self.mirror }
-      : { stream: null, speaking: false, mirror: false }
+      ? {
+          stream: self.cam,
+          audioStream: null,
+          speaking: self.speaking,
+          mirror: self.mirror,
+        }
+      : {
+          stream: null,
+          audioStream: null,
+          videoTrack: remoteMedia[person.id]?.camera ?? null,
+          audioTrack: remoteMedia[person.id]?.audio ?? null,
+          speaking: !!person.speaking,
+          mirror: false,
+        }
 
   const { cols, w, h } = fitGrid(participants.length, width, height)
   const narrow = width < 640
+  const remoteShare = participants.find(
+    (person) => !person.isSelf && remoteMedia[person.id]?.screen,
+  )
+  const remoteScreenTrack = remoteShare
+    ? (remoteMedia[remoteShare.id]?.screen ?? null)
+    : null
+  const screenShare = self.screen
+  const screenShareName = self.screen
+    ? 'You are sharing your screen'
+    : `${remoteShare?.name ?? 'A participant'} is sharing their screen`
 
   return (
     <div ref={box} className="size-full">
-      {self.screen ? (
+      {screenShare || remoteScreenTrack ? (
         // Screen share takes the room; people move to a strip beside it.
         <div
           className={`flex size-full gap-3 ${narrow ? 'flex-col' : 'flex-row'}`}
         >
           <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[8px] bg-black/30">
-            <VideoView stream={self.screen} fit="contain" />
+            <VideoView
+              stream={screenShare}
+              track={screenShare ? null : remoteScreenTrack}
+              fit="contain"
+            />
             <span className="absolute top-2 left-2 rounded-[4px] bg-black/55 px-2 py-0.5 text-[12.5px] text-white">
-              You are sharing your screen
+              {screenShareName}
             </span>
           </div>
           <div

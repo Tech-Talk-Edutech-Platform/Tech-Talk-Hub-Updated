@@ -6,6 +6,7 @@ import {
   Settings,
 } from 'lucide-react'
 import { CLASSROOM_BRAND } from '../../../data/classroomBrand'
+import type { LiveConnectionState } from '../../../hooks/classroom/useLiveKitRoom'
 import type { MenuAction } from '../../../types/classroom'
 import { BrandMark } from '../brand/BrandMark'
 import { MoreMenu } from './MoreMenu'
@@ -17,6 +18,11 @@ type HeaderMenu = 'stats' | 'more'
 
 type StageHeaderProps = {
   participantCount: number
+  liveConnection: LiveConnectionState
+  liveError: string | null
+  audioPlaybackBlocked: boolean
+  onReconnect: () => void
+  onEnableAudio: () => void
   recording: boolean
   announcing: boolean
   pip: boolean
@@ -29,6 +35,11 @@ type StageHeaderProps = {
 /** Brand, participant pill and the room's top-right controls. */
 export function StageHeader({
   participantCount,
+  liveConnection,
+  liveError,
+  audioPlaybackBlocked,
+  onReconnect,
+  onEnableAudio,
   recording,
   announcing,
   pip,
@@ -95,6 +106,50 @@ export function StageHeader({
           aria-expanded={open === 'more'}
           onClick={() => toggle('more')}
         />
+      </div>
+
+      <div
+        role="status"
+        aria-live="polite"
+        className="pointer-events-auto absolute top-[46px] left-0 flex max-w-[min(560px,calc(100vw-24px))] items-center gap-2 rounded-[6px] bg-black/55 px-2.5 py-1.5 text-[12px] text-white shadow-sm backdrop-blur-sm"
+      >
+        <span
+          aria-hidden="true"
+          className={`size-2 shrink-0 rounded-full ${
+            liveConnection === 'connected'
+              ? 'bg-emerald-400'
+              : liveConnection === 'connecting'
+                ? 'animate-pulse bg-amber-300'
+                : 'bg-stage-muted'
+          }`}
+        />
+        <span className="min-w-0">
+          {liveConnection === 'connected'
+            ? 'Live call connected'
+            : liveConnection === 'connecting'
+              ? 'Connecting to live call…'
+              : liveConnection === 'error'
+                ? liveError || 'Live call unavailable'
+                : 'Not connected to live call'}
+        </span>
+        {(liveConnection === 'error' || liveConnection === 'disconnected') && (
+          <button
+            type="button"
+            onClick={onReconnect}
+            className="shrink-0 rounded px-1.5 py-0.5 font-semibold text-white underline underline-offset-2 hover:bg-white/10"
+          >
+            Retry
+          </button>
+        )}
+        {audioPlaybackBlocked && liveConnection === 'connected' && (
+          <button
+            type="button"
+            onClick={onEnableAudio}
+            className="shrink-0 rounded px-1.5 py-0.5 font-semibold text-white underline underline-offset-2 hover:bg-white/10"
+          >
+            Enable audio
+          </button>
+        )}
       </div>
 
       <StatsPopover

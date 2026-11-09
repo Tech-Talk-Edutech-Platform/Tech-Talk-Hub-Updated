@@ -52,6 +52,27 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
+### Live classroom calls
+
+The classroom uses LiveKit for cross-device audio, video, screen sharing,
+presence, chat, and reactions. Create a LiveKit Cloud project (or configure a
+self-hosted LiveKit server), then put its WebSocket URL and server-side API
+credentials in `server/.env`:
+
+```
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+```
+
+Keep the API secret on the Express server; never add it to a `VITE_` variable.
+The server issues short-lived room tokens and creates rooms with a 25-person
+limit, including the host. In development, run the frontend and Express server as described above;
+Vite proxies `/api` requests to port 5000. In production, route `/api` to the
+Express service and serve the frontend over HTTPS. Without LiveKit configured,
+the classroom clearly reports that live calls are unavailable and retains its
+same-browser tab fallback; it cannot stream to other devices in that mode.
+
 Run `npm run typecheck` to check TypeScript. The application currently has unresolved strict TypeScript errors; see the Phase Eight section in `docs/typescript-migration-audit.md` before treating the migration as complete. The Express service uses `server/.env` as described by `server/.env.example`.
 
 ---
