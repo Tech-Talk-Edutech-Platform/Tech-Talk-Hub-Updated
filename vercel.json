@@ -8,7 +8,17 @@
       "outputDirectory": "dist",
       "cleanUrls": true,
       "trailingSlash": false,
-      "rewrites": [{ "source": "/(.*)", "destination": "/app.html" }]
+      "rewrites": [
+        {
+          "source": "/:page(about|blog|book|booking-failed|booking-success|careers|cart|checkout|child-safety|curriculum|donate|faculty|favorites|future-developers|junior-coders|privacy|shop|tech-professionals|terms)",
+          "destination": "/:page.html"
+        },
+        {
+          "source": "/:section(blog|courses|shop)/:slug",
+          "destination": "/:section/:slug.html"
+        },
+        { "source": "/(.*)", "destination": "/app.html" }
+      ]
     },
     "server": {
       "root": "server",
@@ -26,6 +36,17 @@
       ]
     }
   },
+  "redirects": [
+    { "source": "/book-class", "destination": "/book", "permanent": true },
+    { "source": "/courses", "destination": "/curriculum", "permanent": true },
+    { "source": "/programs", "destination": "/curriculum", "permanent": true }
+  ],
+  "headers": [
+    {
+      "source": "/login",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "server" } },
     { "source": "/studio", "destination": { "service": "studio" } },

@@ -4,7 +4,13 @@
  * Keep this file free of browser APIs.
  */
 
-export const SITE_URL = 'https://techtalk-hub.com'
+/**
+ * The address search engines should list. Canonicals, og:url, structured data,
+ * robots.txt and the sitemap all name it, so it must be the host that serves
+ * the pages directly, with no redirect in front. Change it here if the site
+ * moves to a custom domain.
+ */
+export const SITE_URL = 'https://tech-talk-hub-updated.vercel.app'
 export const SITE_NAME = 'Tech Talk Hub'
 
 export type MetaImage = {

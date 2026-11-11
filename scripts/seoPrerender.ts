@@ -51,11 +51,16 @@ const FETCH_TIMEOUT_MS = 15_000
 /** Slugs that are safe to use as a directory name; others fall back to the SPA. */
 const SAFE_SLUG = /^[\w-]+$/
 
-/** App areas behind sign-in, plus the old site's private paths. */
+/**
+ * App areas behind sign-in, plus the old site's private paths.
+ *
+ * `/login` is left crawlable on purpose: it answers with `X-Robots-Tag:
+ * noindex` (vercel.json), and Google only sees that header if it may fetch the
+ * page. A login page that is blocked here can still be indexed from links.
+ */
 const DISALLOWED_PATHS = [
   '/admin',
   '/dashboard',
-  '/login',
   '/cart',
   '/checkout',
   '/favorites',
@@ -203,6 +208,72 @@ async function writePage(outDir: string, route: string, html: string) {
   await writeFile(file, html)
 }
 
+/** A vercel.json `source` as a RegExp, for the forms it uses: `:name`, `:name(a|b)`, `(.*)`. */
+function vercelSourcePattern(source: string): RegExp {
+  const pattern = source.replace(
+    /:\w+(\([^)]*\))?/g,
+    (_match, group: string | undefined) => group ?? '([^/]+)',
+  )
+  return new RegExp(`^${pattern}$`)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+type VercelRewrite = { source: string; destination: unknown }
+
+/** `services.app.rewrites` from a parsed vercel.json, or [] if it has none. */
+function appRewrites(vercel: unknown): VercelRewrite[] {
+  const services = isRecord(vercel) ? vercel.services : undefined
+  const app = isRecord(services) ? services.app : undefined
+  const rewrites: unknown = isRecord(app) ? app.rewrites : undefined
+  if (!Array.isArray(rewrites)) return []
+
+  return rewrites
+    .filter(isRecord)
+    .flatMap((rewrite) =>
+      typeof rewrite.source === 'string'
+        ? [{ source: rewrite.source, destination: rewrite.destination }]
+        : [],
+    )
+}
+
+/**
+ * On Vercel the app's SPA rewrite wins over `cleanUrls`, so `/about` only gets
+ * about.html through an explicit rewrite in vercel.json (services.app). A page
+ * missing from that list still works, but every crawler and link preview gets
+ * the home page's title and no canonical. Warn so new pages aren't missed.
+ */
+async function warnAboutUnroutedPages(
+  config: ResolvedConfig,
+  routes: string[],
+) {
+  let rewrites: VercelRewrite[]
+  try {
+    const vercel: unknown = JSON.parse(
+      await readFile(path.join(config.root, 'vercel.json'), 'utf8'),
+    )
+    rewrites = appRewrites(vercel)
+  } catch {
+    return
+  }
+
+  const unrouted = routes.filter((route) => {
+    if (route === '/') return false
+    const rewrite = rewrites.find(({ source }) =>
+      vercelSourcePattern(source).test(route),
+    )
+    return !rewrite || rewrite.destination === '/app.html'
+  })
+
+  if (unrouted.length > 0) {
+    config.logger.warn(
+      `[seo] vercel.json sends ${unrouted.join(', ')} to the SPA fallback, so crawlers get the home page's tags there. Add them to the services.app rewrites.`,
+    )
+  }
+}
+
 async function fetchDynamicContent(config: ResolvedConfig) {
   const url = config.env.VITE_SUPABASE_URL
   const key = config.env.VITE_SUPABASE_ANON_KEY
@@ -327,6 +398,10 @@ async function prerender(config: ResolvedConfig) {
     ),
     writeFile(path.join(outDir, 'sitemap.xml'), sitemapXml(sitemap)),
     writeFile(path.join(outDir, 'robots.txt'), robotsTxt()),
+    warnAboutUnroutedPages(
+      config,
+      pages.map((page) => page.path),
+    ),
   ])
 
   config.logger.info(
