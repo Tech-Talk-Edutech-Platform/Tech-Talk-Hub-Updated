@@ -3,8 +3,14 @@ import express, {
   type Request,
   type Response,
 } from 'express'
-import { AccessToken, RoomServiceClient } from 'livekit-server-sdk'
+import { AccessToken } from 'livekit-server-sdk'
 import { rateLimit } from '../middleware/rateLimit'
+import {
+  classroomAccess,
+  liveKitConfig,
+  LiveKitConfigError,
+  type ClassroomRole,
+} from '../services/classroomAccess'
 
 const router = express.Router()
 const ROOM_CAPACITY = 25
@@ -14,18 +20,11 @@ type TokenRequestBody = {
   roomId?: unknown
   identity?: unknown
   name?: unknown
+  /** What the browser asks to join as; 'host' is only granted if allowed. */
+  role?: unknown
 }
 
 type TokenRequest = Request<Record<string, string>, unknown, TokenRequestBody>
-
-function publicRoomUrl(value: string) {
-  const url = new URL(value)
-  if (url.protocol !== 'wss:' && url.protocol !== 'ws:') {
-    throw new Error('LIVEKIT_URL must use ws:// or wss://.')
-  }
-  url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:'
-  return url.toString().replace(/\/$/, '')
-}
 
 function cleanName(value: unknown) {
   if (typeof value !== 'string') return null
@@ -38,6 +37,7 @@ function cleanName(value: unknown) {
 async function issueToken(req: TokenRequest, res: Response): Promise<void> {
   const { roomId, identity } = req.body ?? {}
   const name = cleanName(req.body?.name)
+  const wantsHost = req.body?.role === 'host'
 
   if (
     typeof roomId !== 'string' ||
@@ -50,31 +50,33 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
     return
   }
 
-  const serverUrl = process.env.LIVEKIT_URL?.trim()
-  const apiKey = process.env.LIVEKIT_API_KEY?.trim()
-  const apiSecret = process.env.LIVEKIT_API_SECRET?.trim()
-
-  if (!serverUrl || !apiKey || !apiSecret) {
-    res.status(503).json({
-      error:
-        'Live video is not configured. Add LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to the server environment.',
-    })
-    return
-  }
-
-  let liveKitHttpUrl: string
+  let config
   try {
-    liveKitHttpUrl = publicRoomUrl(serverUrl)
+    config = liveKitConfig()
   } catch (error) {
-    console.error('Invalid LIVEKIT_URL configuration:', error)
-    res.status(503).json({
-      error: 'The live-video server URL is invalid. Check LIVEKIT_URL.',
-    })
+    if (!(error instanceof LiveKitConfigError)) throw error
+    console.error('LiveKit configuration:', error.message)
+    res.status(503).json({ error: error.message })
     return
   }
 
-  const service = new RoomServiceClient(liveKitHttpUrl, apiKey, apiSecret)
+  const access = await classroomAccess(req, roomId)
+  if (wantsHost && access.role !== 'host') {
+    res.status(403).json({
+      error:
+        'Only this class’s tutor or an admin can host it. Open the student link to join as a participant.',
+    })
+    return
+  }
+  // Staff opening the student link join as a participant.
+  const role: ClassroomRole = wantsHost ? 'host' : 'participant'
 
+  if (role === 'participant' && access.ended) {
+    res.status(410).json({ error: 'This class has ended.' })
+    return
+  }
+
+  const { service, serverUrl, apiKey, apiSecret } = config
   let room = (await service.listRooms([roomId])).find(
     (candidate) => candidate.name === roomId,
   )
@@ -105,16 +107,22 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
     identity,
     name,
     ttl: '2h',
+    // Everyone in the room can read this; the client trusts "end class"
+    // messages only from a host.
+    attributes: { role },
   })
   token.addGrant({
     roomJoin: true,
     room: roomId,
+    roomAdmin: role === 'host',
     canPublish: true,
     canSubscribe: true,
     canPublishData: true,
+    // Participants must not be able to rewrite their own role attribute.
+    canUpdateOwnMetadata: false,
   })
 
-  res.json({ serverUrl, token: await token.toJwt() })
+  res.json({ serverUrl, token: await token.toJwt(), role })
 }
 
 router.post(

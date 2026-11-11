@@ -5,6 +5,8 @@ import { Toaster } from './ui/Toaster'
 
 type ClassEndedProps = {
   info: ClassEndInfo
+  /** Show the rejoin / start-again button. */
+  canRejoin?: boolean
   onRejoin: () => void
 }
 
@@ -18,7 +20,11 @@ function endDetail(info: ClassEndInfo) {
 }
 
 /** After End class (or Leave room). Keeps the room's ground so the change reads as the same place. */
-export function ClassEnded({ info, onRejoin }: ClassEndedProps) {
+export function ClassEnded({
+  info,
+  canRejoin = true,
+  onRejoin,
+}: ClassEndedProps) {
   const left = info.reason === 'left'
 
   return (
@@ -40,13 +46,15 @@ export function ClassEnded({ info, onRejoin }: ClassEndedProps) {
             </span>
           </p>
         )}
-        <button
-          type="button"
-          onClick={onRejoin}
-          className="press mt-7 h-10 w-full rounded-[8px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong"
-        >
-          {left ? 'Rejoin the room' : 'Start a new class'}
-        </button>
+        {canRejoin && (
+          <button
+            type="button"
+            onClick={onRejoin}
+            className="press mt-7 h-10 w-full rounded-[8px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong"
+          >
+            {left ? 'Rejoin the room' : 'Start a new class'}
+          </button>
+        )}
       </div>
       <Toaster className="bottom-10" />
     </main>

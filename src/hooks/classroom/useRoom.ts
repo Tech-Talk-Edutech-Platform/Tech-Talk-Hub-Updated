@@ -163,7 +163,11 @@ export function useRoom({
   }, [])
 
   const receiveMessage = useCallback(
-    (value: unknown) => {
+    /**
+     * `sender` comes from LiveKit (vouched for by the server). Messages from
+     * this browser's other tabs (BroadcastChannel) have none.
+     */
+    (value: unknown, sender?: { isHost: boolean }) => {
       if (!isRoomMessage(value) || value.from.id === selfRef.current.id) return
       const { from } = value
       const upsert = () =>
@@ -199,6 +203,8 @@ export function useRoom({
           badgeRef.current?.(value.award)
           break
         case 'end':
+          // Only a host can end the class for everyone.
+          if (sender && !sender.isHost) break
           endRef.current?.(from)
           break
       }

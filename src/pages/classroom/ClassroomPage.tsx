@@ -36,7 +36,10 @@ import { CLASSROOM_BRAND } from '../../data/classroomBrand'
 import { useClassroomData } from '../../hooks/classroom/useClassroomData'
 import { useClassTimer } from '../../hooks/classroom/useClassTimer'
 import { useIsSpeaking } from '../../hooks/classroom/useIsSpeaking'
-import { useLiveKitRoom } from '../../hooks/classroom/useLiveKitRoom'
+import {
+  endRoomForEveryone,
+  useLiveKitRoom,
+} from '../../hooks/classroom/useLiveKitRoom'
 import { useLocalMedia } from '../../hooks/classroom/useLocalMedia'
 import { useRecording } from '../../hooks/classroom/useRecording'
 import { useRoom } from '../../hooks/classroom/useRoom'
@@ -159,8 +162,10 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
   const sessionId = classroom.sessionId
   const [params] = useSearchParams()
   const guestJoin = params.get('join') === '1'
-  // Staff run the class; a ?join=1 invite always opens the attendee view.
-  const teacherMode = viewer.isStaff && !guestJoin
+  // The host (admin or this class's tutor) runs the class and can end it for
+  // everyone; everyone else is a participant who can only leave. A ?join=1
+  // invite always opens the participant view.
+  const teacherMode = viewer.canHost && !guestJoin
   // Saved to Supabase only for a real session run by staff.
   const persist = data.source === 'live' && teacherMode && !!sessionId
 
@@ -269,13 +274,17 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     setModal(null)
     setHelpOpen(false)
     setHand(false)
-    setEnded({ elapsedMs: timer.elapsedMs, ...info })
+    // The host's "end" message and the server closing the room can both
+    // arrive; keep the first, which names who ended it.
+    setEnded((current) => current ?? { elapsedMs: timer.elapsedMs, ...info })
   }
 
   const liveRoom = useLiveKitRoom({
     roomId: classroomId,
     identity: selfId,
     name,
+    role: teacherMode ? 'host' : 'participant',
+    onRoomClosed: () => finish({ reason: 'ended', by: null }),
     enabled: !ended && joinStarted,
     camera: media.cam,
     microphone: media.mic,
@@ -460,7 +469,17 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     if (persist && sessionId) {
       await saveSessionEnd(sessionId, report, timer.elapsedMs, students)
     }
+    // Tell everyone who ended it, then close the room on the server so
+    // nobody stays connected.
     await room.endForAll()
+    if (liveRoom.connection === 'connected') {
+      try {
+        await endRoomForEveryone(classroomId)
+      } catch (error) {
+        toast(`Couldn’t close the room for everyone.${errorDetail(error)}`)
+        throw error
+      }
+    }
     finish({ reason: 'ended', by: null, report })
   }
 
@@ -508,6 +527,8 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     return (
       <ClassEnded
         info={ended}
+        // A participant can rejoin after leaving, not after the class ended.
+        canRejoin={ended.reason === 'left' || teacherMode}
         onRejoin={() => {
           if (ended.reason === 'ended') timer.restart()
           setEnded(null)

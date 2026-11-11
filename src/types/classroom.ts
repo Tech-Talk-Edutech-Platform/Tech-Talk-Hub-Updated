@@ -212,6 +212,11 @@ export type ClassroomViewer = {
   name: string | null
   isStaff: boolean
   isAdmin: boolean
+  /**
+   * Hosts this room: an admin, the session's tutor, or staff in a room with
+   * no session. The API server checks the same rules before granting it.
+   */
+  canHost: boolean
 }
 
 /** Everything the room shows, loaded once per room code. */

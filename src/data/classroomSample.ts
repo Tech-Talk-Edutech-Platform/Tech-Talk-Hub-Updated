@@ -244,6 +244,6 @@ export function sampleClassroomData(
     badges: SAMPLE_BADGES,
     awards: [],
     projects: [],
-    viewer: { ...viewer, isStaff: true },
+    viewer: { ...viewer, isStaff: true, canHost: true },
   }
 }

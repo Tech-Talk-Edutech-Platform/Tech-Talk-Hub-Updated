@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ConnectionState,
+  DisconnectReason,
   Room,
   RoomEvent,
   Track,
@@ -10,7 +11,14 @@ import {
 } from 'livekit-client'
 import { apiUrl } from '../../lib/apiUrl'
 import { toast } from '../../lib/classroom/toast'
+import { isSupabaseConfigured, supabase } from '../../supabase'
 import type { Participant, RoomMessage } from '../../types/classroom'
+
+/** host: can end the call for everyone. participant: can only leave. */
+export type LiveRole = 'host' | 'participant'
+
+/** Who sent a LiveKit data message, as the server vouched for in their token. */
+export type MessageSender = { identity: string; isHost: boolean }
 
 export type LiveConnectionState =
   'connecting' | 'connected' | 'disconnected' | 'error'
@@ -25,7 +33,10 @@ type LiveKitOptions = {
   roomId: string
   identity: string
   name: string
+  role: LiveRole
   enabled: boolean
+  /** A host closed the room on the server: everyone was disconnected. */
+  onRoomClosed?: () => void
   camera: MediaStream | null
   microphone: MediaStream | null
   screen: MediaStream | null
@@ -54,14 +65,22 @@ function getTokenResponse(value: unknown): TokenResponse | null {
 const UNREACHABLE =
   'The live video server isn’t reachable. Start the API server (npm --prefix server run dev) or set VITE_API_BASE_URL.'
 
-/** POST /api/classroom/token. Turns HTML or empty error pages into a clear message. */
-async function requestToken(roomId: string, identity: string, name: string) {
+/** The signed-in user's Supabase token, so the server can tell tutors from guests. */
+async function authHeader(): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured) return {}
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+/** POST to the classroom API. Turns HTML or empty error pages into a clear message. */
+async function postClassroomApi(path: string, payload: unknown) {
   let response: Response
   try {
-    response = await fetch(apiUrl('/api/classroom/token'), {
+    response = await fetch(apiUrl(path), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomId, identity, name }),
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify(payload),
     })
   } catch {
     throw new Error(UNREACHABLE)
@@ -80,14 +99,34 @@ async function requestToken(roomId: string, identity: string, name: string) {
     throw new Error(
       response.status >= 500 && !body
         ? UNREACHABLE
-        : `Couldn’t join the live room (HTTP ${response.status}).`,
+        : `The live room didn’t respond (HTTP ${response.status}).`,
     )
   }
+  return body
+}
+
+async function requestToken(
+  roomId: string,
+  identity: string,
+  name: string,
+  role: LiveRole,
+) {
+  const body = await postClassroomApi('/api/classroom/token', {
+    roomId,
+    identity,
+    name,
+    role,
+  })
   const tokenResponse = getTokenResponse(body)
   if (!tokenResponse) {
     throw new Error('The live-room service returned an invalid response.')
   }
   return tokenResponse
+}
+
+/** Host only: close the room on the server, which disconnects everyone. */
+export async function endRoomForEveryone(roomId: string) {
+  await postClassroomApi('/api/classroom/end', { roomId })
 }
 
 /** One connection attempt's state; a new attempt starts from freshState. */
@@ -146,15 +185,21 @@ export function useLiveKitRoom({
   roomId,
   identity,
   name,
+  role,
   enabled,
+  onRoomClosed,
   camera,
   microphone,
   screen,
 }: LiveKitOptions) {
   const [attempt, setAttempt] = useState(0)
   const sessionKey = enabled
-    ? JSON.stringify([roomId, identity, name, attempt])
+    ? JSON.stringify([roomId, identity, name, role, attempt])
     : null
+  const closedRef = useRef(onRoomClosed)
+  useEffect(() => {
+    closedRef.current = onRoomClosed
+  })
   const [stored, setStored] = useState<LiveState>(() => freshState(sessionKey))
   // State left over from an earlier attempt (or room) reads as a fresh one.
   const live = stored.key === sessionKey ? stored : freshState(sessionKey)
@@ -172,7 +217,9 @@ export function useLiveKitRoom({
     [],
   )
   const roomRef = useRef<Room | null>(null)
-  const messageRef = useRef<(message: unknown) => void>(() => {})
+  const messageRef = useRef<
+    (message: unknown, sender?: MessageSender) => void
+  >(() => {})
   const publishedTracks = useRef(new Map<string, MediaStreamTrack>())
   const publishQueue = useRef<Promise<void>>(Promise.resolve())
 
@@ -213,11 +260,12 @@ export function useLiveKitRoom({
     room.on(RoomEvent.Reconnecting, () => {
       if (state.active) update(key, { connection: 'connecting' })
     })
-    room.on(RoomEvent.Disconnected, () => {
+    room.on(RoomEvent.Disconnected, (reason) => {
       if (!state.active) return
       update(key, { connection: 'disconnected', audioPlaybackBlocked: false })
       tracks.clear()
       refreshParticipants()
+      if (reason === DisconnectReason.ROOM_DELETED) closedRef.current?.()
     })
     room.on(RoomEvent.ParticipantConnected, refreshParticipants)
     room.on(RoomEvent.ParticipantDisconnected, refreshParticipants)
@@ -229,12 +277,17 @@ export function useLiveKitRoom({
     room.on(RoomEvent.TrackUnmuted, refreshParticipants)
     room.on(RoomEvent.ActiveSpeakersChanged, refreshParticipants)
     room.on(RoomEvent.ParticipantNameChanged, refreshParticipants)
-    room.on(RoomEvent.DataReceived, (payload) => {
-      if (state.active) messageRef.current(messageFromJson(payload))
+    room.on(RoomEvent.DataReceived, (payload, sender) => {
+      if (!state.active) return
+      messageRef.current(messageFromJson(payload), {
+        identity: sender?.identity ?? '',
+        // Set by the server in the sender's token; they can't change it.
+        isHost: sender?.attributes.role === 'host',
+      })
     })
 
     const connect = async () => {
-      const token = await requestToken(roomId, identity, name)
+      const token = await requestToken(roomId, identity, name, role)
       if (!state.active) return
       await room.connect(token.serverUrl, token.token, { autoSubscribe: true })
     }
@@ -257,7 +310,7 @@ export function useLiveKitRoom({
       if (roomRef.current === room) roomRef.current = null
       tracks.clear()
     }
-  }, [sessionKey, roomId, identity, name, update])
+  }, [sessionKey, roomId, identity, name, role, update])
 
   useEffect(() => {
     const room = roomRef.current
@@ -321,7 +374,7 @@ export function useLiveKitRoom({
   }, [])
 
   const setMessageHandler = useCallback(
-    (handler: (message: unknown) => void) => {
+    (handler: (message: unknown, sender?: MessageSender) => void) => {
       messageRef.current = handler
     },
     [],

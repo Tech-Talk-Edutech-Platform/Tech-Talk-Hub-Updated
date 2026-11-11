@@ -240,6 +240,7 @@ const ANONYMOUS: ClassroomViewer = {
   name: null,
   isStaff: false,
   isAdmin: false,
+  canHost: false,
 }
 
 export async function loadViewer(): Promise<ClassroomViewer> {
@@ -259,6 +260,8 @@ export async function loadViewer(): Promise<ClassroomViewer> {
     name: data?.full_name?.trim() || null,
     isStaff: STAFF_ROLES.has(role),
     isAdmin: ADMIN_ROLES.has(role),
+    // Narrowed per room in loadClassroom.
+    canHost: STAFF_ROLES.has(role),
   }
 }
 
@@ -336,6 +339,14 @@ export async function loadClassroom(roomCode: string): Promise<ClassroomData> {
   }
   if (error) fail(error, 'Couldn’t load this class.')
   if (!session) {
+    // Tutors only see their own sessions. If the room belongs to another
+    // tutor, this one joins as a participant (the server enforces the same).
+    const { data: info } = await plannedDb.rpc('classroom_public_info', {
+      p_room_code: roomCode,
+    })
+    if (info?.length) {
+      return loadAttendeeRoom(roomCode, { ...viewer, canHost: false })
+    }
     return emptyRoom(roomCode, viewer, 'unlinked', {}, await loadBadges())
   }
 
