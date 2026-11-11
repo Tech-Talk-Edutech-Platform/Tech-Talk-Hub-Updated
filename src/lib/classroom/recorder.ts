@@ -1,9 +1,8 @@
-// Local class recording, the way the reference does it: the browser asks which
-// tab/window to capture ("Choose what to share"), the capture is recorded with the
-// teacher's mic mixed in, and stopping downloads a .webm file (.mp4 on Safari).
-import { CLASSROOM_BRAND } from '../../data/classroomBrand'
+// Class recording: the browser asks which tab/window to capture ("Choose what
+// to share"; this tab is offered first), the capture is recorded with the
+// teacher's mic mixed in, and stopping hands back the file. useRecording
+// downloads it and, for a real class, uploads it to Class Recordings.
 import { getMediaDevices, isUserCancel } from './media'
-import { fileDate } from './time'
 
 /** Thrown by `startRecording` when the browser can't capture or record. */
 export const RECORDING_UNSUPPORTED = 'unsupported'
@@ -15,21 +14,40 @@ const MIME_TYPES = [
   'video/mp4', // Safari records MP4 only
 ]
 
+/**
+ * ~1.5 Mbps video keeps an hour-long class near 700 MB, readable for screen
+ * shares and coding, instead of the browser's default of 2.5+ Mbps.
+ */
+const VIDEO_BITS_PER_SECOND = 1_500_000
+const AUDIO_BITS_PER_SECOND = 96_000
+
 /** Chromium capture hints that the DOM typings don't describe yet. */
 type DisplayMediaOptions = DisplayMediaStreamOptions & {
   preferCurrentTab?: boolean
   selfBrowserSurface?: 'include' | 'exclude'
   surfaceSwitching?: 'include' | 'exclude'
+  systemAudio?: 'include' | 'exclude'
 }
 
 type RecordingOptions = {
   micStream: MediaStream | null
-  classroomId: string
   /** The browser's own "Stop sharing" bar ended the recording. */
-  onEnded: () => void
+  onEnded: (result: RecordingResult | null) => void
 }
 
-export type RecordingController = { stop: () => Promise<void> }
+export type RecordingResult = {
+  blob: Blob
+  extension: 'webm' | 'mp4'
+  /** Length of the recording in ms. */
+  durationMs: number
+}
+
+export type RecordingController = {
+  /** Resolves with the recording, or null if nothing was captured. */
+  stop: () => Promise<RecordingResult | null>
+  /** Swap the mixed-in microphone (the teacher turned it on, off or changed it). */
+  setMic: (stream: MediaStream | null) => void
+}
 
 function pickMimeType() {
   return MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? ''
@@ -38,13 +56,15 @@ function pickMimeType() {
 const extensionFor = (mimeType: string) =>
   mimeType.includes('mp4') ? 'mp4' : 'webm'
 
-function downloadBlob(blob: Blob, filename: string) {
+export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  document.body.append(link)
   link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 /**
@@ -53,17 +73,24 @@ function downloadBlob(blob: Blob, filename: string) {
  */
 export async function startRecording({
   micStream,
-  classroomId,
   onEnded,
 }: RecordingOptions): Promise<RecordingController | null> {
   const mediaDevices = getMediaDevices()
   if (
     !mediaDevices ||
     !('getDisplayMedia' in mediaDevices) ||
-    !('MediaRecorder' in window)
+    !('MediaRecorder' in window) ||
+    !('AudioContext' in window)
   ) {
     throw new Error(RECORDING_UNSUPPORTED)
   }
+
+  // Create the mixer now, while the Record click still counts as a user
+  // gesture. Created after the share picker closes, Chrome starts it
+  // suspended and the recording's audio track is silent.
+  const audioContext = new AudioContext()
+  void audioContext.resume()
+  const destination = audioContext.createMediaStreamDestination()
 
   const options: DisplayMediaOptions = {
     video: { frameRate: 30 },
@@ -71,76 +98,82 @@ export async function startRecording({
     preferCurrentTab: true,
     selfBrowserSurface: 'include',
     surfaceSwitching: 'include',
+    systemAudio: 'include',
   }
 
   let display: MediaStream
   try {
     display = await mediaDevices.getDisplayMedia(options)
   } catch (error) {
+    void audioContext.close()
     if (isUserCancel(error)) return null
     throw error
   }
+  if (audioContext.state === 'suspended') await audioContext.resume()
 
-  // Mix tab audio (if shared) with the teacher's mic into one track.
-  const audioContext = new AudioContext()
-  const destination = audioContext.createMediaStreamDestination()
-  for (const source of [display, micStream]) {
-    if (source?.getAudioTracks().length) {
-      audioContext.createMediaStreamSource(source).connect(destination)
+  // Tab audio (the other participants, when this tab is shared) plus the mic.
+  if (display.getAudioTracks().length) {
+    audioContext.createMediaStreamSource(display).connect(destination)
+  }
+  let micSource: MediaStreamAudioSourceNode | null = null
+  const setMic = (stream: MediaStream | null) => {
+    micSource?.disconnect()
+    micSource = null
+    if (stream?.getAudioTracks().length && audioContext.state !== 'closed') {
+      micSource = audioContext.createMediaStreamSource(stream)
+      micSource.connect(destination)
     }
   }
+  setMic(micStream)
 
   const stream = new MediaStream([
     ...display.getVideoTracks(),
     ...destination.stream.getAudioTracks(),
   ])
   const mimeType = pickMimeType()
-  const recorder = new MediaRecorder(
-    stream,
-    mimeType ? { mimeType } : undefined,
-  )
+  const recorder = new MediaRecorder(stream, {
+    ...(mimeType ? { mimeType } : {}),
+    videoBitsPerSecond: VIDEO_BITS_PER_SECOND,
+    audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+  })
   const chunks: Blob[] = []
   recorder.ondataavailable = (event) => {
     if (event.data.size) chunks.push(event.data)
   }
+  const startedAt = Date.now()
 
-  const finish = () => {
+  const finish = (): RecordingResult | null => {
     for (const track of display.getTracks()) track.stop()
+    micSource?.disconnect()
     void audioContext.close()
     const [first] = chunks
-    if (!first) return
+    if (!first) return null
     const type = recorder.mimeType || first.type || 'video/webm'
-    downloadBlob(
-      new Blob(chunks, { type }),
-      `${CLASSROOM_BRAND.fileSlug}-${classroomId}-${fileDate()}.${extensionFor(type)}`,
-    )
+    return {
+      blob: new Blob(chunks, { type }),
+      extension: extensionFor(type),
+      durationMs: Date.now() - startedAt,
+    }
   }
 
-  let stopped = false
-  const stop = () =>
-    new Promise<void>((resolve) => {
-      if (stopped) {
-        resolve()
+  let stopping: Promise<RecordingResult | null> | null = null
+  const stop = () => {
+    stopping ??= new Promise<RecordingResult | null>((resolve) => {
+      if (recorder.state === 'inactive') {
+        resolve(finish())
         return
       }
-      stopped = true
-      const done = () => {
-        finish()
-        resolve()
-      }
-      if (recorder.state === 'inactive') {
-        done()
-      } else {
-        recorder.onstop = done
-        recorder.stop()
-      }
+      recorder.onstop = () => resolve(finish())
+      recorder.stop()
     })
+    return stopping
+  }
 
   // The browser's own "Stop sharing" bar ends the capture; treat it as Stop.
   display.getVideoTracks()[0]?.addEventListener('ended', () => {
-    if (!stopped) void stop().then(onEnded)
+    if (!stopping) void stop().then(onEnded)
   })
 
   recorder.start(1000)
-  return { stop }
+  return { stop, setMic }
 }

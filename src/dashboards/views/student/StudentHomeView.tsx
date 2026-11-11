@@ -14,6 +14,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { RecordingLink } from '../../../lib/classroom/recordingLink'
 import type { Tables } from '../../../types/database'
 
 type RecordingWithTutor = Tables<'class_recordings'> & {
@@ -211,10 +212,8 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                     className="flex flex-col justify-between space-y-4 rounded-2xl border border-purple-100 bg-purple-50/40 p-4 transition-all hover:border-purple-400/40 dark:border-purple-500/20 dark:bg-purple-950/20"
                   >
                     {recording.recording_url ? (
-                      <a
-                        href={recording.recording_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <RecordingLink
+                        recording={recording.recording_url}
                         className="group relative block flex aspect-video cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-black/80 shadow-md"
                       >
                         {recording.thumbnail_url ? (
@@ -236,7 +235,7 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                         <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-sm bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
                           Watch Session <ExternalLink size={10} />
                         </span>
-                      </a>
+                      </RecordingLink>
                     ) : (
                       <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-black/80 shadow-md">
                         <div className="flex flex-col items-center gap-2 text-xs text-gray-400">

@@ -1,5 +1,4 @@
 import type { RefObject } from 'react'
-import { BADGES } from '../../../data/classroom'
 import type { Badge } from '../../../types/classroom'
 import { BadgeMedal } from '../ui/BadgeMedal'
 import { Popover } from '../ui/Popover'
@@ -9,6 +8,7 @@ type GiveBadgePopoverProps = {
   open: boolean
   onClose: () => void
   onGive: (badge: Badge) => void
+  badges: Badge[]
   studentName: string
 }
 
@@ -22,6 +22,7 @@ export function GiveBadgePopover({
   open,
   onClose,
   onGive,
+  badges,
   studentName,
 }: GiveBadgePopoverProps) {
   return (
@@ -33,14 +34,23 @@ export function GiveBadgePopover({
       gap={40}
       align="viewport"
       label="Coding badges"
-      className="w-[min(840px,calc(100vw-16px))] rounded-[12px] bg-white shadow-[0_16px_48px_-12px_rgb(0_0_0/0.32),0_0_0_1px_rgb(0_0_0/0.04)]"
+      className="w-[min(840px,calc(100vw-16px))] rounded-[16px] bg-white shadow-[0_16px_48px_-12px_rgb(15_23_42/0.4),0_0_0_1px_rgb(15_23_42/0.05)]"
     >
       <div className="pt-[19px] pb-[18px]">
-        <h2 className="px-[22px] text-[17px] leading-6 font-medium text-ink">
+        <h2 className="px-[22px] text-[17px] leading-6 font-semibold text-ink">
           Coding badges
+          <span className="ml-2 text-[14px] font-normal text-muted">
+            for {studentName}
+          </span>
         </h2>
+        {!badges.length && (
+          <p className="mx-[22px] mt-3 rounded-[10px] border border-dashed border-line-strong px-3 py-3 text-[13.5px] text-muted">
+            No badges are set up yet. Add them in Dashboard › Classroom ›
+            Badges.
+          </p>
+        )}
         <ul className="mt-0.5 flex flex-wrap justify-between gap-y-2 px-1 max-[860px]:justify-center">
-          {BADGES.map((badge) => (
+          {badges.map((badge) => (
             <li key={badge.id}>
               <button
                 type="button"

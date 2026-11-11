@@ -1,36 +1,39 @@
+import logo from '../../../assets/images/logo.png'
+
 type BrandMarkProps = {
   size?: number
+  /** Corner radius in px; defaults to the site logo tile's rounding. */
   radius?: number
   className?: string
 }
 
 /**
- * Original Tech Talk Hub mark: a code bracket pair around a dot, on the brand
- * tile. Replace this component to rebrand the classroom.
+ * The site's logo on a white tile, the same treatment as the navbar's
+ * BrandLogo, so the classroom carries the website's mark.
  */
 export function BrandMark({
   size = 32,
-  radius = 4,
+  radius,
   className = '',
 }: BrandMarkProps) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
+    <span
       aria-hidden="true"
-      className={className}
+      className={`grid shrink-0 place-items-center overflow-hidden bg-white ring-1 ring-line ${className}`}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius ?? Math.round(size * 0.27),
+      }}
     >
-      <rect width="32" height="32" rx={radius} fill="var(--color-brand)" />
-      <path
-        d="M12 10.5 6.5 16l5.5 5.5M20 10.5l5.5 5.5-5.5 5.5"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <img
+        src={logo}
+        alt=""
+        width={size}
+        height={size}
+        className="size-full object-contain p-[8%]"
+        draggable={false}
       />
-      <circle cx="16" cy="16" r="2.4" fill="#fff" />
-    </svg>
+    </span>
   )
 }

@@ -36,8 +36,8 @@ type BadgeMedalProps = {
 }
 
 /**
- * Bronze hexagon medal, drawn in code (the reference's badge art is not ours).
- * Flat two-tone metal, a gold wreath or wings as the ornament.
+ * Hexagon medal drawn in code, in the site's colours: a navy rim, indigo
+ * faces, a gold laurel (fun-pop yellow) or pink wings as the ornament.
  */
 export function BadgeMedal({ icon, ornament, size = 76 }: BadgeMedalProps) {
   const Icon = ICONS[icon]
@@ -50,16 +50,16 @@ export function BadgeMedal({ icon, ornament, size = 76 }: BadgeMedalProps) {
     >
       {ornament === 'wreath' && <BadgeWreath />}
       {ornament === 'wings' && <BadgeWings />}
-      <polygon points={hexPoints(27)} fill="#7b3f1d" />
-      <polygon points={hexPoints(24.5)} fill="#b8693a" />
-      <polygon points={hexPoints(19)} fill="#9c5229" />
-      <polygon points={hexPoints(17)} fill="#c97c45" />
+      <polygon points={hexPoints(27)} fill="#172554" />
+      <polygon points={hexPoints(24.5)} fill="#5c6bc0" />
+      <polygon points={hexPoints(19)} fill="#303f9f" />
+      <polygon points={hexPoints(17)} fill="#3f51b5" />
       <Icon
         x={BADGE_CX - 10}
         y={BADGE_CY - 10}
         width={20}
         height={20}
-        color="#fde7c8"
+        color="#fff3b0"
         strokeWidth={2.2}
       />
     </svg>

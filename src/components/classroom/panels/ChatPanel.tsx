@@ -92,7 +92,7 @@ export function ChatPanel({
             <button
               type="submit"
               disabled={!text}
-              className="press mb-1 flex h-[30px] items-center gap-1.5 rounded-[4px] bg-brand px-2.5 text-[14px] font-medium text-white hover:bg-brand-strong disabled:bg-brand-faded"
+              className="press mb-1 flex h-[30px] items-center gap-1.5 rounded-[8px] bg-brand px-2.5 text-[14px] font-medium text-white hover:bg-brand-strong disabled:bg-brand-faded"
             >
               Send
               <SendHorizontal size={14} strokeWidth={2} aria-hidden="true" />

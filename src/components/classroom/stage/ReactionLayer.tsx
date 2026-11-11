@@ -28,7 +28,7 @@ export function ReactionLayer({ reactions, participants }: ReactionLayerProps) {
           >
             <span className="text-[40px] leading-none">{reaction.emoji}</span>
             {sender && !sender.isSelf && (
-              <span className="rounded-[4px] bg-black/50 px-1.5 py-0.5 text-[11.5px] text-white">
+              <span className="rounded-[8px] bg-black/50 px-1.5 py-0.5 text-[11.5px] text-white">
                 {sender.name}
               </span>
             )}

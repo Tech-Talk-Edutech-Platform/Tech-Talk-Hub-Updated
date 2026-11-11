@@ -197,6 +197,7 @@ export type Database = {
       }
       class_recordings: {
         Row: {
+          classroom_session_id: string | null
           created_at: string | null
           id: string
           recording_url: string
@@ -206,6 +207,7 @@ export type Database = {
           tutor_id: string | null
         }
         Insert: {
+          classroom_session_id?: string | null
           created_at?: string | null
           id?: string
           recording_url: string
@@ -215,6 +217,7 @@ export type Database = {
           tutor_id?: string | null
         }
         Update: {
+          classroom_session_id?: string | null
           created_at?: string | null
           id?: string
           recording_url?: string
@@ -224,6 +227,13 @@ export type Database = {
           tutor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: 'class_recordings_classroom_session_id_fkey'
+            columns: ['classroom_session_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_sessions'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'class_recordings_student_id_fkey'
             columns: ['student_id']
@@ -339,6 +349,523 @@ export type Database = {
           tutor_id?: string | null
         }
         Relationships: []
+      }
+      classroom_activities: {
+        Row: {
+          created_at: string
+          id: string
+          material_id: string
+          outline: string
+          position: number
+          project_url: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          material_id: string
+          outline?: string
+          position?: number
+          project_url?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          material_id?: string
+          outline?: string
+          position?: number
+          project_url?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'classroom_activities_material_id_fkey'
+            columns: ['material_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_materials'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      classroom_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          sent_by: string | null
+          session_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sent_by?: string | null
+          session_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sent_by?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'classroom_alerts_resolved_by_fkey'
+            columns: ['resolved_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_alerts_sent_by_fkey'
+            columns: ['sent_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_alerts_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_sessions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      classroom_badge_awards: {
+        Row: {
+          awarded_by: string | null
+          badge_id: string
+          created_at: string
+          id: string
+          session_id: string
+          session_student_id: string
+          student_id: string | null
+        }
+        Insert: {
+          awarded_by?: string | null
+          badge_id: string
+          created_at?: string
+          id?: string
+          session_id: string
+          session_student_id: string
+          student_id?: string | null
+        }
+        Update: {
+          awarded_by?: string | null
+          badge_id?: string
+          created_at?: string
+          id?: string
+          session_id?: string
+          session_student_id?: string
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'classroom_badge_awards_awarded_by_fkey'
+            columns: ['awarded_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_badge_awards_badge_id_fkey'
+            columns: ['badge_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_badges'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_badge_awards_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_sessions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_badge_awards_session_student_id_fkey'
+            columns: ['session_student_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_session_students'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_badge_awards_student_id_fkey'
+            columns: ['student_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      classroom_badges: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          ornament: string
+          position: number
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          icon: string
+          id?: string
+          is_active?: boolean
+          name: string
+          ornament?: string
+          position?: number
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          ornament?: string
+          position?: number
+          slug?: string
+        }
+        Relationships: []
+      }
+      classroom_materials: {
+        Row: {
+          agenda: Json
+          agenda_warning_body: string
+          agenda_warning_title: string
+          course_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          links: Json
+          outcomes: string[]
+          outline: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          agenda?: Json
+          agenda_warning_body?: string
+          agenda_warning_title?: string
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          links?: Json
+          outcomes?: string[]
+          outline?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          agenda?: Json
+          agenda_warning_body?: string
+          agenda_warning_title?: string
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          links?: Json
+          outcomes?: string[]
+          outline?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'classroom_materials_course_id_fkey'
+            columns: ['course_id']
+            isOneToOne: false
+            referencedRelation: 'courses'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_materials_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      classroom_project_submissions: {
+        Row: {
+          activity_id: string | null
+          activity_title: string
+          created_at: string
+          id: string
+          note: string | null
+          project_url: string
+          session_id: string
+          session_student_id: string
+          student_id: string | null
+          submitted_by: string | null
+        }
+        Insert: {
+          activity_id?: string | null
+          activity_title: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          project_url: string
+          session_id: string
+          session_student_id: string
+          student_id?: string | null
+          submitted_by?: string | null
+        }
+        Update: {
+          activity_id?: string | null
+          activity_title?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          project_url?: string
+          session_id?: string
+          session_student_id?: string
+          student_id?: string | null
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'classroom_project_submissions_activity_id_fkey'
+            columns: ['activity_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_activities'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_project_submissions_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_sessions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_project_submissions_session_student_id_fkey'
+            columns: ['session_student_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_session_students'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_project_submissions_student_id_fkey'
+            columns: ['student_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_project_submissions_submitted_by_fkey'
+            columns: ['submitted_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      classroom_session_students: {
+        Row: {
+          attended: boolean | null
+          city: string | null
+          country: string | null
+          created_at: string
+          display_name: string
+          email: string | null
+          grade: string | null
+          id: string
+          interests: string[]
+          language: string | null
+          lead_id: string | null
+          phone: string | null
+          position: number
+          session_id: string
+          source: string | null
+          special_requirement: string | null
+          student_code: string | null
+          student_id: string | null
+          time_zone: string
+        }
+        Insert: {
+          attended?: boolean | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          display_name: string
+          email?: string | null
+          grade?: string | null
+          id?: string
+          interests?: string[]
+          language?: string | null
+          lead_id?: string | null
+          phone?: string | null
+          position?: number
+          session_id: string
+          source?: string | null
+          special_requirement?: string | null
+          student_code?: string | null
+          student_id?: string | null
+          time_zone?: string
+        }
+        Update: {
+          attended?: boolean | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          grade?: string | null
+          id?: string
+          interests?: string[]
+          language?: string | null
+          lead_id?: string | null
+          phone?: string | null
+          position?: number
+          session_id?: string
+          source?: string | null
+          special_requirement?: string | null
+          student_code?: string | null
+          student_id?: string | null
+          time_zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'classroom_session_students_lead_id_fkey'
+            columns: ['lead_id']
+            isOneToOne: false
+            referencedRelation: 'leads'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_session_students_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_sessions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_session_students_student_id_fkey'
+            columns: ['student_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      classroom_sessions: {
+        Row: {
+          calendar_event_id: string | null
+          class_type: Database['public']['Enums']['class_type']
+          created_at: string
+          created_by: string | null
+          duration_minutes: number | null
+          elapsed_seconds: number | null
+          end_details: string | null
+          end_reason: string | null
+          ended_at: string | null
+          id: string
+          material_id: string | null
+          page_title: string
+          room_code: string
+          scheduled_at: string | null
+          started_at: string | null
+          status: string
+          title: string
+          tutor_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          calendar_event_id?: string | null
+          class_type?: Database['public']['Enums']['class_type']
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          elapsed_seconds?: number | null
+          end_details?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          id?: string
+          material_id?: string | null
+          page_title?: string
+          room_code: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          title: string
+          tutor_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calendar_event_id?: string | null
+          class_type?: Database['public']['Enums']['class_type']
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          elapsed_seconds?: number | null
+          end_details?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          id?: string
+          material_id?: string | null
+          page_title?: string
+          room_code?: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          title?: string
+          tutor_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'classroom_sessions_calendar_event_id_fkey'
+            columns: ['calendar_event_id']
+            isOneToOne: false
+            referencedRelation: 'calendar_events'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_sessions_calendar_event_id_fkey'
+            columns: ['calendar_event_id']
+            isOneToOne: false
+            referencedRelation: 'v_upcoming_student_classes'
+            referencedColumns: ['event_id']
+          },
+          {
+            foreignKeyName: 'classroom_sessions_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_sessions_material_id_fkey'
+            columns: ['material_id']
+            isOneToOne: false
+            referencedRelation: 'classroom_materials'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_sessions_tutor_id_fkey'
+            columns: ['tutor_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
       }
       course_lessons: {
         Row: {
@@ -1504,6 +2031,24 @@ export type Database = {
       }
     }
     Functions: {
+      classroom_can_read_recording: {
+        Args: { p_path: string }
+        Returns: boolean
+      }
+      classroom_can_teach: { Args: { p_session_id: string }; Returns: boolean }
+      classroom_is_admin: { Args: never; Returns: boolean }
+      classroom_is_enrolled: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
+      classroom_is_staff: { Args: never; Returns: boolean }
+      classroom_public_info: {
+        Args: { p_room_code: string }
+        Returns: {
+          status: string
+          title: string
+        }[]
+      }
       create_tutor_availability: {
         Args: { p_start: string }
         Returns: {

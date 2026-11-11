@@ -71,12 +71,12 @@ export function ShareCallModal({
           readOnly
           value={guestLink}
           onFocus={(event) => event.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-[4px] border border-line bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
+          className="min-w-0 flex-1 rounded-[8px] border border-line bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
         />
         <button
           type="button"
           onClick={() => void copyInvite()}
-          className="press hover:bg-brand-hover flex h-10 shrink-0 items-center gap-2 rounded-[4px] bg-brand px-3 text-[14px] font-medium text-white"
+          className="press flex h-10 shrink-0 items-center gap-2 rounded-[8px] bg-brand px-3 text-[14px] font-medium text-white hover:bg-brand-strong"
         >
           {copied ? (
             <Check size={16} aria-hidden="true" />
@@ -96,13 +96,10 @@ export function ShareCallModal({
         </span>
       </p>
       {isLocalAddress && (
-        <p
-          role="status"
-          className="mt-3 rounded-[4px] bg-amber-50 px-3 py-2 text-[12.5px] leading-[18px] text-amber-900"
-        >
+        <output className="mt-3 block rounded-[8px] bg-callout px-3 py-2 text-[12.5px] leading-[18px] text-callout-ink">
           This is a local development address. Other devices cannot open it; use
           your deployed site or a network-accessible address to share.
-        </p>
+        </output>
       )}
     </Modal>
   )

@@ -6,11 +6,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Info, LoaderCircle, TriangleAlert } from 'lucide-react'
-import {
-  END_COMPLETED_VIA,
-  END_NOT_COMPLETED,
-  RECOMMENDED_CLASS_MINUTES,
-} from '../../../data/classroom'
+import { END_COMPLETED_VIA, END_NOT_COMPLETED } from '../../../data/classroom'
 import type {
   ClassEndReport,
   ClassOutcome,
@@ -39,6 +35,8 @@ type EndClassModalProps = {
   recording: boolean
   /** Everyone booked into the class, for the attendance list. */
   students: Student[]
+  /** The planned class length; ending earlier asks the teacher to double-check. */
+  recommendedMinutes: number
   /** Names of the other people in the room now; matching students start ticked. */
   present: string[]
   /** The current video platform; a class moved elsewhere starts as "Moved to …". */
@@ -56,6 +54,7 @@ export function EndClassModal({
   elapsedMs,
   recording,
   students,
+  recommendedMinutes,
   present,
   platformId,
 }: EndClassModalProps) {
@@ -75,7 +74,7 @@ export function EndClassModal({
   const [attended, setAttended] = useState(() =>
     students
       .filter((student) => present.some((name) => sameName(name, student.name)))
-      .map((student) => student.studentId),
+      .map((student) => student.id),
   )
   const [attempted, setAttempted] = useState(false)
   const [pending, setPending] = useState(false)
@@ -90,7 +89,7 @@ export function EndClassModal({
   }, [step])
 
   const allConfirmed = confirmed.every(Boolean)
-  const early = elapsedMs < RECOMMENDED_CLASS_MINUTES * 60_000
+  const early = elapsedMs < recommendedMinutes * 60_000
   const missed = END_NOT_COMPLETED.find((option) => option.id === missedReason)
 
   let problem: { field: Field; message: string } | null = null
@@ -126,7 +125,7 @@ export function EndClassModal({
       <p
         id={`end-error-${field}`}
         role="alert"
-        className="mt-2 text-[13px] leading-5 text-brand-ink"
+        className="mt-2 text-[13px] leading-5 text-danger-ink"
       >
         {shown.message}
       </p>
@@ -206,7 +205,7 @@ export function EndClassModal({
               size={36}
               strokeWidth={1.6}
               aria-hidden="true"
-              className="mx-auto mb-2 text-brand"
+              className="mx-auto mb-2 text-accent-pink-strong"
             />
             <p>
               <strong className="font-semibold">DO NOT</strong> end the class if
@@ -252,7 +251,7 @@ export function EndClassModal({
             <button
               type="button"
               onClick={onClose}
-              className="press h-10 rounded-[4px] border border-brand px-5 text-[15px] font-medium text-brand hover:bg-brand-soft"
+              className="press h-10 rounded-[8px] border border-brand px-5 text-[15px] font-medium text-brand hover:bg-brand-soft"
             >
               End class later
             </button>
@@ -260,7 +259,7 @@ export function EndClassModal({
               <button
                 type="button"
                 onClick={() => setStep('reason')}
-                className="pop press h-10 w-[180px] rounded-[4px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong max-sm:flex-1"
+                className="pop press h-10 w-[180px] rounded-[8px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong max-sm:flex-1"
               >
                 End class now
               </button>
@@ -288,8 +287,8 @@ export function EndClassModal({
               />
               <p>
                 You’re ending this class earlier than the recommended{' '}
-                {RECOMMENDED_CLASS_MINUTES} minutes. If it was completed, please
-                ensure you’ve covered all necessary content before ending.
+                {recommendedMinutes} minutes. If it was completed, please ensure
+                you’ve covered all necessary content before ending.
               </p>
             </div>
           )}
@@ -369,7 +368,7 @@ export function EndClassModal({
                                   size={18}
                                   strokeWidth={1.75}
                                   aria-hidden="true"
-                                  className="mt-px shrink-0 text-brand"
+                                  className="mt-px shrink-0 text-danger"
                                 />
                                 {option.note}
                               </p>
@@ -388,9 +387,9 @@ export function EndClassModal({
                               }
                               aria-invalid={shown?.field === 'details'}
                               aria-describedby={describedBy('details')}
-                              className={`block w-full resize-none rounded-[4px] border px-2.5 py-2 text-[14px] leading-[21px] text-ink outline-none placeholder:text-muted focus:border-brand ${
+                              className={`block w-full resize-none rounded-[8px] border px-2.5 py-2 text-[14px] leading-[21px] text-ink outline-none placeholder:text-muted focus:border-brand ${
                                 shown?.field === 'details'
-                                  ? 'border-brand'
+                                  ? 'border-danger'
                                   : 'border-line-strong'
                               }`}
                             />
@@ -428,15 +427,18 @@ export function EndClassModal({
               >
                 {students.map((student) => (
                   <Checkbox
-                    key={student.studentId}
-                    checked={attended.includes(student.studentId)}
-                    onChange={() => toggleAttended(student.studentId)}
+                    key={student.id}
+                    checked={attended.includes(student.id)}
+                    onChange={() => toggleAttended(student.id)}
                     label={
                       <>
-                        {student.name}{' '}
-                        <span className="text-ink-soft tabular-nums">
-                          ({student.phone})
-                        </span>
+                        {student.name}
+                        {(student.grade || student.studentId) && (
+                          <span className="text-ink-soft tabular-nums">
+                            {' '}
+                            ({student.grade || student.studentId})
+                          </span>
+                        )}
                       </>
                     }
                   />
@@ -449,7 +451,7 @@ export function EndClassModal({
           {failed && (
             <p
               role="alert"
-              className="mt-6 text-[13px] leading-5 text-brand-ink"
+              className="mt-6 text-[13px] leading-5 text-danger-ink"
             >
               Couldn’t end the class. Check your connection and try again.
             </p>
@@ -460,7 +462,7 @@ export function EndClassModal({
               type="submit"
               disabled={pending}
               aria-busy={pending}
-              className="press grid h-10 w-[147px] place-items-center rounded-[4px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong disabled:bg-brand-strong"
+              className="press grid h-10 w-[147px] place-items-center rounded-[8px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong disabled:bg-brand-strong"
             >
               {pending ? (
                 <>
@@ -479,7 +481,7 @@ export function EndClassModal({
             <button
               type="button"
               onClick={onClose}
-              className="press h-10 rounded-[4px] px-3 text-[15px] font-medium text-ink-soft hover:bg-surface-2 hover:text-ink"
+              className="press h-10 rounded-[8px] px-3 text-[15px] font-medium text-ink-soft hover:bg-surface-2 hover:text-ink"
             >
               Cancel
             </button>
@@ -513,7 +515,7 @@ function InfoTip({
       <span
         role="tooltip"
         id={id}
-        className="pointer-events-none absolute top-full right-0 z-10 mt-1.5 w-[220px] rounded-[4px] bg-toast px-3 py-2 text-[13px] leading-[19px] text-white opacity-0 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.45)] transition-opacity duration-150 ease-out group-focus-within:opacity-100 group-hover:opacity-100 group-hover:delay-300"
+        className="pointer-events-none absolute top-full right-0 z-10 mt-1.5 w-[220px] rounded-[8px] bg-toast px-3 py-2 text-[13px] leading-[19px] text-white opacity-0 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.45)] transition-opacity duration-150 ease-out group-focus-within:opacity-100 group-hover:opacity-100 group-hover:delay-300"
       >
         {children}
       </span>

@@ -197,13 +197,13 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={topic.ai ? 'Ask a question' : 'Describe the issue'}
-                className="h-10 flex-1 rounded-[6px] border border-line-strong px-3 text-[14px] outline-none placeholder:text-faint focus:border-brand"
+                className="h-10 flex-1 rounded-[10px] border border-line-strong px-3 text-[14px] outline-none placeholder:text-faint focus:border-brand"
               />
               <button
                 type="submit"
                 disabled={!draft.trim()}
                 aria-label="Send"
-                className="press grid size-10 place-items-center rounded-[6px] bg-brand text-white hover:bg-brand-strong disabled:bg-brand-faded"
+                className="press grid size-10 place-items-center rounded-[10px] bg-brand text-white hover:bg-brand-strong disabled:bg-brand-faded"
               >
                 <SendHorizontal size={17} aria-hidden="true" />
               </button>
@@ -216,7 +216,7 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
                     <button
                       type="button"
                       onClick={() => pickTopic(option)}
-                      className="press flex h-8 items-center gap-1.5 rounded-[6px] border border-brand/70 px-2 text-[13px] text-ink hover:bg-brand-soft"
+                      className="press flex h-8 items-center gap-1.5 rounded-[10px] border border-brand/70 px-2 text-[13px] text-ink hover:bg-brand-soft"
                     >
                       {option.ai && (
                         <Sparkles

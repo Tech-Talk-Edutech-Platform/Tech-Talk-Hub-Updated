@@ -35,7 +35,7 @@ export function SendAlertMenu({
       gap={8}
       role="menu"
       label="Send alert"
-      className="w-[224px] overflow-hidden rounded-[6px] bg-white shadow-[0_12px_32px_-8px_rgb(0_0_0/0.28),0_0_0_1px_rgb(0_0_0/0.05)]"
+      className="w-[224px] overflow-hidden rounded-[10px] bg-white shadow-[0_12px_32px_-8px_rgb(0_0_0/0.28),0_0_0_1px_rgb(0_0_0/0.05)]"
     >
       <ul className="divide-y divide-line">
         {ALERTS.map((alert) => {

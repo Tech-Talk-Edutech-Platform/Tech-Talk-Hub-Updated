@@ -39,7 +39,7 @@ export function PeoplePanel({
                 'Guest link copied. Open it in another tab to join.',
               )
             }
-            className="press flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border border-brand text-[14px] font-medium text-brand hover:bg-brand-soft"
+            className="press flex h-10 w-full items-center justify-center gap-2 rounded-[8px] border border-brand text-[14px] font-medium text-brand hover:bg-brand-soft"
           >
             <Link2 size={16} aria-hidden="true" />
             Copy guest link
@@ -56,7 +56,7 @@ export function PeoplePanel({
             key={person.id}
             className="flex items-center gap-2.5 border-b border-line py-2.5 last:border-b-0"
           >
-            <span className="grid size-8 shrink-0 place-items-center rounded-[4px] bg-avatar text-[15px] text-ink">
+            <span className="grid size-8 shrink-0 place-items-center rounded-[8px] bg-avatar text-[15px] text-ink">
               {person.initial}
             </span>
             <span className="min-w-0 flex-1 truncate text-[14.5px] font-medium text-ink">

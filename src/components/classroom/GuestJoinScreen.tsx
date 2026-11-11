@@ -27,19 +27,24 @@ export function GuestJoinScreen({ roomTitle, onJoin }: GuestJoinScreenProps) {
   }
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-surface-2 px-4 py-8">
+    <main className="grid min-h-dvh place-items-center px-4 py-8 hero-base-gradient">
       <form
         onSubmit={submit}
-        className="w-full max-w-[440px] rounded-[10px] bg-white p-8 shadow-[0_16px_48px_-20px_rgb(0_0_0/0.22)] max-sm:p-6"
+        className="w-full max-w-[440px] rounded-[20px] border border-line bg-white/95 p-8 shadow-[0_24px_60px_-24px_rgb(63_81_181/0.35)] backdrop-blur-sm max-sm:p-6"
       >
         <div className="flex items-center gap-3">
-          <BrandMark size={42} radius={5} />
-          <span className="text-[19px] font-semibold text-ink">
-            {CLASSROOM_BRAND.name}
-          </span>
+          <BrandMark size={44} />
+          <div>
+            <span className="block text-[19px] leading-6 font-extrabold tracking-tight text-brand">
+              {CLASSROOM_BRAND.name}
+            </span>
+            <span className="block text-[11px] font-medium tracking-wide text-muted">
+              Think. Code. Create.
+            </span>
+          </div>
         </div>
-        <h1 className="mt-7 text-[24px] font-semibold text-ink">
-          Join the classroom
+        <h1 className="mt-7 text-[26px] leading-8 font-extrabold tracking-[-0.02em] text-ink">
+          Join the <span className="text-accent-pink-strong">classroom</span>
         </h1>
         <p className="mt-2 text-[14px] leading-5 text-muted">{roomTitle}</p>
 
@@ -52,6 +57,7 @@ export function GuestJoinScreen({ roomTitle, onJoin }: GuestJoinScreenProps) {
         <input
           id="guest-display-name"
           autoComplete="name"
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- this screen exists only to take the name
           autoFocus
           maxLength={80}
           value={name}
@@ -60,16 +66,16 @@ export function GuestJoinScreen({ roomTitle, onJoin }: GuestJoinScreenProps) {
             setError(null)
           }}
           placeholder="Enter your name"
-          className="mt-2 h-11 w-full rounded-[4px] border border-line px-3 text-[15px] text-ink outline-none focus:border-brand"
+          className="mt-2 h-12 w-full rounded-[12px] border border-line bg-surface-2/60 px-4 text-[15px] text-ink outline-none placeholder:text-faint focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/10"
         />
         {error && (
-          <p role="alert" className="mt-2 text-[13px] text-brand">
+          <p role="alert" className="mt-2 text-[13px] text-danger-ink">
             {error}
           </p>
         )}
         <button
           type="submit"
-          className="press hover:bg-brand-hover mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-[4px] bg-brand px-4 text-[15px] font-semibold text-white"
+          className="press mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-[12px] bg-accent-pink-strong px-4 text-[15px] font-bold text-white shadow-lg shadow-accent-pink/20 hover:bg-accent-pink-hover"
         >
           <Video size={18} aria-hidden="true" />
           Join call

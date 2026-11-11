@@ -9,8 +9,19 @@ export function formatElapsed(ms: number) {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
+/** A time zone the browser knows, else UTC (zones are typed in by admins). */
+function safeTimeZone(timeZone: string) {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone }).format(0)
+    return timeZone
+  } catch {
+    return 'UTC'
+  }
+}
+
 /** "12:13 PM GMT, Wed, Nov 04" in the student's own time zone. */
-export function formatStudentTime(date: number | Date, timeZone: string) {
+export function formatStudentTime(date: number | Date, zone: string) {
+  const timeZone = safeTimeZone(zone)
   const time = new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     minute: '2-digit',

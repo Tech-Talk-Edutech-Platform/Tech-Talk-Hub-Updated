@@ -6,6 +6,7 @@ import type {
 import { usePictureInPicture } from '../../../hooks/classroom/usePictureInPicture'
 import type { Recording } from '../../../hooks/classroom/useRecording'
 import type {
+  BadgeAnnouncement,
   MenuAction,
   PanelName,
   Participant,
@@ -13,6 +14,7 @@ import type {
   VideoPlatform,
 } from '../../../types/classroom'
 import { Toaster } from '../ui/Toaster'
+import { BadgeCelebration } from './BadgeCelebration'
 import { ControlBar } from './ControlBar'
 import { ExternalPlatformNotice } from './ExternalPlatformNotice'
 import { ParticipantGrid } from './ParticipantGrid'
@@ -31,7 +33,10 @@ type StageProps = {
   onEnableAudio: () => void
   onShareCall: () => void
   reactions: Reaction[]
+  /** The badge just given in class, shown to everyone for a few seconds. */
+  celebration: BadgeAnnouncement | null
   recording: Recording
+  canRecord: boolean
   onToggleRecording: () => void
   onToggleHand: () => void
   onReact: (emoji: string) => void
@@ -56,7 +61,9 @@ export function Stage({
   onEnableAudio,
   onShareCall,
   reactions,
+  celebration,
   recording,
+  canRecord,
   onToggleRecording,
   onToggleHand,
   onReact,
@@ -128,9 +135,11 @@ export function Stage({
       )}
 
       <ReactionLayer reactions={reactions} participants={participants} />
+      <BadgeCelebration award={celebration} />
 
       <ControlBar
         media={media}
+        canRecord={canRecord}
         recording={recording.active}
         onToggleRecording={onToggleRecording}
         hand={self.hand}

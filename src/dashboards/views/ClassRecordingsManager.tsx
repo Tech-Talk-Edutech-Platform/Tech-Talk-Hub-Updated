@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../../supabase'
+import { RecordingLink } from '../../lib/classroom/recordingLink'
 import {
   Video,
   Plus,
@@ -240,16 +241,14 @@ export default function ClassRecordingsManager() {
                     />
                   </div>
                 )}
-                <a
-                  href={rec.recording_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="absolute inset-0 flex items-center justify-center bg-slate-950/60 opacity-0 transition-opacity group-hover:opacity-100"
+                <RecordingLink
+                  recording={rec.recording_url}
+                  className="absolute inset-0 flex items-center justify-center bg-slate-950/60 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                 >
                   <div className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3.5 py-2 text-xs font-medium text-white shadow-md transition-colors hover:bg-purple-500">
                     <ExternalLink size={14} /> Watch Session
                   </div>
-                </a>
+                </RecordingLink>
               </div>
 
               {/* Card Meta Content */}

@@ -10,10 +10,14 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react'
-import { ACTIVITIES } from '../../../data/classroom'
 import { AI_TOOLS, generate } from '../../../lib/classroom/aiTools'
 import { copyText } from '../../../lib/classroom/clipboard'
-import type { AiToolIcon, AiToolId, Student } from '../../../types/classroom'
+import type {
+  Activity,
+  AiToolIcon,
+  AiToolId,
+  Student,
+} from '../../../types/classroom'
 import { Modal } from '../ui/Modal'
 import { Select } from '../ui/Select'
 
@@ -24,15 +28,19 @@ const ICONS: Record<AiToolIcon, LucideIcon> = {
   compass: Compass,
 }
 
-const ACTIVITY_OPTIONS = ACTIVITIES.map((activity) => ({
-  value: activity.id,
-  label: activity.title,
-}))
+/** Explain and Hint still work for a class with no activities. */
+const GENERAL_ACTIVITY: Activity = {
+  id: 'general',
+  title: 'today’s lesson',
+  outline: 'build something small that works, then make it your own.',
+  project: '',
+}
 
 type AiToolsModalProps = {
   open: boolean
   onClose: () => void
   student: Student
+  activities: Activity[]
   onSendToChat: (text: string) => void
 }
 
@@ -41,11 +49,19 @@ export function AiToolsModal({
   open,
   onClose,
   student,
+  activities,
   onSendToChat,
 }: AiToolsModalProps) {
   const [toolId, setToolId] = useState<AiToolId | null>(null)
-  const [activityId, setActivityId] = useState(ACTIVITIES[0].id)
-  const activity = ACTIVITIES.find((a) => a.id === activityId) ?? ACTIVITIES[0]
+  const [activityId, setActivityId] = useState(activities[0]?.id ?? '')
+  const activity =
+    activities.find((a) => a.id === activityId) ??
+    activities[0] ??
+    GENERAL_ACTIVITY
+  const activityOptions = activities.map((option) => ({
+    value: option.id,
+    label: option.title,
+  }))
   const tool = AI_TOOLS.find((t) => t.id === toolId)
   const result = tool ? generate(tool.id, { student, activity }) : null
   const needsActivity = toolId === 'explain' || toolId === 'hint'
@@ -65,25 +81,27 @@ export function AiToolsModal({
             {tool ? tool.title : 'AI teaching tools'}
           </h2>
           <p className="text-[15px] text-ink-soft">
-            {student.name} · {student.grade}
+            {student.grade
+              ? `${student.name} · ${student.grade}`
+              : student.name}
           </p>
         </div>
       </div>
 
       {result ? (
         <div className="mt-6">
-          {needsActivity && (
+          {needsActivity && activityOptions.length > 0 && (
             <div className="mb-5">
               <Select
                 label="Activity"
                 value={activityId}
                 onChange={setActivityId}
-                options={ACTIVITY_OPTIONS}
+                options={activityOptions}
               />
             </div>
           )}
           <div
-            className="rounded-[6px] border border-line bg-surface-2/50 px-4 py-4"
+            className="rounded-[10px] border border-line bg-surface-2/50 px-4 py-4"
             aria-live="polite"
           >
             <h3 className="text-[15.5px] font-semibold text-ink">
@@ -102,7 +120,7 @@ export function AiToolsModal({
             <button
               type="button"
               onClick={() => setToolId(null)}
-              className="press -ml-2 flex h-10 items-center gap-1 rounded-[4px] px-2 text-[15px] font-medium text-ink-soft hover:text-ink"
+              className="press -ml-2 flex h-10 items-center gap-1 rounded-[8px] px-2 text-[15px] font-medium text-ink-soft hover:text-ink"
             >
               <ChevronLeft size={18} aria-hidden="true" /> All tools
             </button>
@@ -110,7 +128,7 @@ export function AiToolsModal({
               <button
                 type="button"
                 onClick={() => copyText(result.body.join('\n'), 'Copied')}
-                className="press flex h-10 items-center gap-2 rounded-[4px] border border-line-strong px-3.5 text-[14.5px] font-medium text-ink hover:bg-surface-2"
+                className="press flex h-10 items-center gap-2 rounded-[8px] border border-line-strong px-3.5 text-[14.5px] font-medium text-ink hover:bg-surface-2"
               >
                 <Copy size={15} aria-hidden="true" /> Copy
               </button>
@@ -118,7 +136,7 @@ export function AiToolsModal({
                 <button
                   type="button"
                   onClick={() => onSendToChat(result.body[0] ?? '')}
-                  className="press flex h-10 items-center gap-2 rounded-[4px] bg-brand px-3.5 text-[14.5px] font-medium text-white hover:bg-brand-strong"
+                  className="press flex h-10 items-center gap-2 rounded-[8px] bg-brand px-3.5 text-[14.5px] font-medium text-white hover:bg-brand-strong"
                 >
                   <Send size={15} aria-hidden="true" /> Send in chat
                 </button>
@@ -135,7 +153,7 @@ export function AiToolsModal({
                 <button
                   type="button"
                   onClick={() => setToolId(option.id)}
-                  className="press flex w-full items-center gap-4 rounded-[6px] border border-line px-3 py-3 text-left hover:border-brand/40 hover:bg-brand-soft/60"
+                  className="press flex w-full items-center gap-4 rounded-[10px] border border-line px-3 py-3 text-left hover:border-brand/40 hover:bg-brand-soft/60"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15.5px] leading-6 font-medium text-ink">

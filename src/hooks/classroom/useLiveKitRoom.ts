@@ -8,6 +8,7 @@ import {
   RemoteVideoTrack,
   type RemoteParticipant,
 } from 'livekit-client'
+import { apiUrl } from '../../lib/apiUrl'
 import { toast } from '../../lib/classroom/toast'
 import type { Participant, RoomMessage } from '../../types/classroom'
 
@@ -40,13 +41,73 @@ function messageFromJson(bytes: Uint8Array): unknown {
   }
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
 function getTokenResponse(value: unknown): TokenResponse | null {
-  if (typeof value !== 'object' || value === null) return null
-  const body = value as Record<string, unknown>
-  return typeof body.serverUrl === 'string' && typeof body.token === 'string'
-    ? { serverUrl: body.serverUrl, token: body.token }
+  if (!isRecord(value)) return null
+  return typeof value.serverUrl === 'string' && typeof value.token === 'string'
+    ? { serverUrl: value.serverUrl, token: value.token }
     : null
 }
+
+const UNREACHABLE =
+  'The live video server isn’t reachable. Start the API server (npm --prefix server run dev) or set VITE_API_BASE_URL.'
+
+/** POST /api/classroom/token. Turns HTML or empty error pages into a clear message. */
+async function requestToken(roomId: string, identity: string, name: string) {
+  let response: Response
+  try {
+    response = await fetch(apiUrl('/api/classroom/token'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, identity, name }),
+    })
+  } catch {
+    throw new Error(UNREACHABLE)
+  }
+  const raw = await response.text()
+  let body: unknown = null
+  try {
+    body = raw ? JSON.parse(raw) : null
+  } catch {
+    body = null
+  }
+  if (!response.ok) {
+    if (isRecord(body) && typeof body.error === 'string') {
+      throw new Error(body.error)
+    }
+    throw new Error(
+      response.status >= 500 && !body
+        ? UNREACHABLE
+        : `Couldn’t join the live room (HTTP ${response.status}).`,
+    )
+  }
+  const tokenResponse = getTokenResponse(body)
+  if (!tokenResponse) {
+    throw new Error('The live-room service returned an invalid response.')
+  }
+  return tokenResponse
+}
+
+/** One connection attempt's state; a new attempt starts from freshState. */
+type LiveState = {
+  key: string | null
+  connection: LiveConnectionState
+  audioPlaybackBlocked: boolean
+  error: string | null
+  participants: Participant[]
+  remoteMedia: Record<string, RemoteMedia>
+}
+
+const freshState = (key: string | null): LiveState => ({
+  key,
+  connection: key ? 'connecting' : 'disconnected',
+  audioPlaybackBlocked: false,
+  error: null,
+  participants: [],
+  remoteMedia: {},
+})
 
 function remoteParticipant(peer: RemoteParticipant): {
   participant: Participant
@@ -90,67 +151,72 @@ export function useLiveKitRoom({
   microphone,
   screen,
 }: LiveKitOptions) {
-  const [connection, setConnection] =
-    useState<LiveConnectionState>('connecting')
-  const [audioPlaybackBlocked, setAudioPlaybackBlocked] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [remoteMedia, setRemoteMedia] = useState<Record<string, RemoteMedia>>(
-    {},
-  )
   const [attempt, setAttempt] = useState(0)
+  const sessionKey = enabled
+    ? JSON.stringify([roomId, identity, name, attempt])
+    : null
+  const [stored, setStored] = useState<LiveState>(() => freshState(sessionKey))
+  // State left over from an earlier attempt (or room) reads as a fresh one.
+  const live = stored.key === sessionKey ? stored : freshState(sessionKey)
+  const { connection, audioPlaybackBlocked, error, participants, remoteMedia } =
+    live
+
+  /** Update one attempt's state; a stale attempt's updates start it fresh. */
+  const update = useCallback(
+    (key: string, patch: Partial<Omit<LiveState, 'key'>>) => {
+      setStored((current) => {
+        const base = current.key === key ? current : freshState(key)
+        return { ...base, ...patch }
+      })
+    },
+    [],
+  )
   const roomRef = useRef<Room | null>(null)
   const messageRef = useRef<(message: unknown) => void>(() => {})
   const publishedTracks = useRef(new Map<string, MediaStreamTrack>())
   const publishQueue = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
-    if (!enabled) {
-      setConnection('disconnected')
-      setError(null)
-      setParticipants([])
-      setRemoteMedia({})
-      return undefined
-    }
-
-    let active = true
+    if (!sessionKey) return undefined
+    const key = sessionKey
+    const state = { active: true }
+    const tracks = publishedTracks.current
     const room = new Room({ adaptiveStream: true, dynacast: true })
     roomRef.current = room
-    publishedTracks.current.clear()
-    setConnection('connecting')
-    setAudioPlaybackBlocked(false)
-    setError(null)
+    tracks.clear()
 
     const refreshParticipants = () => {
+      if (!state.active) return
       const next = [...room.remoteParticipants.values()].map((peer) =>
         remoteParticipant(peer),
       )
-      setParticipants(next.map(({ participant }) => participant))
-      setRemoteMedia(
-        Object.fromEntries(
+      update(key, {
+        participants: next.map(({ participant }) => participant),
+        remoteMedia: Object.fromEntries(
           next.map(({ participant, media }) => [participant.id, media]),
         ),
-      )
+      })
     }
 
     room.on(RoomEvent.Connected, () => {
-      if (!active) return
-      setConnection('connected')
-      setError(null)
+      if (!state.active) return
+      update(key, { connection: 'connected', error: null })
       refreshParticipants()
     })
     room.on(RoomEvent.AudioPlaybackStatusChanged, (allowed) => {
-      if (active) setAudioPlaybackBlocked(!allowed)
+      if (state.active) update(key, { audioPlaybackBlocked: !allowed })
     })
-    room.on(RoomEvent.Reconnected, refreshParticipants)
+    room.on(RoomEvent.Reconnected, () => {
+      if (state.active) update(key, { connection: 'connected' })
+      refreshParticipants()
+    })
     room.on(RoomEvent.Reconnecting, () => {
-      if (active) setConnection('connecting')
+      if (state.active) update(key, { connection: 'connecting' })
     })
     room.on(RoomEvent.Disconnected, () => {
-      if (!active) return
-      setConnection('disconnected')
-      setAudioPlaybackBlocked(false)
-      publishedTracks.current.clear()
+      if (!state.active) return
+      update(key, { connection: 'disconnected', audioPlaybackBlocked: false })
+      tracks.clear()
       refreshParticipants()
     })
     room.on(RoomEvent.ParticipantConnected, refreshParticipants)
@@ -164,59 +230,40 @@ export function useLiveKitRoom({
     room.on(RoomEvent.ActiveSpeakersChanged, refreshParticipants)
     room.on(RoomEvent.ParticipantNameChanged, refreshParticipants)
     room.on(RoomEvent.DataReceived, (payload) => {
-      if (active) messageRef.current(messageFromJson(payload))
+      if (state.active) messageRef.current(messageFromJson(payload))
     })
 
     const connect = async () => {
-      const response = await fetch('/api/classroom/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, identity, name }),
-      })
-      const body: unknown = await response.json()
-      if (!response.ok) {
-        const detail =
-          typeof body === 'object' &&
-          body !== null &&
-          'error' in body &&
-          typeof body.error === 'string'
-            ? body.error
-            : `Couldn’t join the live room (HTTP ${response.status}).`
-        throw new Error(detail)
-      }
-      const tokenResponse = getTokenResponse(body)
-      if (!tokenResponse) {
-        throw new Error('The live-room service returned an invalid response.')
-      }
-      if (!active) return
-      await room.connect(tokenResponse.serverUrl, tokenResponse.token, {
-        autoSubscribe: true,
-      })
+      const token = await requestToken(roomId, identity, name)
+      if (!state.active) return
+      await room.connect(token.serverUrl, token.token, { autoSubscribe: true })
     }
 
     void connect().catch((reason: unknown) => {
-      if (!active) return
-      setConnection('error')
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'Couldn’t connect to the live room.',
-      )
+      if (!state.active) return
+      update(key, {
+        connection: 'error',
+        error:
+          reason instanceof Error
+            ? reason.message
+            : 'Couldn’t connect to the live room.',
+      })
     })
 
     return () => {
-      active = false
+      state.active = false
       room.removeAllListeners()
       void room.disconnect(false)
       if (roomRef.current === room) roomRef.current = null
-      publishedTracks.current.clear()
+      tracks.clear()
     }
-  }, [roomId, identity, name, enabled, attempt])
+  }, [sessionKey, roomId, identity, name, update])
 
   useEffect(() => {
     const room = roomRef.current
     if (!room || connection !== 'connected') return undefined
-    let active = true
+    const key = sessionKey
+    const state = { active: true }
     const desired = new Map<string, MediaStreamTrack | null>([
       ['camera', firstTrack(camera, 'video')],
       ['microphone', firstTrack(microphone, 'audio')],
@@ -225,9 +272,11 @@ export function useLiveKitRoom({
 
     publishQueue.current = publishQueue.current
       .then(async () => {
-        if (!active) return
+        if (!state.active) return
         for (const [source, current] of publishedTracks.current) {
           if (current !== desired.get(source)) {
+            // Sequential on purpose: one track change at a time.
+            // oxlint-disable-next-line eslint/no-await-in-loop -- see above
             await room.localParticipant.unpublishTrack(current, false)
             publishedTracks.current.delete(source)
           }
@@ -240,6 +289,7 @@ export function useLiveKitRoom({
               : source === 'microphone'
                 ? Track.Source.Microphone
                 : Track.Source.ScreenShare
+          // oxlint-disable-next-line eslint/no-await-in-loop -- one track at a time
           await room.localParticipant.publishTrack(track, {
             source: trackSource,
           })
@@ -247,19 +297,19 @@ export function useLiveKitRoom({
         }
       })
       .catch((reason: unknown) => {
-        if (!active) return
+        if (!state.active) return
         const detail =
           reason instanceof Error
             ? reason.message
             : 'Couldn’t publish your media.'
-        setError(detail)
+        if (key) update(key, { error: detail })
         toast('Couldn’t publish your media. Check your camera and microphone.')
       })
 
     return () => {
-      active = false
+      state.active = false
     }
-  }, [camera, microphone, screen, connection])
+  }, [camera, microphone, screen, connection, sessionKey, update])
 
   const sendMessage = useCallback(async (message: RoomMessage) => {
     const room = roomRef.current
@@ -278,8 +328,6 @@ export function useLiveKitRoom({
   )
 
   const reconnect = useCallback(() => {
-    setConnection('connecting')
-    setError(null)
     setAttempt((current) => current + 1)
   }, [])
 
@@ -288,7 +336,7 @@ export function useLiveKitRoom({
     if (!room) return
     try {
       await room.startAudio()
-      setAudioPlaybackBlocked(false)
+      if (sessionKey) update(sessionKey, { audioPlaybackBlocked: false })
     } catch (reason: unknown) {
       const detail =
         reason instanceof Error
@@ -296,7 +344,7 @@ export function useLiveKitRoom({
           : 'Check your browser sound settings and try again.'
       toast(`Couldn’t enable call audio. ${detail}`)
     }
-  }, [])
+  }, [sessionKey, update])
 
   return {
     connection,

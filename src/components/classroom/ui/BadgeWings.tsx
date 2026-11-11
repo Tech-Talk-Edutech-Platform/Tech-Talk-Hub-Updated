@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { BADGE_CX, BADGE_CY } from '../../../lib/classroom/badgeGeometry'
 
-/** Bronze feathers either side of the medal. */
+/** Pink feathers (site secondary) either side of the medal. */
 export function BadgeWings() {
   const feathers: ReactElement[] = []
   for (const side of [-1, 1]) {
@@ -14,7 +14,7 @@ export function BadgeWings() {
         <path
           key={`${side}-${i}`}
           d={`M${x0} ${y} Q ${(x0 + x1) / 2} ${y - 9 + i} ${x1} ${y - 4 + i * 1.5} Q ${(x0 + x1) / 2} ${y + 3} ${x0} ${y + 6}`}
-          fill={i % 2 ? '#c98a4b' : '#dca063'}
+          fill={i % 2 ? '#ff4081' : '#ff8bb2'}
         />,
       )
     }

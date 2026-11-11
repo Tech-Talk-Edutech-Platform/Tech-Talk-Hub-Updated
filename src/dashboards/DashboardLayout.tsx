@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   MessageSquareQuote,
   Newspaper,
+  Presentation,
   Settings,
   ShoppingBag,
   Users,
@@ -39,12 +40,14 @@ import StudentHomeView from './views/student/StudentHomeView'
 import TutorHomeView from './views/tutor/TutorHomeView'
 import TutorStudentsView from './views/tutor/TutorStudentsView'
 import TutorCourseAssignmentView from './views/tutor/TutorCourseAssignmentView'
+import TutorClassroomsView from './views/tutor/TutorClassroomsView'
 
 // Admin Views
 import AdminHomeView from './views/admin/AdminHomeView'
 import AdminUsersView from './views/admin/AdminUsersView'
 import AdminCoursesView from './views/admin/AdminCoursesView'
 import LiveClassMonitor from './views/admin/LiveClassMonitor'
+import ClassroomManager from './views/admin/classroom/ClassroomManager'
 import AdminSettingsView from './views/admin/AdminSettingsView'
 // import AdminProgramsPage from "./views/admin/AdminProgramsPage";
 import LeadsPage from './views/admin/LeadsPage'
@@ -183,6 +186,9 @@ export default function DashboardLayout({
         case 'course-assignment':
           return <TutorCourseAssignmentView userId={currentUser.id} />
 
+        case 'classrooms':
+          return <TutorClassroomsView userId={currentUser.id} />
+
         case 'dashboard':
         default:
           return <TutorHomeView userId={currentUser.id} user={currentUser} />
@@ -213,6 +219,9 @@ export default function DashboardLayout({
         //   );
         case 'Live Class Monitor':
           return <LiveClassMonitor />
+
+        case 'classroom':
+          return <ClassroomManager />
 
         case 'global-schedule':
           return <GlobalScheduleView />
@@ -306,6 +315,15 @@ export default function DashboardLayout({
           {/* Tutor navigation */}
           {role === 'tutor' && (
             <SidebarGroup title="Teaching" isCollapsed={isCollapsed}>
+              <SidebarButton
+                icon={Presentation}
+                label="My Classrooms"
+                view="classrooms"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
+
               <SidebarButton
                 icon={Users}
                 label="My Students"
@@ -413,6 +431,15 @@ export default function DashboardLayout({
                 icon={BookOpen}
                 label="Courses Hub"
                 view="courses-hub"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
+
+              <SidebarButton
+                icon={Presentation}
+                label="Classroom"
+                view="classroom"
                 activeView={activeView}
                 setActiveView={setActiveView}
                 isCollapsed={isCollapsed}

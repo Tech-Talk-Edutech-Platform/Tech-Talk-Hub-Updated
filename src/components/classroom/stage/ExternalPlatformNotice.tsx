@@ -27,7 +27,7 @@ export function ExternalPlatformNotice({
               href={platform.joinUrl}
               target="_blank"
               rel="noreferrer"
-              className="press inline-flex h-10 items-center gap-2 rounded-[4px] bg-brand px-4 text-[14.5px] font-medium text-white hover:bg-brand-strong"
+              className="press inline-flex h-10 items-center gap-2 rounded-[8px] bg-brand px-4 text-[14.5px] font-medium text-white hover:bg-brand-strong"
             >
               Open {platform.label}
               <ExternalLink size={15} aria-hidden="true" />
@@ -36,7 +36,7 @@ export function ExternalPlatformNotice({
           <button
             type="button"
             onClick={onSwitchBack}
-            className="press h-10 rounded-[4px] border border-line-strong px-4 text-[14.5px] font-medium text-ink hover:bg-surface-2"
+            className="press h-10 rounded-[8px] border border-line-strong px-4 text-[14.5px] font-medium text-ink hover:bg-surface-2"
           >
             Back to this room
           </button>

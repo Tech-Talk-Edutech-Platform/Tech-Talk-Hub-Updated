@@ -16,6 +16,8 @@ import { StageButton } from './StageButton'
 
 type ControlBarProps = {
   media: LocalMedia
+  /** Only the teacher records; students and guests don't get the button. */
+  canRecord: boolean
   recording: boolean
   onToggleRecording: () => void
   hand: boolean
@@ -29,6 +31,7 @@ type ControlBarProps = {
 /** Cam · Mic · Share · Record/Stop · React · People (docs/breakdown/03-video-room.md) */
 export function ControlBar({
   media,
+  canRecord,
   recording,
   onToggleRecording,
   hand,
@@ -72,13 +75,16 @@ export function ControlBar({
         aria-pressed={!!media.screen}
         onClick={media.toggleScreen}
       />
-      <StageButton
-        icon={CircleDot}
-        label={recording ? 'Stop' : 'Record'}
-        aria-label={recording ? 'Stop recording' : 'Start recording'}
-        aria-pressed={recording}
-        onClick={onToggleRecording}
-      />
+      {canRecord && (
+        <StageButton
+          icon={CircleDot}
+          label={recording ? 'Stop' : 'Record'}
+          tone={recording ? 'active' : 'dark'}
+          aria-label={recording ? 'Stop recording' : 'Start recording'}
+          aria-pressed={recording}
+          onClick={onToggleRecording}
+        />
+      )}
       <StageButton
         ref={reactRef}
         icon={Hand}
@@ -105,7 +111,7 @@ export function ControlBar({
         placement="top"
         gap={12}
         label="Reactions"
-        className="rounded-[10px] bg-white p-1.5 shadow-[0_16px_40px_-12px_rgb(0_0_0/0.45)]"
+        className="rounded-[14px] bg-white p-1.5 shadow-[0_16px_40px_-12px_rgb(15_23_42/0.55)]"
       >
         <div className="flex items-center gap-0.5">
           {REACTIONS.map((emoji) => (

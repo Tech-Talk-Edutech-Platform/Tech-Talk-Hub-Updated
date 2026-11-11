@@ -24,7 +24,7 @@ export function ParticipantPill({
           ? `Recording. ${count} of ${capacity} in the room`
           : `${count} of ${capacity} in the room`
       }
-      className={`flex h-10 items-center gap-2 rounded-[6px] px-4 text-[15px] font-medium text-white transition-colors duration-200 ease-out ${
+      className={`flex h-10 items-center gap-2 rounded-[10px] px-4 text-[15px] font-medium text-white transition-colors duration-200 ease-out ${
         announcing ? 'bg-stage-recording' : 'bg-stage-control'
       }`}
     >

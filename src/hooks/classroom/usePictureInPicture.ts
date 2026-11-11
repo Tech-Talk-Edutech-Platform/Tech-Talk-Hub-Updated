@@ -56,12 +56,13 @@ export function usePictureInPicture({
       if (!context) return
       const styles = getComputedStyle(document.documentElement)
       context.fillStyle =
-        styles.getPropertyValue('--color-stage').trim() || '#b34831'
+        styles.getPropertyValue('--color-stage').trim() || '#172554'
       context.fillRect(0, 0, 480, 270)
       context.fillStyle =
-        styles.getPropertyValue('--color-avatar').trim() || '#f7e3c8'
+        styles.getPropertyValue('--color-avatar').trim() || '#e4e8ff'
       context.fillRect(190, 85, 100, 100)
-      context.fillStyle = '#1c1c1e'
+      context.fillStyle =
+        styles.getPropertyValue('--color-ink').trim() || '#172554'
       context.font = '48px "Figtree Variable", sans-serif'
       context.textAlign = 'center'
       context.textBaseline = 'middle'

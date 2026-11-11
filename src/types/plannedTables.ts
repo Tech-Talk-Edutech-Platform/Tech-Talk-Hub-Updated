@@ -1,3 +1,8 @@
+import type {
+  ClassRecordingsClassroomColumns,
+  ClassroomFunctions,
+  ClassroomTables,
+} from './classroomTables'
 import type { Database, Json } from './database'
 
 /*
@@ -311,6 +316,12 @@ type RealTablesWithPlannedColumns = {
     'users',
     { role: RealSchema['Enums']['user_role'] | 'marketer' | null }
   >
+
+  /** Classroom recordings link to their session (classroom migration). */
+  class_recordings: WithPlannedColumns<
+    'class_recordings',
+    ClassRecordingsClassroomColumns
+  >
 }
 
 /** A row of any table in the planned schema. */
@@ -322,9 +333,10 @@ export type PlannedDatabase = {
   public: {
     Tables: Omit<RealTables, keyof RealTablesWithPlannedColumns> &
       RealTablesWithPlannedColumns &
-      PlannedTables
+      PlannedTables &
+      ClassroomTables
     Views: RealSchema['Views']
-    Functions: RealSchema['Functions'] & PlannedFunctions
+    Functions: RealSchema['Functions'] & PlannedFunctions & ClassroomFunctions
     Enums: RealSchema['Enums']
     CompositeTypes: RealSchema['CompositeTypes']
   }

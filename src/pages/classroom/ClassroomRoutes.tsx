@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ClassroomLayout } from '../../components/classroom/layout/ClassroomLayout'
-import { CLASSROOM } from '../../data/classroom'
+import { DEFAULT_ROOM_CODE } from '../../data/classroom'
 import { ClassroomPage } from './ClassroomPage'
 import { MaterialPage } from './MaterialPage'
 import { TourPage } from './TourPage'
@@ -15,7 +15,7 @@ export function ClassroomRoutes() {
       <Route element={<ClassroomLayout />}>
         <Route
           index
-          element={<Navigate to={`/classroom/${CLASSROOM.id}`} replace />}
+          element={<Navigate to={`/classroom/${DEFAULT_ROOM_CODE}`} replace />}
         />
         <Route path="tour" element={<TourPage />} />
         <Route path=":classroomId" element={<ClassroomPage />} />

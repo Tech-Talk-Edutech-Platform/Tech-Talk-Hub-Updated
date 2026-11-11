@@ -44,7 +44,7 @@ function Choice({
         <input
           type={type}
           className={`peer absolute inset-0 m-0 cursor-pointer appearance-none border-[1.5px] border-line-strong bg-white transition-[background-color,border-color] duration-150 ease-out group-hover:not-checked:border-muted checked:border-brand checked:bg-brand ${
-            type === 'radio' ? 'rounded-full' : 'rounded-[4px]'
+            type === 'radio' ? 'rounded-full' : 'rounded-[8px]'
           }`}
           {...input}
         />

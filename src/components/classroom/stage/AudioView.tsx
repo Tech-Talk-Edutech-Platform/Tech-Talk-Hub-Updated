@@ -28,6 +28,7 @@ export function AudioView({ stream, track = null }: AudioViewProps) {
   }, [stream, track])
 
   return (
+    // oxlint-disable-next-line jsx-a11y/media-has-caption -- a live call's audio has no caption track to offer
     <audio
       ref={ref}
       autoPlay

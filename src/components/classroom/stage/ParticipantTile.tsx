@@ -56,7 +56,7 @@ export function ParticipantTile({
           }`}
         >
           <VideoView stream={stream} track={videoTrack} mirror={mirror} />
-          <figcaption className="absolute bottom-2 left-2 flex max-w-[calc(100%-16px)] items-center gap-1.5 rounded-[4px] bg-black/55 px-2 py-0.5 text-[12.5px] text-white">
+          <figcaption className="absolute bottom-2 left-2 flex max-w-[calc(100%-16px)] items-center gap-1.5 rounded-[8px] bg-black/55 px-2 py-0.5 text-[12.5px] text-white">
             {!person.mic && <MicOff size={12} aria-hidden="true" />}
             <span className="truncate">{label}</span>
           </figcaption>
@@ -64,7 +64,7 @@ export function ParticipantTile({
       ) : (
         <div className="relative flex flex-col items-center">
           <div
-            className={`relative grid place-items-center rounded-[4px] bg-avatar text-ink transition-shadow duration-150 ${
+            className={`relative grid place-items-center rounded-[8px] bg-avatar text-ink transition-shadow duration-150 ${
               speaking ? 'shadow-[0_0_0_3px_#fff]' : ''
             }`}
             style={{
@@ -83,7 +83,7 @@ export function ParticipantTile({
             {person.hand && <HandBadge className="-top-3 -right-3" />}
           </div>
           <figcaption
-            className={`max-w-[200px] truncate rounded-[4px] bg-black/45 px-2 py-0.5 text-[12.5px] text-white transition-opacity duration-150 ${
+            className={`max-w-[200px] truncate rounded-[8px] bg-black/45 px-2 py-0.5 text-[12.5px] text-white transition-opacity duration-150 ${
               compact
                 ? 'mt-1.5'
                 : 'absolute top-full mt-2 opacity-0 group-hover:opacity-100'

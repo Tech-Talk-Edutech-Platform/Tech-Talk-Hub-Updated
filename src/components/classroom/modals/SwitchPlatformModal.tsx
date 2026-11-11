@@ -45,7 +45,7 @@ export function SwitchPlatformModal({
                 role="radio"
                 aria-checked={isCurrent}
                 onClick={() => (isCurrent ? onClose() : onSwitch(platform))}
-                className={`press flex h-[46px] w-full items-center rounded-[4px] border px-3 text-left text-[15px] text-ink ${
+                className={`press flex h-[46px] w-full items-center rounded-[8px] border px-3 text-left text-[15px] text-ink ${
                   isCurrent
                     ? 'border-brand'
                     : 'border-line hover:border-line-strong hover:bg-surface-2/60'

@@ -60,8 +60,8 @@ export function StageHeader({
   return (
     <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
       <div className="pointer-events-auto flex min-w-0 items-center gap-2">
-        <BrandMark size={40} radius={4} />
-        <span className="truncate pr-1 text-[26px] leading-none font-bold tracking-[-0.015em] text-stage-ink max-sm:hidden">
+        <BrandMark size={40} />
+        <span className="truncate pr-1 text-[24px] leading-none font-bold tracking-[-0.02em] text-stage-ink max-sm:hidden">
           {CLASSROOM_BRAND.name}
         </span>
         <ParticipantPill
@@ -77,7 +77,7 @@ export function StageHeader({
           onClick={onShareCall}
           aria-label="Share call invite"
           aria-haspopup="dialog"
-          className="press flex h-10 items-center gap-2 rounded-[6px] bg-stage-control px-2.5 text-[14px] font-medium text-white hover:bg-stage-control-hover"
+          className="press flex h-10 items-center gap-2 rounded-[10px] bg-stage-control px-2.5 text-[14px] font-medium text-white hover:bg-stage-control-hover"
         >
           <Share2 size={18} strokeWidth={1.9} aria-hidden="true" />
           <span className="max-md:sr-only">Invite</span>
@@ -86,7 +86,7 @@ export function StageHeader({
           type="button"
           onClick={onTogglePip}
           aria-pressed={pip}
-          className={`press flex h-10 items-center gap-2 rounded-[6px] px-2.5 text-[15px] ${
+          className={`press flex h-10 items-center gap-2 rounded-[10px] px-2.5 text-[15px] ${
             pip
               ? 'bg-white text-stage'
               : 'bg-stage-control text-white hover:bg-stage-control-hover'
@@ -121,10 +121,9 @@ export function StageHeader({
         />
       </div>
 
-      <div
-        role="status"
+      <output
         aria-live="polite"
-        className="pointer-events-auto absolute top-[46px] left-0 flex max-w-[min(560px,calc(100vw-24px))] items-center gap-2 rounded-[6px] bg-black/55 px-2.5 py-1.5 text-[12px] text-white shadow-sm backdrop-blur-sm"
+        className="pointer-events-auto absolute top-[48px] left-0 flex max-w-[min(560px,calc(100vw-24px))] items-center gap-2 rounded-[10px] bg-black/40 px-2.5 py-1.5 text-[12px] text-white shadow-sm backdrop-blur-sm"
       >
         <span
           aria-hidden="true"
@@ -163,7 +162,7 @@ export function StageHeader({
             Enable audio
           </button>
         )}
-      </div>
+      </output>
 
       <StatsPopover
         anchorRef={statsRef}

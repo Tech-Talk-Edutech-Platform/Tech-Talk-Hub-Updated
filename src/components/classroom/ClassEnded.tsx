@@ -43,7 +43,7 @@ export function ClassEnded({ info, onRejoin }: ClassEndedProps) {
         <button
           type="button"
           onClick={onRejoin}
-          className="press mt-7 h-10 w-full rounded-[4px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong"
+          className="press mt-7 h-10 w-full rounded-[8px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong"
         >
           {left ? 'Rejoin the room' : 'Start a new class'}
         </button>

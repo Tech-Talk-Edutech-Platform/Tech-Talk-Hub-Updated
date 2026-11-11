@@ -86,7 +86,7 @@ export function ParticipantGrid({
               track={screenShare ? null : remoteScreenTrack}
               fit="contain"
             />
-            <span className="absolute top-2 left-2 rounded-[4px] bg-black/55 px-2 py-0.5 text-[12.5px] text-white">
+            <span className="absolute top-2 left-2 rounded-[8px] bg-black/55 px-2 py-0.5 text-[12.5px] text-white">
               {screenShareName}
             </span>
           </div>

@@ -50,7 +50,7 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
               <button
                 type="button"
                 onClick={media.toggleCam}
-                className="press mt-3 h-9 rounded-[4px] bg-white px-3.5 text-[14px] font-medium text-stage hover:bg-white/90"
+                className="press mt-3 h-9 rounded-[8px] bg-white px-3.5 text-[14px] font-medium text-stage hover:bg-white/90"
               >
                 Turn on camera
               </button>

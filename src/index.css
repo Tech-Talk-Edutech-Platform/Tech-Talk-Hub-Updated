@@ -111,49 +111,66 @@
 
 /*
   4. Virtual classroom (/classroom/*)
-  Design tokens sampled from the reference recording (docs/breakdown/01-design-tokens.md).
+  The site's palette (section 1, the landing page and the footer) applied to
+  the classroom: indigo for identity and active states, hot pink for the one
+  call to action per surface, navy for the video room, slate for text.
   Every classroom component reads these; no raw hex values outside this block.
 */
 @theme {
   --font-figtree:
     'Figtree Variable', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
 
-  /* Brand: End class, Special requirement, active toolbar buttons, links */
-  --color-brand: #f85a45;
-  --color-brand-strong: #e0442f;
-  --color-brand-soft: #fff1ee;
-  --color-brand-faded: #f8b2a8;
-  /* Brand as small text on white (form errors): 5.4:1, where brand is 3.2:1 */
-  --color-brand-ink: #c2321f;
+  /* Brand (site primary): active toolbar buttons, links, focus, Need help */
+  --color-brand: #3f51b5;
+  --color-brand-strong: #303f9f;
+  --color-brand-soft: #eef0fa;
+  --color-brand-faded: #b4bce6;
+  /* Brand as small text on brand-soft: 6:1 */
+  --color-brand-ink: #303f9f;
 
-  /* The video room */
-  --color-stage: #b34831;
-  --color-stage-ink: #2a1512;
-  --color-stage-control: rgb(0 0 0 / 0.56);
-  --color-stage-control-hover: rgb(0 0 0 / 0.68);
-  --color-stage-muted: #f36b4b;
-  --color-stage-muted-hover: #f57e62;
-  --color-stage-recording: #f18e84;
-  --color-avatar: #f7e3c8;
+  /*
+    Accent (site secondary, the "Book a Free Trial" pink). #ff4081 is 3.3:1
+    with white, so text-bearing pink surfaces (End class, counters, tags)
+    use the -strong shade (4.6:1), as the site's own hover state does.
+  */
+  --color-accent-pink: #ff4081;
+  --color-accent-pink-strong: #db2777;
+  --color-accent-pink-hover: #be185d;
+  --color-accent-pink-soft: #fff0f6;
 
-  /* Surfaces and text */
-  --color-ink: #1c1c1e;
-  --color-ink-soft: #404046;
-  --color-muted: #6b6b73;
-  --color-faint: #a1a1aa;
-  --color-line: #e7e7ea;
-  --color-line-strong: #d4d4d8;
-  --color-surface-2: #f3f3f5;
-  --color-callout: #fff7e5;
-  --color-callout-edge: #f4c95d;
-  --color-callout-ink: #a16207;
-  --color-info: #eaf4fb;
-  --color-info-edge: #5aa9e0;
-  --color-info-ink: #1b6aa0;
-  --color-warning-soft: #fde4e4;
-  --color-warning-ink: #7f1d1d;
-  --color-toast: #303030;
-  --color-backdrop: rgb(58 58 58 / 0.62);
+  /* Errors and destructive actions (Leave room, missing details) */
+  --color-danger: #e11d48;
+  --color-danger-ink: #be123c;
+  --color-danger-soft: #fff1f2;
+
+  /* The video room: the site footer's navy */
+  --color-stage: #172554;
+  --color-stage-ink: #eef0ff;
+  --color-stage-control: rgb(255 255 255 / 0.12);
+  --color-stage-control-hover: rgb(255 255 255 / 0.2);
+  --color-stage-muted: #ff4081;
+  --color-stage-muted-hover: #ff5c93;
+  --color-stage-recording: #ff8bb2;
+  --color-avatar: #e4e8ff;
+
+  /* Surfaces and text: the site's slate, with navy headings */
+  --color-ink: #172554;
+  --color-ink-soft: #475569;
+  --color-muted: #64748b;
+  --color-faint: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-surface-2: #f1f5f9;
+  --color-callout: #fff8e6;
+  --color-callout-edge: #f5c84c;
+  --color-callout-ink: #92400e;
+  --color-info: #eef0fa;
+  --color-info-edge: #7f8fd9;
+  --color-info-ink: #303f9f;
+  --color-warning-soft: #fff1f2;
+  --color-warning-ink: #9f1239;
+  --color-toast: #172554;
+  --color-backdrop: rgb(15 23 42 / 0.55);
 
   /*
     Motion (emil-design-eng): strong ease-out for entrances, never ease-in.
@@ -209,7 +226,7 @@
   :where(html[data-app='classroom']),
   :where(html[data-app='classroom']) * {
     scrollbar-width: thin;
-    scrollbar-color: #c9c9ce transparent;
+    scrollbar-color: #cbd5e1 transparent;
   }
 
   :where(html[data-app='classroom']) button:not(:disabled) {
@@ -282,6 +299,11 @@
     animation: reveal 200ms var(--ease-out);
   }
 
+  /* A badge given in class: pop in, hold, fade (3.2s, matches the page timer) */
+  .badge-celebrate {
+    animation: badge-celebrate 3200ms var(--ease-out) forwards;
+  }
+
   .skeleton {
     background: var(--color-surface-2);
     border-radius: 8px;
@@ -299,6 +321,25 @@
   from {
     opacity: 0;
     transform: translateX(8px);
+  }
+}
+
+@keyframes badge-celebrate {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.86);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  82% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
   }
 }
 
@@ -378,6 +419,9 @@
   .panel-in,
   .reveal {
     animation-name: fade-in-only;
+  }
+  .badge-celebrate {
+    animation-name: fade-out-late;
   }
   .reaction-float {
     animation-name: fade-out-late !important;

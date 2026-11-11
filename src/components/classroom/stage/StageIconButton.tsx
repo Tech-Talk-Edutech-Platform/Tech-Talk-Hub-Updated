@@ -1,7 +1,7 @@
-import type { ComponentPropsWithRef } from 'react'
+import { forwardRef, type ComponentPropsWithoutRef } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
-type StageIconButtonProps = Omit<ComponentPropsWithRef<'button'>, 'type'> & {
+type StageIconButtonProps = Omit<ComponentPropsWithoutRef<'button'>, 'type'> & {
   icon: LucideIcon
   label: string
   active?: boolean
@@ -9,21 +9,20 @@ type StageIconButtonProps = Omit<ComponentPropsWithRef<'button'>, 'type'> & {
 }
 
 /** Square 40px button in the room header (stats, settings, more). */
-export function StageIconButton({
-  icon: Icon,
-  label,
-  active = false,
+export const StageIconButton = forwardRef<
+  HTMLButtonElement,
+  StageIconButtonProps
+>(function StageIconButton(
+  { icon: Icon, label, active = false, iconSize = 22, ...rest },
   ref,
-  iconSize = 22,
-  ...rest
-}: StageIconButtonProps) {
+) {
   return (
     <button
       ref={ref}
       type="button"
       aria-label={label}
       title={label}
-      className={`press grid size-10 place-items-center rounded-[6px] ${
+      className={`press grid size-10 place-items-center rounded-[10px] ${
         active
           ? 'bg-white text-stage'
           : 'bg-stage-control text-white hover:bg-stage-control-hover'
@@ -33,4 +32,4 @@ export function StageIconButton({
       <Icon size={iconSize} strokeWidth={2} aria-hidden="true" />
     </button>
   )
-}
+})

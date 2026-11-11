@@ -1,14 +1,23 @@
 import type { LucideIcon } from 'lucide-react'
 
 export type Classroom = {
+  /** The room code: the id in the URL and the LiveKit room name. */
   id: string
   title: string
   /** The browser tab title while the room is open. */
   pageTitle: string
   teacher: { name: string; initial: string }
+  /** classroom_sessions.id, or null for sample data and unlinked rooms. */
+  sessionId: string | null
+  /** The class length the teacher should aim for, in minutes. */
+  recommendedMinutes: number
 }
 
 export type Student = {
+  /** The roster row (classroom_session_students.id). */
+  id: string
+  /** The registered student (users.id), when the booking has one. */
+  userId: string | null
   name: string
   grade: string
   studentId: string
@@ -67,8 +76,19 @@ export type Badge = {
   ornament: BadgeOrnament
 }
 
-/** A badge awarded in this class. `key` is per award: one badge can be given twice. */
-export type GivenBadge = Badge & { key: string; at: number }
+/**
+ * A badge awarded in this class. `key` is per award (the award row id once
+ * saved): one badge can be given twice.
+ */
+export type GivenBadge = Badge & {
+  key: string
+  at: number
+  /** Roster id and name of the student who received it. */
+  studentId: string
+  studentName: string
+  /** False while the award is still being saved. */
+  saved: boolean
+}
 
 export type VideoPlatform = {
   id: string
@@ -155,6 +175,16 @@ export type RoomMessage =
   | { type: 'hello' | 'here' | 'state' | 'bye' | 'end'; from: Participant }
   | { type: 'chat'; from: Participant; message: ChatMessage }
   | { type: 'reaction'; from: Participant; reaction: Reaction }
+  | { type: 'badge'; from: Participant; award: BadgeAnnouncement }
+
+/** Sent to the room when the teacher gives a badge, so everyone sees it. */
+export type BadgeAnnouncement = {
+  id: string
+  name: string
+  icon: BadgeIcon
+  ornament: BadgeOrnament
+  studentName: string
+}
 
 export type SubmittedProject = {
   id: string
@@ -162,6 +192,39 @@ export type SubmittedProject = {
   activity: string
   link: string
   note: string
+  /** Roster id and name of the student it was submitted for. */
+  studentId: string
+  studentName: string
+}
+
+/** Where the classroom's content came from. */
+export type ClassroomSource =
+  /** A classroom_sessions row: content and actions are saved to Supabase. */
+  | 'live'
+  /** The migration isn't applied (or Supabase isn't set up): built-in sample. */
+  | 'sample'
+  /** No session has this room code (or you can't see it): an empty room. */
+  | 'unlinked'
+
+/** Who is looking at the room. Staff run the class; everyone else attends. */
+export type ClassroomViewer = {
+  userId: string | null
+  name: string | null
+  isStaff: boolean
+  isAdmin: boolean
+}
+
+/** Everything the room shows, loaded once per room code. */
+export type ClassroomData = {
+  source: ClassroomSource
+  classroom: Classroom
+  students: Student[]
+  material: ClassMaterial | null
+  activities: Activity[]
+  badges: Badge[]
+  awards: GivenBadge[]
+  projects: SubmittedProject[]
+  viewer: ClassroomViewer
 }
 
 export type PanelName = 'details' | 'chat' | 'people'
@@ -189,7 +252,7 @@ export type ClassEndReport = {
   /** Completed: where it finished (null = in this room). Not completed: why. */
   reasonId: string | null
   details: string
-  /** studentIds ticked as attended (completed classes only). */
+  /** Roster ids ticked as attended (completed classes only). */
   attended: string[]
 }
 

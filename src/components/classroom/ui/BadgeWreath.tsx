@@ -19,7 +19,7 @@ export function BadgeWreath() {
           rx="3.4"
           ry="7.2"
           transform={`rotate(${rot} ${x} ${y})`}
-          fill={i % 2 ? '#e3b23c' : '#f0c955'}
+          fill={i % 2 ? '#f5c518' : '#ffe14d'}
         />,
       )
     }

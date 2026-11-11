@@ -33,7 +33,7 @@ export function MoreMenu({ anchorRef, open, onClose, actions }: MoreMenuProps) {
               onSelect()
             }}
             className={`press flex h-10 w-full items-center gap-3 px-3.5 text-left text-[14.5px] hover:bg-surface-2 ${
-              danger ? 'text-brand' : 'text-ink'
+              danger ? 'text-danger-ink' : 'text-ink'
             }`}
           >
             <Icon

@@ -29,6 +29,8 @@ function publicRoomUrl(value: string) {
 
 function cleanName(value: unknown) {
   if (typeof value !== 'string') return null
+  // Strips control characters from the display name, on purpose.
+  // oxlint-disable-next-line eslint/no-control-regex -- see above
   const name = value.replace(/[\u0000-\u001f\u007f]/g, '').trim()
   return name.length > 0 && name.length <= 80 ? name : null
 }

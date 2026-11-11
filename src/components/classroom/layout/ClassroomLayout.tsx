@@ -4,7 +4,7 @@ import '@fontsource-variable/figtree/wght.css'
 import '@fontsource-variable/figtree/wght-italic.css'
 
 /** Matches --color-stage, so the mobile browser bar blends into the room. */
-const THEME_COLOR = '#b34831'
+const THEME_COLOR = '#172554'
 
 /**
  * Shell for every /classroom route. Marks <html> so the classroom's base styles
