@@ -11,16 +11,24 @@ import { supabase } from '../supabase'
 export type ClassroomRole = 'host' | 'participant'
 
 const ADMIN_ROLES = new Set(['owner', 'operations_admin', 'tech_admin'])
-const STAFF_ROLES = new Set([...ADMIN_ROLES, 'tutor'])
+/** Nobody joins a class in these states until an admin reopens it. */
 const ENDED_STATUSES = new Set(['completed', 'not_completed', 'cancelled'])
 
 export type ClassroomAccess = {
   role: ClassroomRole
   /** The signed-in user, when the request carried a valid Supabase token. */
   userId: string | null
-  /** True when the room has a session row that has been ended or cancelled. */
+  /**
+   * The class this room code belongs to, or null when no class uses it.
+   * A room code is only joinable once a class (classroom_sessions row) has it.
+   */
+  status: string | null
+  /** The class has ended or was cancelled: closed to everyone, hosts included. */
   ended: boolean
 }
+
+/** The classroom tables are missing, so no room code can be checked. */
+export class ClassroomSetupError extends Error {}
 
 function bearerToken(req: Request) {
   const header = req.headers.authorization ?? ''
@@ -37,8 +45,13 @@ async function findSession(roomCode: string): Promise<SessionRow | null> {
     .eq('room_code', roomCode)
     .maybeSingle()
   if (error) {
-    // Before the classroom migration is applied every room is "unlinked".
-    if (error.code === '42P01' || error.code === 'PGRST205') return null
+    // Fail closed: without the table there is no way to tell a real class
+    // from a made-up code, and made-up codes must not open LiveKit rooms.
+    if (error.code === '42P01' || error.code === 'PGRST205') {
+      throw new ClassroomSetupError(
+        'Live classes aren’t set up yet: the classroom database migration hasn’t been applied.',
+      )
+    }
     throw new Error(`Couldn’t look up the class: ${error.message}`)
   }
   return data
@@ -72,14 +85,47 @@ export async function classroomAccess(
   ])
   const ended = !!session && ENDED_STATUSES.has(session.status)
 
-  let role: ClassroomRole = 'participant'
-  if (user) {
-    if (ADMIN_ROLES.has(user.role)) role = 'host'
-    else if (session && session.tutor_id === user.id) role = 'host'
-    // A room with no session row (an ad-hoc code) is hosted by any staff member.
-    else if (!session && STAFF_ROLES.has(user.role)) role = 'host'
+  // Only a real class has a host. Room codes no class uses aren't joinable,
+  // so there are no ad-hoc rooms to host.
+  const role: ClassroomRole =
+    session &&
+    user &&
+    (ADMIN_ROLES.has(user.role) || session.tutor_id === user.id)
+      ? 'host'
+      : 'participant'
+  return {
+    role,
+    userId: user?.id ?? null,
+    status: session?.status ?? null,
+    ended,
   }
-  return { role, userId: user?.id ?? null, ended }
+}
+
+/**
+ * Why nobody may join this room right now, as an HTTP status and message, or
+ * null when it's open. Checked before any LiveKit call, so a wrong or old
+ * class ID never creates a room or a token.
+ */
+export function closedRoomReason(
+  access: ClassroomAccess,
+): { status: 404 | 410; error: string } | null {
+  if (access.status === null) {
+    return {
+      status: 404,
+      error:
+        'No class uses this class ID. Check the link your tutor sent and try again.',
+    }
+  }
+  if (access.ended) {
+    return {
+      status: 410,
+      error:
+        access.status === 'cancelled'
+          ? 'This class was cancelled.'
+          : 'This class has ended.',
+    }
+  }
+  return null
 }
 
 export type LiveKitConfig = {

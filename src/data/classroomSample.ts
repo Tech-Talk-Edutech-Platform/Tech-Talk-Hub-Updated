@@ -17,6 +17,7 @@ const SAMPLE_CLASSROOM: Omit<Classroom, 'id'> = {
   pageTitle: 'Trial class',
   teacher: { name: 'Jamie Rivera', initial: 'J' },
   sessionId: null,
+  status: null,
   recommendedMinutes: 60,
 }
 

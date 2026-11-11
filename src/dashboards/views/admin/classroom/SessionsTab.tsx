@@ -13,10 +13,13 @@ import {
   Copy,
   ExternalLink,
   Plus,
+  RotateCcw,
   Search,
   Shuffle,
   Trash2,
 } from 'lucide-react'
+import { reopenSession } from '../../../../lib/classroom/repository'
+import { isEndedStatus } from '../../../../lib/classroom/sessionStatus'
 import type { ClassroomSessionStatus } from '../../../../types/classroomTables'
 import type { Database } from '../../../../types/database'
 import { RosterEditor } from './RosterEditor'
@@ -121,10 +124,15 @@ export function SessionListItem({
   session,
   tutorName,
   onManage,
+  onReopen,
+  reopening = false,
 }: {
   session: SessionSummary
   tutorName: string | null
   onManage?: () => void
+  /** Admins only: shown for ended or cancelled classes, which nobody can join. */
+  onReopen?: () => void
+  reopening?: boolean
 }) {
   const names = session.students.map((student) => student.display_name)
   return (
@@ -159,6 +167,12 @@ export function SessionListItem({
           text={studentLink(session.room_code)}
           label="Student link"
         />
+        {onReopen && isEndedStatus(session.status) && (
+          <Button size="sm" onClick={onReopen} busy={reopening}>
+            <RotateCcw size={14} aria-hidden="true" />
+            Reopen
+          </Button>
+        )}
         {onManage && (
           <Button size="sm" onClick={onManage}>
             Manage
@@ -199,9 +213,16 @@ function SessionList({
 }) {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<ClassroomSessionStatus | 'all'>('all')
+  const queryClient = useQueryClient()
   const sessions = useQuery({
     queryKey: classroomKeys.sessions,
     queryFn: listSessions,
+  })
+  // Ended classes are closed to everyone until an admin reopens them here.
+  const reopen = useMutation({
+    mutationFn: reopenSession,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: classroomKeys.sessions }),
   })
   const people = useQuery({
     queryKey: classroomKeys.people,
@@ -283,16 +304,25 @@ function SessionList({
             : 'No classes yet. Create one, add its students, then share the classroom link.'}
         </EmptyState>
       ) : (
-        <ul className="space-y-3">
-          {visible.map((session) => (
-            <SessionListItem
-              key={session.id}
-              session={session}
-              tutorName={nameOf(session.tutor_id)}
-              onManage={() => onManage(session.id)}
-            />
-          ))}
-        </ul>
+        <>
+          {reopen.isError && (
+            <div className="mb-3">
+              <ErrorNote>{reopen.error.message}</ErrorNote>
+            </div>
+          )}
+          <ul className="space-y-3">
+            {visible.map((session) => (
+              <SessionListItem
+                key={session.id}
+                session={session}
+                tutorName={nameOf(session.tutor_id)}
+                onManage={() => onManage(session.id)}
+                onReopen={() => reopen.mutate(session.id)}
+                reopening={reopen.isPending && reopen.variables === session.id}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </Card>
   )

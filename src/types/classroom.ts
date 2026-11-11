@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import type { ClassroomSessionStatus } from './classroomTables'
 
 export type Classroom = {
   /** The room code: the id in the URL and the LiveKit room name. */
@@ -9,6 +10,8 @@ export type Classroom = {
   teacher: { name: string; initial: string }
   /** classroom_sessions.id, or null for sample data and unlinked rooms. */
   sessionId: string | null
+  /** The session's status, or null for sample data and unlinked rooms. */
+  status: ClassroomSessionStatus | null
   /** The class length the teacher should aim for, in minutes. */
   recommendedMinutes: number
 }
@@ -203,7 +206,7 @@ export type ClassroomSource =
   | 'live'
   /** The migration isn't applied (or Supabase isn't set up): built-in sample. */
   | 'sample'
-  /** No session has this room code (or you can't see it): an empty room. */
+  /** No session has this room code: nobody can join (the server agrees). */
   | 'unlinked'
 
 /** Who is looking at the room. Staff run the class; everyone else attends. */
@@ -213,8 +216,8 @@ export type ClassroomViewer = {
   isStaff: boolean
   isAdmin: boolean
   /**
-   * Hosts this room: an admin, the session's tutor, or staff in a room with
-   * no session. The API server checks the same rules before granting it.
+   * Hosts this room: an admin, or the session's tutor. The API server checks
+   * the same rules before granting it.
    */
   canHost: boolean
 }

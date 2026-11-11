@@ -6,6 +6,7 @@
 // is saved, so the room keeps working.
 import { agendaMinutes, sampleClassroomData } from '../../data/classroomSample'
 import { isSupabaseConfigured, supabase } from '../../supabase'
+import { isEndedStatus, toSessionStatus } from './sessionStatus'
 import type { ClassroomRow } from '../../types/classroomTables'
 import type {
   Activity,
@@ -281,6 +282,7 @@ function emptyRoom(
       pageTitle: 'Live class',
       teacher: { name: teacherName, initial: initialOf(teacherName) },
       sessionId: null,
+      status: null,
       recommendedMinutes: 60,
       ...overrides,
     },
@@ -294,7 +296,10 @@ function emptyRoom(
   }
 }
 
-/** Guests and students: the join screen only needs the class title. */
+/**
+ * Guests and students: the join screen only needs the class title, and the
+ * status decides whether they may join at all.
+ */
 async function loadAttendeeRoom(roomCode: string, viewer: ClassroomViewer) {
   const { data, error } = await plannedDb.rpc('classroom_public_info', {
     p_room_code: roomCode,
@@ -309,6 +314,7 @@ async function loadAttendeeRoom(roomCode: string, viewer: ClassroomViewer) {
   return emptyRoom(roomCode, viewer, 'live', {
     title: info.title,
     pageTitle: info.title,
+    status: toSessionStatus(info.status),
   })
 }
 
@@ -347,7 +353,9 @@ export async function loadClassroom(roomCode: string): Promise<ClassroomData> {
     if (info?.length) {
       return loadAttendeeRoom(roomCode, { ...viewer, canHost: false })
     }
-    return emptyRoom(roomCode, viewer, 'unlinked', {}, await loadBadges())
+    // No class has this code. Staff can't open ad-hoc rooms any more: they
+    // create a class (or Start a call) to get a room code.
+    return emptyRoom(roomCode, viewer, 'unlinked')
   }
 
   const materialId = session.material_id
@@ -412,6 +420,7 @@ export async function loadClassroom(roomCode: string): Promise<ClassroomData> {
       pageTitle: session.page_title,
       teacher: { name: teacherName, initial: initialOf(teacherName) },
       sessionId: session.id,
+      status: session.status,
       recommendedMinutes:
         agendaMinutes(classMaterial) || session.duration_minutes || 60,
     },
@@ -498,7 +507,7 @@ export async function markSessionLive(sessionId: string) {
     .eq('id', sessionId)
     .maybeSingle()
   if (error || !data) return
-  if (data.status === 'completed' || data.status === 'not_completed') return
+  if (isEndedStatus(data.status)) return
   await plannedDb
     .from('classroom_sessions')
     .update({
@@ -506,6 +515,22 @@ export async function markSessionLive(sessionId: string) {
       started_at: data.started_at ?? new Date().toISOString(),
     })
     .eq('id', sessionId)
+}
+
+/**
+ * Admins only: an ended or cancelled class can be joined again. The database
+ * refuses this for anyone else (migration 20261111130000).
+ */
+export async function reopenSession(sessionId: string) {
+  const { data, error } = await plannedDb
+    .from('classroom_sessions')
+    .update({ status: 'scheduled', ended_at: null })
+    .eq('id', sessionId)
+    .select('id')
+  if (error) fail(error, 'Couldn’t reopen the class.')
+  if (!data.length) {
+    throw new Error('Only an admin can reopen an ended class.')
+  }
 }
 
 const markAttendance = (rosterIds: string[], attended: boolean) =>

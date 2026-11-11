@@ -6,8 +6,10 @@ import express, {
 import { rateLimit } from '../middleware/rateLimit'
 import {
   classroomAccess,
+  ClassroomSetupError,
   liveKitConfig,
   LiveKitConfigError,
+  type ClassroomAccess,
 } from '../services/classroomAccess'
 
 const router = express.Router()
@@ -26,7 +28,20 @@ async function endRoom(req: EndRequest, res: Response): Promise<void> {
     return
   }
 
-  const access = await classroomAccess(req, roomId)
+  let access: ClassroomAccess
+  try {
+    access = await classroomAccess(req, roomId)
+  } catch (error) {
+    if (!(error instanceof ClassroomSetupError)) throw error
+    res.status(503).json({ error: error.message })
+    return
+  }
+  // An ended class can still be closed: End class saves the report (which
+  // ends the session) before it asks the server to close the room.
+  if (access.status === null) {
+    res.status(404).json({ error: 'No class uses this class ID.' })
+    return
+  }
   if (!access.userId) {
     res.status(401).json({ error: 'Sign in to end this class.' })
     return

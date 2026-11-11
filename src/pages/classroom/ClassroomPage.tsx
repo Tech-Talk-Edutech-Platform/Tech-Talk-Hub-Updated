@@ -48,12 +48,14 @@ import { copyText } from '../../lib/classroom/clipboard'
 import {
   deleteBadgeAward,
   markSessionLive,
+  reopenSession,
   saveAlert,
   saveBadgeAward,
   saveProject,
   saveRecording,
   saveSessionEnd,
 } from '../../lib/classroom/repository'
+import { isEndedStatus } from '../../lib/classroom/sessionStatus'
 import { toast } from '../../lib/classroom/toast'
 import { uid } from '../../lib/classroom/uid'
 import type {
@@ -110,13 +112,92 @@ export function ClassroomPage() {
       </RoomMessage>
     )
   }
+  // Nobody joins a class ID that no class uses, or a class that's over: no
+  // join screen, so no token request. The API server refuses both anyway.
+  if (query.data.source === 'unlinked') {
+    return (
+      <RoomMessage title="Class not found">
+        {query.data.viewer.isStaff
+          ? `No class uses the ID ${classroomId}. Create a class, or start a call from My Classrooms, to get a class ID.`
+          : `No class uses the ID ${classroomId}. Check the link your tutor sent and try again.`}
+      </RoomMessage>
+    )
+  }
+  if (isEndedStatus(query.data.classroom.status)) {
+    return (
+      <ClosedClassMessage
+        data={query.data}
+        onReopened={() => query.refetch()}
+      />
+    )
+  }
   // Remount per room so every piece of in-class state starts fresh.
   return <LiveClassroom key={classroomId} data={query.data} />
 }
 
+/** An ended or cancelled class. Only an admin can reopen it. */
+function ClosedClassMessage({
+  data,
+  onReopened,
+}: {
+  data: ClassroomData
+  onReopened: () => Promise<unknown>
+}) {
+  const { classroom, viewer } = data
+  const [reopening, setReopening] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const sessionId = classroom.sessionId
+  const canReopen = viewer.isAdmin && !!sessionId
+
+  const reopen = async () => {
+    if (!sessionId) return
+    setReopening(true)
+    setError(null)
+    try {
+      await reopenSession(sessionId)
+      await onReopened()
+    } catch (reopenError) {
+      setError(
+        reopenError instanceof Error && reopenError.message
+          ? reopenError.message
+          : 'Couldn’t reopen the class.',
+      )
+      setReopening(false)
+    }
+  }
+
+  let detail =
+    'Nobody can join it now. Ask your tutor if you think this is a mistake.'
+  if (canReopen) detail = 'Reopen it to let the tutor and students join again.'
+  else if (viewer.isStaff) {
+    detail = 'Nobody can join it now. Only an admin can reopen it.'
+  }
+
+  return (
+    <RoomMessage
+      title={
+        classroom.status === 'cancelled'
+          ? 'This class was cancelled'
+          : 'This class has ended'
+      }
+      action={
+        canReopen
+          ? {
+              label: reopening ? 'Reopening…' : 'Reopen class',
+              busy: reopening,
+              onClick: () => void reopen(),
+            }
+          : undefined
+      }
+    >
+      {error ?? detail}
+    </RoomMessage>
+  )
+}
+
 type RoomMessageProps = {
   title?: string
-  action?: { label: string; onClick: () => void }
+  action?: { label: string; onClick: () => void; busy?: boolean }
   children: string
 }
 
@@ -145,7 +226,9 @@ function RoomMessage({ title, action, children }: RoomMessageProps) {
           <button
             type="button"
             onClick={action.onClick}
-            className="press mt-6 h-10 w-full rounded-[10px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong"
+            disabled={action.busy}
+            aria-busy={action.busy}
+            className="press mt-6 h-10 w-full rounded-[10px] bg-brand text-[15px] font-medium text-white hover:bg-brand-strong disabled:opacity-70"
           >
             {action.label}
           </button>
@@ -528,7 +611,9 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
       <ClassEnded
         info={ended}
         // A participant can rejoin after leaving, not after the class ended.
-        canRejoin={ended.reason === 'left' || teacherMode}
+        // A saved class is closed once it ends, for the host too: starting it
+        // again would be refused until an admin reopens it.
+        canRejoin={ended.reason === 'left' || (teacherMode && !persist)}
         onRejoin={() => {
           if (ended.reason === 'ended') timer.restart()
           setEnded(null)

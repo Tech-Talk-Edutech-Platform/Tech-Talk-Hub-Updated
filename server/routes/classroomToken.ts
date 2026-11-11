@@ -7,8 +7,11 @@ import { AccessToken } from 'livekit-server-sdk'
 import { rateLimit } from '../middleware/rateLimit'
 import {
   classroomAccess,
+  ClassroomSetupError,
+  closedRoomReason,
   liveKitConfig,
   LiveKitConfigError,
+  type ClassroomAccess,
   type ClassroomRole,
 } from '../services/classroomAccess'
 
@@ -60,7 +63,25 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
     return
   }
 
-  const access = await classroomAccess(req, roomId)
+  let access: ClassroomAccess
+  try {
+    access = await classroomAccess(req, roomId)
+  } catch (error) {
+    if (!(error instanceof ClassroomSetupError)) throw error
+    console.error('Classroom setup:', error.message)
+    res.status(503).json({ error: error.message })
+    return
+  }
+
+  // No class with this ID, or it's over: refuse before touching LiveKit, so
+  // made-up or old IDs never create rooms or use up minutes. This applies to
+  // hosts too; an admin has to reopen an ended class first.
+  const closed = closedRoomReason(access)
+  if (closed) {
+    res.status(closed.status).json({ error: closed.error })
+    return
+  }
+
   if (wantsHost && access.role !== 'host') {
     res.status(403).json({
       error:
@@ -70,11 +91,6 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
   }
   // Staff opening the student link join as a participant.
   const role: ClassroomRole = wantsHost ? 'host' : 'participant'
-
-  if (role === 'participant' && access.ended) {
-    res.status(410).json({ error: 'This class has ended.' })
-    return
-  }
 
   const { service, serverUrl, apiKey, apiSecret } = config
   let room = (await service.listRooms([roomId])).find(
