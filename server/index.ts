@@ -6,6 +6,7 @@ import sendReceiptRoute from './routes/sendReceipt'
 import sendCurriculumRoute from './routes/sendCurriculum'
 import classroomTokenRoute from './routes/classroomToken'
 import classroomEndRoute from './routes/classroomEnd'
+import cronRemindersRoute from './routes/cronReminders'
 import { allowOrigins } from './middleware/cors'
 import { requireServerEnv } from './env'
 import { supabase } from './supabase'
@@ -18,8 +19,11 @@ interface PushNotificationBody {
 
 const app = express()
 // When the API sits behind proxies (nginx, a platform router), set TRUST_PROXY
-// to their count so rate limits see the client's IP, not the proxy's.
-const trustedProxyHops = Number(process.env.TRUST_PROXY ?? 0)
+// to their count so rate limits see the client's IP, not the proxy's. Vercel
+// puts one proxy in front and sets X-Forwarded-For to the client's IP.
+const trustedProxyHops = Number(
+  process.env.TRUST_PROXY ?? (process.env.VERCEL ? 1 : 0),
+)
 if (trustedProxyHops > 0) {
   app.set('trust proxy', trustedProxyHops)
 }
@@ -48,6 +52,7 @@ app.use('/api/send-receipt', sendReceiptRoute)
 app.use('/api/send-curriculum', sendCurriculumRoute)
 app.use('/api/classroom/token', classroomTokenRoute)
 app.use('/api/classroom/end', classroomEndRoute)
+app.use('/api/cron/reminders', cronRemindersRoute)
 
 // =========================
 // PUSH SETUP
@@ -104,19 +109,22 @@ app.post('/api/push', (req, res) => {
 })
 
 // =========================
-// SMS REMINDERS
-// =========================
-startReminderScheduler()
-
-// =========================
 // START SERVER
 // =========================
-const PORT = 5000
+// On Vercel the app runs as a function: Vercel calls the default export, and
+// SMS reminders come from a scheduler hitting /api/cron/reminders. Anywhere
+// else (local dev, a VPS) it's a normal long-running server.
+if (!process.env.VERCEL) {
+  startReminderScheduler()
 
-app.listen(PORT, () => {
-  process.stdout.write(`Server running on port ${PORT}
+  const PORT = Number(process.env.PORT ?? 5000)
+  app.listen(PORT, () => {
+    process.stdout.write(`Server running on port ${PORT}
 `)
-})
+  })
+}
+
+export default app
 // const express = require("express");
 // const WebPush = require("web-push");
 // const { createClient } = require("@supabase/supabase-js");

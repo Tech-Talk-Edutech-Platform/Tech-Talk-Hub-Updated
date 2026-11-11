@@ -13,11 +13,7 @@ import {
 const router = express.Router()
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 
-type EndRequest = Request<
-  Record<string, string>,
-  unknown,
-  { roomId?: unknown }
->
+type EndRequest = Request<Record<string, string>, unknown, { roomId?: unknown }>
 
 /**
  * POST /api/classroom/end: a host ends the call for everyone. Deleting the

@@ -66,6 +66,7 @@
     "check:ci": "npm run format:check && npm run lint:ci && npm run typecheck",
     "build": "npm run check:ci && npm run build:worker && vite build",
     "build:worker": "tsc -p tsconfig.worker.json",
+    "build:vercel": "npm run build:worker && vite build",
     "test": "react-scripts test",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json --noEmit && npm --prefix server run typecheck",
     "dev": "npm run build:worker && vite",

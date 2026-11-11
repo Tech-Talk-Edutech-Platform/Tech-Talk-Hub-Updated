@@ -217,9 +217,9 @@ export function useLiveKitRoom({
     [],
   )
   const roomRef = useRef<Room | null>(null)
-  const messageRef = useRef<
-    (message: unknown, sender?: MessageSender) => void
-  >(() => {})
+  const messageRef = useRef<(message: unknown, sender?: MessageSender) => void>(
+    () => {},
+  )
   const publishedTracks = useRef(new Map<string, MediaStreamTrack>())
   const publishQueue = useRef<Promise<void>>(Promise.resolve())
 
