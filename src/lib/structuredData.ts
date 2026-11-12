@@ -3,8 +3,9 @@
  * Shared by the pages and the build-time prerender (scripts/seoPrerender.ts)
  * so both emit the same tags. Keep this file free of browser APIs.
  */
+import { EMAIL, INSTAGRAM, PHONE } from '../data/site'
 import type { Tables } from '../types/database'
-import { SITE_NAME, SITE_URL, type PageMeta } from './seo'
+import { absoluteUrl, SITE_NAME, SITE_URL, type PageMeta } from './seo'
 
 export type ProductFields = Pick<
   Tables<'shop_products'>,
@@ -118,5 +119,50 @@ export function blogPostPageMeta(post: BlogPostFields): PageMeta {
     image: post.cover_image_url
       ? { url: post.cover_image_url, width: 1200, height: 630, alt: post.title }
       : undefined,
+  }
+}
+
+/**
+ * Organization and WebSite data for the home page. Google uses them for the
+ * site name, logo and contact details it shows next to search results.
+ */
+export function siteSchema(): Record<string, unknown> {
+  const organizationId = `${SITE_URL}/#organization`
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'EducationalOrganization',
+        '@id': organizationId,
+        name: SITE_NAME,
+        url: `${SITE_URL}/`,
+        logo: {
+          '@type': 'ImageObject',
+          url: absoluteUrl('/TechTalkBrand.png'),
+          width: 1024,
+          height: 1024,
+        },
+        description:
+          'Live, personalized coding classes helping children aged 5–17 build practical technology skills, confidence and creativity.',
+        email: EMAIL,
+        telephone: PHONE.href.replace('tel:', ''),
+        sameAs: [INSTAGRAM.url],
+        contactPoint: {
+          '@type': 'ContactPoint',
+          contactType: 'customer support',
+          email: EMAIL,
+          telephone: PHONE.href.replace('tel:', ''),
+          url: absoluteUrl('/contact'),
+        },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${SITE_URL}/#website`,
+        name: SITE_NAME,
+        url: `${SITE_URL}/`,
+        publisher: { '@id': organizationId },
+      },
+    ],
   }
 }

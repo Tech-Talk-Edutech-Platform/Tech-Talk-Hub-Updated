@@ -3,7 +3,14 @@ import { Sparkles } from 'lucide-react'
 import { ContactForm } from './ContactForm'
 import { ContactInfoPanel } from './ContactInfoPanel'
 
-export function ContactSection() {
+type ContactSectionProps = {
+  /** `h1` when the section is the whole page (/contact), `h2` on the home page. */
+  headingLevel?: 'h1' | 'h2'
+}
+
+export function ContactSection({ headingLevel = 'h2' }: ContactSectionProps) {
+  const Heading = headingLevel
+
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-purple-100 bg-gradient-to-br from-[#F8F5FF] via-white to-[#FFF3F8] px-5 py-10 shadow-sm sm:px-8 sm:py-12 lg:px-12">
       {/* Background decoration */}
@@ -17,10 +24,10 @@ export function ContactSection() {
             Talk to Our Team
           </div>
 
-          <h2 className="mt-5 text-3xl font-black tracking-tight text-[#172554] sm:text-4xl lg:text-5xl">
+          <Heading className="mt-5 text-3xl font-black tracking-tight text-[#172554] sm:text-4xl lg:text-5xl">
             Let’s start your child’s{' '}
             <span className="text-[#FF3F7F]">coding journey.</span>
-          </h2>
+          </Heading>
 
           <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
             Have questions about our classes, programs or learning approach? We

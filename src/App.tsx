@@ -43,11 +43,13 @@ import { CareersPage } from './pages/CareersPage'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { ChildSafetyPage } from './pages/ChildSafetyPage'
+import { ContactPage } from './pages/ContactPage'
 import { CoursePage } from './pages/CoursePage'
 import { CurriculumPage } from './pages/CurriculumPage'
 import { FacultyPage } from './pages/FacultyPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { PricingPage } from './pages/PricingPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { ProductPage } from './pages/ProductPage'
 import { ProgramShopPage } from './pages/ProgramShopPage'
@@ -173,6 +175,17 @@ function DashboardApp() {
           <Route path="/faculty" element={<FacultyPage />} />
           <Route path="/careers" element={<CareersPage />} />
           <Route path="/curriculum" element={<CurriculumPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          {/* Vercel answers these with a 308 (vercel.json); this covers dev and other hosts. */}
+          <Route
+            path="/learning-paths"
+            element={<Navigate to="/curriculum" replace />}
+          />
+          <Route
+            path="/contact-us"
+            element={<Navigate to="/contact" replace />}
+          />
           {/* Old links: the hero's "Explore courses" and the blog sidebar's "View programs". */}
           <Route
             path="/courses"

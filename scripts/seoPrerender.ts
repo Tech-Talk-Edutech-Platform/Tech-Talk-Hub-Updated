@@ -37,6 +37,7 @@ import {
   blogPostSchema,
   productPageMeta,
   productSchema,
+  siteSchema,
   type BlogPostFields,
   type ProductFields,
 } from '../src/lib/structuredData'
@@ -52,11 +53,8 @@ const FETCH_TIMEOUT_MS = 15_000
 const SAFE_SLUG = /^[\w-]+$/
 
 /**
- * App areas behind sign-in, plus the old site's private paths.
- *
- * `/login` is left crawlable on purpose: it answers with `X-Robots-Tag:
- * noindex` (vercel.json), and Google only sees that header if it may fetch the
- * page. A login page that is blocked here can still be indexed from links.
+ * App areas behind sign-in, plus the old site's private paths. `/login` is a
+ * public page that should show up in search, so it isn't listed.
  */
 const DISALLOWED_PATHS = [
   '/admin',
@@ -336,6 +334,7 @@ async function prerender(config: ResolvedConfig) {
   const pages: Page[] = Object.values(STATIC_PAGES).map(({ meta }) => ({
     path: meta.path,
     meta,
+    jsonLd: meta.path === '/' ? siteSchema() : undefined,
   }))
   const sitemap: SitemapUrl[] = Object.values(STATIC_PAGES).flatMap((page) =>
     'sitemap' in page ? [{ path: page.meta.path, ...page.sitemap }] : [],
@@ -420,7 +419,10 @@ export function seoPrerender(): Plugin {
     transformIndexHtml: {
       order: 'pre',
       handler(html) {
-        return withHead(html, renderHead(STATIC_PAGES['/'].meta))
+        return withHead(
+          html,
+          renderHead(STATIC_PAGES['/'].meta, { jsonLd: siteSchema() }),
+        )
       },
     },
     async closeBundle() {

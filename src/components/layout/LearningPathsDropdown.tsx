@@ -29,9 +29,13 @@ export function LearningPathsDropdown() {
 
       {isOpen && (
         <div className="absolute top-full left-1/2 w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-          <p className="px-3 pt-3 pb-2 text-xs font-bold tracking-wider text-slate-400 uppercase">
+          <Link
+            to="/curriculum"
+            onClick={() => setIsOpen(false)}
+            className="block px-3 pt-3 pb-2 text-xs font-bold tracking-wider text-slate-400 uppercase hover:text-secondary"
+          >
             Learning Paths
-          </p>
+          </Link>
 
           {LEARNING_PATHS.map((path) => (
             <Link

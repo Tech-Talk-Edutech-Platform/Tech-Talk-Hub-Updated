@@ -10,7 +10,7 @@
       "trailingSlash": false,
       "rewrites": [
         {
-          "source": "/:page(about|blog|book|booking-failed|booking-success|careers|cart|checkout|child-safety|curriculum|donate|faculty|favorites|future-developers|junior-coders|privacy|shop|tech-professionals|terms)",
+          "source": "/:page(about|blog|book|booking-failed|booking-success|careers|cart|checkout|child-safety|contact|curriculum|donate|faculty|favorites|future-developers|junior-coders|login|pricing|privacy|shop|tech-professionals|terms)",
           "destination": "/:page.html"
         },
         {
@@ -39,13 +39,13 @@
   "redirects": [
     { "source": "/book-class", "destination": "/book", "permanent": true },
     { "source": "/courses", "destination": "/curriculum", "permanent": true },
-    { "source": "/programs", "destination": "/curriculum", "permanent": true }
-  ],
-  "headers": [
+    { "source": "/programs", "destination": "/curriculum", "permanent": true },
     {
-      "source": "/login",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
-    }
+      "source": "/learning-paths",
+      "destination": "/curriculum",
+      "permanent": true
+    },
+    { "source": "/contact-us", "destination": "/contact", "permanent": true }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "server" } },

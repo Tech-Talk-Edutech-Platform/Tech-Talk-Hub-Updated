@@ -16,7 +16,13 @@ import { SegmentedControl } from '../ui/SegmentedControl'
 import { PricingPlanCard } from './PricingPlanCard'
 import { PricingStatus } from './PricingStatus'
 
-export function PricingSection() {
+type PricingSectionProps = {
+  /** `h1` when the section is the whole page (/pricing), `h2` on the home page. */
+  headingLevel?: 'h1' | 'h2'
+}
+
+export function PricingSection({ headingLevel = 'h2' }: PricingSectionProps) {
+  const Heading = headingLevel
   const [currency, setCurrency] = useState<Currency>('kes')
   const [billing, setBilling] = useState<BillingCycle>('monthly')
   const plansState = usePricingPlans()
@@ -45,10 +51,10 @@ export function PricingSection() {
             Flexible Learning Plans
           </div>
 
-          <h2 className="mt-5 text-3xl font-black tracking-tight text-[#172554] sm:text-4xl lg:text-5xl">
+          <Heading className="mt-5 text-3xl font-black tracking-tight text-[#172554] sm:text-4xl lg:text-5xl">
             Choose how your child{' '}
             <span className="text-[#FF3F7F]">learns best.</span>
-          </h2>
+          </Heading>
 
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
             Live, personalized coding classes with flexible schedules and

@@ -1,4 +1,5 @@
 import { Heart, ShoppingCart } from 'lucide-react'
+import type { MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import { LEARNING_PATHS } from '../../data/navigation'
@@ -15,7 +16,7 @@ type MobileMenuProps = {
   favoriteCount: number
   cartCount: number
   onNavigate: () => void
-  onPricingClick: () => void
+  onPricingClick: (event: MouseEvent<HTMLAnchorElement>) => void
 }
 
 /** Collapsible navigation panel shown below the navbar on small screens. */
@@ -46,18 +47,22 @@ export function MobileMenu({
           Home
         </Link>
 
-        <button
-          type="button"
+        <Link
+          to="/pricing"
           onClick={onPricingClick}
           className="rounded-xl px-4 py-3 text-left text-sm font-semibold"
         >
           Pricing
-        </button>
+        </Link>
 
         <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="mb-2 px-2 text-xs font-bold text-slate-400 uppercase">
+          <Link
+            to="/curriculum"
+            onClick={onNavigate}
+            className="mb-2 block px-2 text-xs font-bold text-slate-400 uppercase"
+          >
             Learning Paths
-          </p>
+          </Link>
 
           {LEARNING_PATHS.map((path) => (
             <Link

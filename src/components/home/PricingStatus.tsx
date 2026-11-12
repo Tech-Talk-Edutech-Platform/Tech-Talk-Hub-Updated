@@ -55,7 +55,7 @@ export function PricingStatus(props: PricingStatusProps) {
       </p>
 
       <Link
-        to="/#contact"
+        to="/contact"
         className="mt-5 inline-flex items-center gap-2 font-bold text-[#FF3F7F]"
       >
         Contact Our Team

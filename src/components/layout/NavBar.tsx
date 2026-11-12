@@ -1,6 +1,6 @@
 import { Heart, Menu, ShoppingCart, X } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState, type MouseEvent } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 import { COMMERCE_PATHS } from '../../data/navigation'
 import { useCart } from '../../hooks/useCart'
@@ -20,7 +20,6 @@ export function NavBar() {
   const favoriteCount = useFavoriteCount()
   const { cartCount } = useCart()
   const { pathname } = useLocation()
-  const navigate = useNavigate()
 
   const isCommercePage = COMMERCE_PATHS.some((path) =>
     pathname.startsWith(path),
@@ -30,13 +29,23 @@ export function NavBar() {
     setIsMenuOpen(false)
   }
 
-  function scrollToSection(id: string) {
-    if (pathname === '/') {
+  /**
+   * "Pricing" is a real link to /pricing so search engines can follow it. On
+   * the home page a plain click scrolls to the pricing section instead.
+   */
+  function handlePricingClick(event: MouseEvent<HTMLAnchorElement>) {
+    const isPlainClick =
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey
+
+    if (pathname === '/' && isPlainClick) {
+      event.preventDefault()
       document
-        .getElementById(id)
+        .getElementById('pricing')
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    } else {
-      void navigate(`/#${id}`)
     }
 
     closeMenu()
@@ -59,13 +68,13 @@ export function NavBar() {
             Home
           </Link>
 
-          <button
-            type="button"
-            onClick={() => scrollToSection('pricing')}
+          <Link
+            to="/pricing"
+            onClick={handlePricingClick}
             className={DESKTOP_LINK_CLASS}
           >
             Pricing
-          </button>
+          </Link>
 
           <LearningPathsDropdown />
 
@@ -172,7 +181,7 @@ export function NavBar() {
         favoriteCount={favoriteCount}
         cartCount={cartCount}
         onNavigate={closeMenu}
-        onPricingClick={() => scrollToSection('pricing')}
+        onPricingClick={handlePricingClick}
       />
     </nav>
   )

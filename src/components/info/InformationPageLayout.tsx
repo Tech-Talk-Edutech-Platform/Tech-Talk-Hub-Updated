@@ -69,7 +69,7 @@ export function InformationPageLayout({
             </div>
 
             <Link
-              to="/#contact"
+              to="/contact"
               className="inline-flex items-center gap-2 rounded-xl bg-[#FF3F7F] px-6 py-3 font-bold text-white transition hover:bg-[#E93470]"
             >
               Contact Us

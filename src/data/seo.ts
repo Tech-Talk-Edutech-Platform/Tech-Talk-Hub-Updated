@@ -79,12 +79,40 @@ export const STATIC_PAGES = {
   },
   '/curriculum': {
     meta: {
-      title: 'Coding Curriculum for Kids',
+      title: 'Learning Paths | Coding Curriculum for Kids',
       description:
-        'Explore our flexible coding curriculum from Scratch to AI. Designed for K-12 students to master digital skills at their own pace.',
+        'Explore our learning paths: Junior Coders (ages 5–8), Future Developers (9–12) and Tech Professionals (13–18). A flexible coding curriculum from Scratch to AI.',
       path: '/curriculum',
     },
     sitemap: { changefreq: 'weekly', priority: 0.9 },
+  },
+  '/pricing': {
+    meta: {
+      title: 'Pricing | Coding Class Plans & Fees',
+      description:
+        'Compare Tech Talk Hub plans for live, personalized coding classes for kids aged 5–17. Pay monthly, quarterly or yearly in KES or USD.',
+      path: '/pricing',
+      ogTitle: 'Coding Class Pricing & Plans | Tech Talk Hub',
+    },
+    sitemap: { changefreq: 'weekly', priority: 0.9 },
+  },
+  '/contact': {
+    meta: {
+      title: 'Contact Us',
+      description:
+        'Questions about our coding classes, learning paths or pricing? Call, WhatsApp, email or message the Tech Talk Hub team.',
+      path: '/contact',
+    },
+    sitemap: { changefreq: 'monthly', priority: 0.8 },
+  },
+  '/login': {
+    meta: {
+      title: 'Portal Login',
+      description:
+        'Log in to the Tech Talk Hub portal to join live coding classes, see homework, results and your class schedule.',
+      path: '/login',
+    },
+    sitemap: { changefreq: 'yearly', priority: 0.6 },
   },
   '/courses/junior-coders': {
     meta: {
@@ -142,7 +170,7 @@ export const STATIC_PAGES = {
   },
   '/shop': {
     meta: {
-      title: 'Shop',
+      title: 'Shop | Coding Books & Learning Kits for Kids',
       description:
         'Shop coding books, activity books, learning kits and creative technology resources for kids and teens at Tech Talk Hub.',
       path: '/shop',
@@ -160,7 +188,7 @@ export const STATIC_PAGES = {
   },
   '/blog': {
     meta: {
-      title: 'Blog | Tech Talk Hub',
+      title: 'Blog | Coding Guides for Parents & Kids',
       description:
         'Explore practical coding guidance, parent resources, student stories and technology insights for young creators.',
       path: '/blog',

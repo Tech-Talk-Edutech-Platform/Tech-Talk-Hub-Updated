@@ -30,11 +30,11 @@ export const COMMERCE_PATHS = [
 
 export const FOOTER_COMPANY_LINKS: NavLinkItem[] = [
   { label: 'About Us', href: '/about' },
-  { label: 'Our Programs', href: '/#programs' },
-  { label: 'Pricing', href: '/#pricing' },
+  { label: 'Our Programs', href: '/curriculum' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'Blog', href: '/blog' },
   { label: 'Careers', href: '/careers' },
-  { label: 'Contact Us', href: '/#contact' },
+  { label: 'Contact Us', href: '/contact' },
 ]
 
 export const FOOTER_PROGRAM_LINKS: LearningPathLink[] = [

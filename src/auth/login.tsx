@@ -6,6 +6,8 @@ import { supabase } from '../supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast, Toaster } from 'react-hot-toast'
 import { authErrorFromState } from '../lib/authRedirectError'
+import { staticPageMeta } from '../data/seo'
+import { usePageMeta } from '../hooks/usePageMeta'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
@@ -14,6 +16,7 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>
 
 export default function Login() {
+  usePageMeta(staticPageMeta('/login'))
   const [loading, setLoading] = useState(false)
   const [authChecking, setAuthChecking] = useState(true)
   const navigate = useNavigate()
