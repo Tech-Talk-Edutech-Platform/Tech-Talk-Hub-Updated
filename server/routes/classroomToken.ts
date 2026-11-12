@@ -11,6 +11,7 @@ import {
   closedRoomReason,
   liveKitConfig,
   LiveKitConfigError,
+  recordFirstJoin,
   type ClassroomAccess,
   type ClassroomRole,
 } from '../services/classroomAccess'
@@ -78,7 +79,9 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
   // hosts too; an admin has to reopen an ended class first.
   const closed = closedRoomReason(access)
   if (closed) {
-    res.status(closed.status).json({ error: closed.error })
+    res
+      .status(closed.status)
+      .json({ error: closed.error, opensAt: closed.opensAt })
     return
   }
 
@@ -96,6 +99,17 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
   let room = (await service.listRooms([roomId])).find(
     (candidate) => candidate.name === roomId,
   )
+
+  // Past the end time, a class that ran over stays open while it's running,
+  // but once everyone has left (LiveKit closes the room after 5 empty
+  // minutes) nobody can start it again. The host still can, to finish up
+  // with End class.
+  if (!room && access.window.state === 'overtime' && role !== 'host') {
+    res.status(410).json({
+      error: 'This class has finished. Everyone left after the class time.',
+    })
+    return
+  }
 
   if (!room) {
     try {
@@ -137,6 +151,9 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
     // Participants must not be able to rewrite their own role attribute.
     canUpdateOwnMetadata: false,
   })
+
+  // Someone joined: from now on the class can run past its end time.
+  if (access.firstJoin) await recordFirstJoin(roomId)
 
   res.json({ serverUrl, token: await token.toJwt(), role })
 }

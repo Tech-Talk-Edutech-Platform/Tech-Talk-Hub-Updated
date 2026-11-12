@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNow } from '../useNow'
 
-const startKey = (roomId: string) => `coding-gal:room:${roomId}:startedAt`
+const startKey = (roomId: string) => `tech-talk-hub:room:${roomId}:startedAt`
 
 function readStart(roomId: string) {
   try {

@@ -2,6 +2,7 @@ import type {
   ClassRecordingsClassroomColumns,
   ClassroomFunctions,
   ClassroomTables,
+  UsersBadgeColumns,
 } from './classroomTables'
 import type { Database, Json } from './database'
 
@@ -311,10 +312,15 @@ type RealTablesWithPlannedColumns = {
     { student_id: string | null; topic: string | null }
   >
 
-  /** Marketers sign in with a 'marketer' role. */
+  /**
+   * Marketers sign in with a 'marketer' role. Students' class badges
+   * (classroom invites/badges migration).
+   */
   users: WithPlannedColumns<
     'users',
-    { role: RealSchema['Enums']['user_role'] | 'marketer' | null }
+    {
+      role: RealSchema['Enums']['user_role'] | 'marketer' | null
+    } & UsersBadgeColumns
   >
 
   /** Classroom recordings link to their session (classroom migration). */
@@ -336,7 +342,11 @@ export type PlannedDatabase = {
       PlannedTables &
       ClassroomTables
     Views: RealSchema['Views']
-    Functions: RealSchema['Functions'] & PlannedFunctions & ClassroomFunctions
+    // The hand-written classroom functions win: the generator can't tell
+    // which returned columns may be null, and lags behind new migrations.
+    Functions: Omit<RealSchema['Functions'], keyof ClassroomFunctions> &
+      PlannedFunctions &
+      ClassroomFunctions
     Enums: RealSchema['Enums']
     CompositeTypes: RealSchema['CompositeTypes']
   }

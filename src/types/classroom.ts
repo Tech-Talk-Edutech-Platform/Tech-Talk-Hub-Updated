@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import type { ClassSchedule } from '../lib/classroom/schedule'
 import type { ClassroomSessionStatus } from './classroomTables'
 
 export type Classroom = {
@@ -14,6 +15,8 @@ export type Classroom = {
   status: ClassroomSessionStatus | null
   /** The class length the teacher should aim for, in minutes. */
   recommendedMinutes: number
+  /** Start time, length and first join: decides when people can join. */
+  schedule: ClassSchedule
 }
 
 export type Student = {
@@ -91,6 +94,30 @@ export type GivenBadge = Badge & {
   studentName: string
   /** False while the award is still being saved. */
   saved: boolean
+}
+
+/** A badge on a student's profile (users.badges), as given in class. */
+export type ProfileBadge = {
+  /** classroom_badge_awards.id */
+  awardId: string
+  name: string
+  icon: BadgeIcon
+  ornament: BadgeOrnament
+  classTitle: string | null
+  /** Epoch ms. */
+  awardedAt: number
+}
+
+/** A class a student was invited to (a roster row with their account). */
+export type ClassInvite = {
+  sessionId: string
+  roomCode: string
+  title: string
+  status: ClassroomSessionStatus
+  schedule: ClassSchedule
+  tutorName: string | null
+  invitedAt: string
+  attended: boolean | null
 }
 
 export type VideoPlatform = {

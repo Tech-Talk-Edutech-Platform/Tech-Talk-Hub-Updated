@@ -35,6 +35,7 @@ import ClassRecordingsManager from './views/ClassRecordingsManager'
 import StudentCoursesView from './views/student/StudentCoursesView'
 import StudentSettingsView from './views/student/StudentSettingsView'
 import StudentHomeView from './views/student/StudentHomeView'
+import StudentClassroomView from './views/student/StudentClassroomView'
 
 // Tutor Views
 import TutorHomeView from './views/tutor/TutorHomeView'
@@ -168,6 +169,9 @@ export default function DashboardLayout({
         case 'schedule':
           return <GlobalScheduleView />
 
+        case 'classroom':
+          return <StudentClassroomView userId={currentUser.id} />
+
         case 'dashboard':
         default:
           return <StudentHomeView userId={currentUser.id} />
@@ -293,6 +297,14 @@ export default function DashboardLayout({
           {/* Student navigation */}
           {role === 'student' && (
             <SidebarGroup title="Learning" isCollapsed={isCollapsed}>
+              <SidebarButton
+                icon={Presentation}
+                label="My Classroom"
+                view="classroom"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
               <SidebarButton
                 icon={BookOpen}
                 label="My Courses"

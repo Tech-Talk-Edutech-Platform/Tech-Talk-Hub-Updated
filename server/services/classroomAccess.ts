@@ -25,6 +25,51 @@ export type ClassroomAccess = {
   status: string | null
   /** The class has ended or was cancelled: closed to everyone, hosts included. */
   ended: boolean
+  /** Where now falls in the class's scheduled time (see joinWindow). */
+  window: JoinWindow
+  /** Nobody has joined yet: the first token issued records the start. */
+  firstJoin: boolean
+}
+
+/*
+ * When a class can be joined. Same rules as the app
+ * (src/lib/classroom/schedule.ts); keep them in step.
+ *
+ *   start - 15 min ....... start ....... end (start + length)
+ *   |  early: refused  |  open  |  after the end:
+ *                                  - nobody ever joined: expired (refused)
+ *                                  - someone joined: overtime. The call isn't
+ *                                    cut off; joining works while the room is
+ *                                    still running (LiveKit closes it 5 minutes
+ *                                    after the last person leaves).
+ *
+ * No start time: always open. No length: never expires.
+ */
+export const EARLY_JOIN_MINUTES = 15
+
+export type JoinWindow =
+  | { state: 'open' }
+  | { state: 'early'; opensAt: string }
+  | { state: 'expired' }
+  | { state: 'overtime' }
+
+type Schedule = {
+  scheduled_at: string | null
+  duration_minutes: number | null
+  started_at: string | null
+}
+
+export function joinWindow(session: Schedule, now = Date.now()): JoinWindow {
+  const start = session.scheduled_at ? Date.parse(session.scheduled_at) : NaN
+  if (Number.isNaN(start)) return { state: 'open' }
+  const opensAt = start - EARLY_JOIN_MINUTES * 60_000
+  if (now < opensAt) {
+    return { state: 'early', opensAt: new Date(opensAt).toISOString() }
+  }
+  if (!session.duration_minutes) return { state: 'open' }
+  const end = start + session.duration_minutes * 60_000
+  if (now <= end) return { state: 'open' }
+  return session.started_at ? { state: 'overtime' } : { state: 'expired' }
 }
 
 /** The classroom tables are missing, so no room code can be checked. */
@@ -36,12 +81,12 @@ function bearerToken(req: Request) {
   return match?.[1]?.trim() || null
 }
 
-type SessionRow = { tutor_id: string | null; status: string }
+type SessionRow = Schedule & { tutor_id: string | null; status: string }
 
 async function findSession(roomCode: string): Promise<SessionRow | null> {
   const { data, error } = await supabase
     .from('classroom_sessions')
-    .select('tutor_id, status')
+    .select('tutor_id, status, scheduled_at, duration_minutes, started_at')
     .eq('room_code', roomCode)
     .maybeSingle()
   if (error) {
@@ -98,7 +143,22 @@ export async function classroomAccess(
     userId: user?.id ?? null,
     status: session?.status ?? null,
     ended,
+    window: session ? joinWindow(session) : { state: 'open' },
+    firstJoin: !!session && !session.started_at,
   }
+}
+
+/**
+ * Remembers that someone joined, so the class doesn't expire at its end time
+ * while (or after) people are in it. Only the first join writes.
+ */
+export async function recordFirstJoin(roomCode: string) {
+  const { error } = await supabase
+    .from('classroom_sessions')
+    .update({ started_at: new Date().toISOString() })
+    .eq('room_code', roomCode)
+    .is('started_at', null)
+  if (error) console.error('Couldn’t record the class start:', error.message)
 }
 
 /**
@@ -108,7 +168,7 @@ export async function classroomAccess(
  */
 export function closedRoomReason(
   access: ClassroomAccess,
-): { status: 404 | 410; error: string } | null {
+): { status: 403 | 404 | 410; error: string; opensAt?: string } | null {
   if (access.status === null) {
     return {
       status: 404,
@@ -123,6 +183,20 @@ export function closedRoomReason(
         access.status === 'cancelled'
           ? 'This class was cancelled.'
           : 'This class has ended.',
+    }
+  }
+  if (access.window.state === 'early') {
+    return {
+      status: 403,
+      error: `This class hasn’t opened yet. You can join from ${EARLY_JOIN_MINUTES} minutes before it starts.`,
+      opensAt: access.window.opensAt,
+    }
+  }
+  if (access.window.state === 'expired') {
+    return {
+      status: 410,
+      error:
+        'This class link has expired: nobody joined during the class time. Ask your tutor for a new invite.',
     }
   }
   return null

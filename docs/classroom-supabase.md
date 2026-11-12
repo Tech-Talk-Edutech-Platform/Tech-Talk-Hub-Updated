@@ -100,9 +100,9 @@ A badge that has been awarded can't be deleted, because awards keep a reference 
 | `tutor_id`                                  | uuid → `users.id`               | The teacher. Tutors only see sessions where this is them.                                                             |
 | `material_id`                               | uuid → `classroom_materials.id` | Optional; set to null if the material is deleted                                                                      |
 | `calendar_event_id`                         | uuid → `calendar_events.id`     | Optional link to the schedule                                                                                         |
-| `scheduled_at`, `duration_minutes`          |                                 | When the class starts and how long it should run (5–600 minutes)                                                      |
+| `scheduled_at`, `duration_minutes`          |                                 | When the class starts and how long it runs (5–600 minutes). Together they set the join window (see 4).                |
 | `status`                                    | text                            | `scheduled` → `live` (teacher opened the room) → `completed` or `not_completed` (End class). Can also be `cancelled`. |
-| `started_at`, `ended_at`, `elapsed_seconds` |                                 | Set by the classroom                                                                                                  |
+| `started_at`, `ended_at`, `elapsed_seconds` |                                 | Set by the classroom. `started_at` is the first join; the API server sets it when it issues the first video token.    |
 | `end_reason`, `end_details`                 | text                            | From the End class form. The reason ids are `END_COMPLETED_VIA` and `END_NOT_COMPLETED` in `src/data/classroom.ts`.   |
 
 ### `classroom_session_students`: who is booked into a class
@@ -136,15 +136,16 @@ A trigger, `classroom_fill_student`, checks that an award or project's student b
 
 ## 3. Who can see and change what (row-level security)
 
-|                                      | Admins (owner, operations_admin, tech_admin) | Tutors                                 | Students                                       | Not signed in                                                                         |
-| ------------------------------------ | -------------------------------------------- | -------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Materials, activities                | read, write                                  | read                                   | –                                              | –                                                                                     |
-| Badges                               | read, write                                  | read                                   | read                                           | read (catalogue only)                                                                 |
-| Sessions                             | everything                                   | read and update their own (`tutor_id`) | read the ones they're booked into              | `classroom_public_info(room_code)` returns only title and status, for the join screen |
-| Roster                               | everything                                   | read their sessions; update attendance | read their own row                             | –                                                                                     |
-| Awards, projects                     | everything                                   | add and delete in their sessions       | read their own                                 | –                                                                                     |
-| Alerts                               | read, resolve                                | send in their sessions, read           | –                                              | –                                                                                     |
-| Recordings bucket `class-recordings` | upload, read, delete                         | upload, read                           | read recordings filed under their `student_id` | –                                                                                     |
+|                                      | Admins (owner, operations_admin, tech_admin) | Tutors                                                                                                                                           | Students                                       | Not signed in                                                                                          |
+| ------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Materials, activities                | read, write                                  | read                                                                                                                                             | –                                              | –                                                                                                      |
+| Badges                               | read, write                                  | read                                                                                                                                             | read                                           | read (catalogue only)                                                                                  |
+| Sessions                             | everything                                   | read and update their own (`tutor_id`)                                                                                                           | read the ones they're booked into              | `classroom_public_info(room_code)` returns only the title, status and class times, for the join screen |
+| Roster                               | everything                                   | read their sessions; update attendance; invite their own students (`assigned_tutor_id`); withdraw an invite while the class is still `scheduled` | read their own row; `classroom_my_invites()`   | –                                                                                                      |
+| `users.badges`                       | read, write                                  | read (per the `users` policies)                                                                                                                  | read their own; can't edit                     | –                                                                                                      |
+| Awards, projects                     | everything                                   | add and delete in their sessions                                                                                                                 | read their own                                 | –                                                                                                      |
+| Alerts                               | read, resolve                                | send in their sessions, read                                                                                                                     | –                                              | –                                                                                                      |
+| Recordings bucket `class-recordings` | upload, read, delete                         | upload, read                                                                                                                                     | read recordings filed under their `student_id` | –                                                                                                      |
 
 Children's contact details (phone, email, city) are only readable by admins and the session's tutor. The End class attendance list shows each student's grade, not their phone number.
 
@@ -156,8 +157,48 @@ Children's contact details (phone, email, city) are only readable by admins and 
 4. Share the links:
    - **Open classroom** or **Teacher link**: `/classroom/<room code>`. Staff who are signed in get the teacher view: badges, projects, alerts, End class and recording.
    - **Student link**: `/classroom/<room code>?join=1`. This always opens the attendee view (chat, reactions, raise hand, Leave). Guests type their name first.
-5. Tutors find their assigned classes under **Dashboard › My Classrooms**.
-6. After class, the session's **Class activity** card shows the End class report, badges, projects, alerts (with **Mark resolved**) and recordings.
+5. Tutors find their assigned classes under **Dashboard › My Classrooms**. There they can start a call and **Invite students** (when creating it, or on any upcoming class). Tutors only see, and can only invite, the students assigned to them in **Users & Staff**. An invite is a roster row with `student_id` set, so invited students can be given badges and projects in the room. Open rooms pick up new invites within 30 seconds.
+6. Invited students see the class under **Dashboard › My Classroom** (and on their home dashboard while it's open) and press **Join class**.
+7. After class, the session's **Class activity** card shows the End class report, badges, projects, alerts (with **Mark resolved**) and recordings. Classes that didn't happen show their reason in the class lists.
+
+### Class times: when a class can be joined
+
+Every call has a start time (`scheduled_at`) and a length (`duration_minutes`). Tutors set both when they start a call in **My Classrooms**.
+
+| When                                  | What happens                                                                                                                                                                                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| More than 15 minutes before the start | Nobody can join. The room page says when it opens and lets people in by itself at that time. Students see **Opens at …** instead of Join.                                                                                                                           |
+| From 15 minutes before until the end  | Anyone with access can join. The first join sets `started_at`.                                                                                                                                                                                                      |
+| After the end, and nobody ever joined | **Expired.** The link is revoked for everyone, hosts included, and the class shows **Expired** in the lists. Start a new call, or an admin gives the class a new start time.                                                                                        |
+| After the end, and someone joined     | **Overtime.** Nobody is cut off. People can still join while the call is running, and everyone gets a one-time "past its end time" notice. Once everyone has left (LiveKit closes an empty room after 5 minutes), only the host can get back in, to file End class. |
+
+A class with no start time is always open; one with no length never expires.
+
+The API server enforces these rules before it issues a video token (`server/services/classroomAccess.ts`). The browser uses the same rules (`src/lib/classroom/schedule.ts`) for its messages; keep the two in step. Migration `20261112140000_classroom_schedule.sql` adds the times to `classroom_public_info()` and `classroom_my_invites()`.
+
+Admins can reopen an ended class. If its time has passed, the reopened class starts now for the same length. Giving a class a new start time in the class form also clears `started_at`, so the new slot expires again if nobody comes.
+
+### Student badges (`users.badges`)
+
+Migration `20261112120000_classroom_invites_badges.sql` adds `users.badges`, a JSON array of the badges a student was given in class:
+
+```json
+[
+  {
+    "award_id": "…",
+    "badge_id": "…",
+    "slug": "star-performer",
+    "name": "Star performer",
+    "icon": "star",
+    "ornament": "wreath",
+    "session_id": "…",
+    "class_title": "Scratch games",
+    "awarded_at": "…"
+  }
+]
+```
+
+A trigger on `classroom_badge_awards` appends an entry when a badge is given to a registered student and removes it on Undo. Signed-in users other than admins can't write the column. The student dashboard shows these under **My badges**.
 
 ## 5. Recordings
 

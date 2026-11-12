@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+import type { RemoteVideoTrack } from 'livekit-client'
 import type { LocalMedia } from '../../../hooks/classroom/useLocalMedia'
 import type {
   LiveConnectionState,
@@ -18,6 +20,7 @@ import { BadgeCelebration } from './BadgeCelebration'
 import { ControlBar } from './ControlBar'
 import { ExternalPlatformNotice } from './ExternalPlatformNotice'
 import { ParticipantGrid } from './ParticipantGrid'
+import { PipRoom } from './PipRoom'
 import { ReactionLayer } from './ReactionLayer'
 import { StageHeader } from './StageHeader'
 
@@ -76,11 +79,13 @@ export function Stage({
 }: StageProps) {
   const {
     videoRef: pipVideoRef,
+    pipWindow,
     active: pipActive,
     toggle: togglePip,
   } = usePictureInPicture({
     cam: media.cam,
     screen: media.screen,
+    remote: featuredRemoteVideo(participants, remoteMedia),
     initial: self.initial,
   })
   const external = !platform.builtIn
@@ -152,13 +157,50 @@ export function Stage({
 
       <Toaster className="bottom-[100px]" />
 
-      {/* Source element for Picture in Picture; never shown in the page. */}
+      {/* Source element for video Picture in Picture; never shown in the page. */}
       <video
         ref={pipVideoRef}
         muted
         playsInline
         className="pointer-events-none absolute size-px opacity-0"
       />
+
+      {pipWindow &&
+        createPortal(
+          <PipRoom
+            participants={participants}
+            remoteMedia={remoteMedia}
+            media={media}
+            speaking={self.speaking}
+            hand={self.hand}
+            onToggleHand={onToggleHand}
+          />,
+          pipWindow.document.body,
+        )}
     </section>
   )
+}
+
+/**
+ * The video worth keeping an eye on from another tab: someone's screen share,
+ * else whoever is talking (with their camera on), else the first camera.
+ */
+function featuredRemoteVideo(
+  participants: Participant[],
+  remoteMedia: Record<string, RemoteMedia>,
+): RemoteVideoTrack | null {
+  const others = participants.filter((person) => !person.isSelf)
+  for (const person of others) {
+    const screen = remoteMedia[person.id]?.screen
+    if (screen) return screen
+  }
+  const cameraOf = (person: Participant) =>
+    person.cam ? (remoteMedia[person.id]?.camera ?? null) : null
+  const speaker = others.find((person) => person.speaking && cameraOf(person))
+  if (speaker) return cameraOf(speaker)
+  for (const person of others) {
+    const camera = cameraOf(person)
+    if (camera) return camera
+  }
+  return null
 }

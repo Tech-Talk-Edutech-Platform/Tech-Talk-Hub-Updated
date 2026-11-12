@@ -2,6 +2,7 @@
 // migration (supabase/migrations/20261110120000_classroom.sql) is applied.
 // The migration seeds the same content into Supabase, where it is edited in
 // Dashboard -> Classroom.
+import { NO_SCHEDULE } from '../lib/classroom/schedule'
 import type {
   Activity,
   Badge,
@@ -19,6 +20,7 @@ const SAMPLE_CLASSROOM: Omit<Classroom, 'id'> = {
   sessionId: null,
   status: null,
   recommendedMinutes: 60,
+  schedule: NO_SCHEDULE,
 }
 
 const SAMPLE_STUDENT: Student = {

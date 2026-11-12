@@ -1,5 +1,6 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { isMissingSchema } from '../../../../lib/classroom/repository'
+import type { ClassSchedule } from '../../../../lib/classroom/schedule'
 import { plannedDb } from '../../../../lib/plannedDb'
 import { supabase } from '../../../../supabase'
 import type {
@@ -64,6 +65,8 @@ export const classroomKeys = {
     ['classroom-admin', 'activities', materialId] as const,
   badges: ['classroom-admin', 'badges'] as const,
   people: ['classroom-admin', 'people'] as const,
+  invitable: (tutorId: string) =>
+    ['classroom-admin', 'invitable', tutorId] as const,
   leads: ['classroom-admin', 'leads'] as const,
   courses: ['classroom-admin', 'courses'] as const,
 }
@@ -83,7 +86,7 @@ export async function probeClassroomSchema() {
 // ---------------------------------------------------------------------------
 
 export type SessionSummary = SessionRow & {
-  students: Pick<RosterRow, 'id' | 'display_name'>[]
+  students: Pick<RosterRow, 'id' | 'display_name' | 'student_id'>[]
 }
 
 async function withRosterNames(
@@ -92,7 +95,7 @@ async function withRosterNames(
   if (!sessions.length) return []
   const { data, error } = await plannedDb
     .from('classroom_session_students')
-    .select('id, session_id, display_name, position')
+    .select('id, session_id, display_name, student_id, position')
     .in(
       'session_id',
       sessions.map((session) => session.id),
@@ -158,10 +161,15 @@ export async function createSession(draft: SessionDraft) {
   return data
 }
 
-export async function updateSession(id: string, draft: SessionDraft) {
+export async function updateSession(
+  id: string,
+  draft: SessionDraft,
+  /** The start time moved: clear the first join (see lib/classroom/schedule). */
+  rescheduled = false,
+) {
   const { data, error } = await plannedDb
     .from('classroom_sessions')
-    .update(draft)
+    .update(rescheduled ? { ...draft, started_at: null } : draft)
     .eq('id', id)
     .select()
     .single()
@@ -176,6 +184,13 @@ export async function deleteSession(id: string) {
     .eq('id', id)
   if (error) raise(error, 'Couldn’t delete the class.')
 }
+
+/** A session's start, length and first join, for the join-window rules. */
+export const sessionSchedule = (session: SessionRow): ClassSchedule => ({
+  scheduledAt: session.scheduled_at,
+  durationMinutes: session.duration_minutes,
+  startedAt: session.started_at,
+})
 
 /** An 8-digit room code, like the ones class links already use. */
 export function newRoomCode() {
@@ -250,6 +265,98 @@ export async function removeRosterRow(id: string) {
     .delete()
     .eq('id', id)
   if (error) raise(error, 'Couldn’t remove the student.')
+}
+
+// ---------------------------------------------------------------------------
+// Invites: a tutor books their own students (users.assigned_tutor_id) into a
+// class they teach. Each invite is a roster row with student_id set; the
+// student sees it under Dashboard › My Classroom and joins from there. The
+// database refuses invites to anyone else's students.
+// ---------------------------------------------------------------------------
+
+export type InvitableStudent = {
+  id: string
+  name: string
+  email: string
+}
+
+/** The students assigned to this tutor: the only ones they can invite. */
+export async function listInvitableStudents(
+  tutorId: string,
+): Promise<InvitableStudent[]> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, full_name, email')
+    .eq('role', 'student')
+    .eq('assigned_tutor_id', tutorId)
+    .order('full_name')
+  if (error) throw new Error(error.message || 'Couldn’t load your students.')
+  return data.map((user) => ({
+    id: user.id,
+    name: user.full_name?.trim() || user.email,
+    email: user.email,
+  }))
+}
+
+const localTimeZone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
+/**
+ * Books the students into the class. `startPosition` keeps them after the
+ * students already on the roster.
+ */
+export async function inviteStudents(
+  sessionId: string,
+  students: InvitableStudent[],
+  startPosition: number,
+) {
+  if (!students.length) return []
+  // Students' time zones aren't on their profile; the tutor's is the best
+  // guess for the local-time readout in Class details. Admins can edit it.
+  const timeZone = localTimeZone()
+  const rows: Insert<'classroom_session_students'>[] = students.map(
+    (student, index) => ({
+      session_id: sessionId,
+      student_id: student.id,
+      display_name: student.name.slice(0, 120),
+      email: student.email,
+      time_zone: timeZone,
+      source: 'Tutor invite',
+      position: startPosition + index,
+    }),
+  )
+  const { data, error } = await plannedDb
+    .from('classroom_session_students')
+    .insert(rows)
+    .select('id, display_name, student_id')
+  if (error) {
+    raise(error, 'Couldn’t send the invite.', {
+      '23505': 'That student is already invited to this class.',
+      '42501': 'You can only invite your own students, to classes you teach.',
+    })
+  }
+  return data
+}
+
+/** Tutors: withdraw an invite. Only allowed before the class starts. */
+export async function withdrawInvite(rosterId: string) {
+  const { data, error } = await plannedDb
+    .from('classroom_session_students')
+    .delete()
+    .eq('id', rosterId)
+    .select('id')
+  if (error) raise(error, 'Couldn’t withdraw the invite.')
+  // Row-level security skips the row instead of refusing.
+  if (!data.length) {
+    throw new Error(
+      'This class has already started, so the invite can’t be withdrawn. Ask an admin.',
+    )
+  }
 }
 
 // ---------------------------------------------------------------------------

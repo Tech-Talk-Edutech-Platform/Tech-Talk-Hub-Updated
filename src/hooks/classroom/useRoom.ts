@@ -214,7 +214,7 @@ export function useRoom({
 
   useEffect(() => {
     if (!enabled || typeof BroadcastChannel === 'undefined') return undefined
-    const ch = new BroadcastChannel(`coding-gal:room:${roomId}`)
+    const ch = new BroadcastChannel(`tech-talk-hub:room:${roomId}`)
     channel.current = ch
     const onMessage = ({ data }: MessageEvent<unknown>) => receiveMessage(data)
     ch.addEventListener('message', onMessage)

@@ -6,6 +6,7 @@
 // is saved, so the room keeps working.
 import { agendaMinutes, sampleClassroomData } from '../../data/classroomSample'
 import { isSupabaseConfigured, supabase } from '../../supabase'
+import { NO_SCHEDULE, scheduledEnd } from './schedule'
 import { isEndedStatus, toSessionStatus } from './sessionStatus'
 import type { ClassroomRow } from '../../types/classroomTables'
 import type {
@@ -284,6 +285,7 @@ function emptyRoom(
       sessionId: null,
       status: null,
       recommendedMinutes: 60,
+      schedule: NO_SCHEDULE,
       ...overrides,
     },
     students: [],
@@ -315,6 +317,11 @@ async function loadAttendeeRoom(roomCode: string, viewer: ClassroomViewer) {
     title: info.title,
     pageTitle: info.title,
     status: toSessionStatus(info.status),
+    schedule: {
+      scheduledAt: info.scheduled_at ?? null,
+      durationMinutes: info.duration_minutes ?? null,
+      startedAt: info.started_at ?? null,
+    },
   })
 }
 
@@ -423,6 +430,11 @@ export async function loadClassroom(roomCode: string): Promise<ClassroomData> {
       status: session.status,
       recommendedMinutes:
         agendaMinutes(classMaterial) || session.duration_minutes || 60,
+      schedule: {
+        scheduledAt: session.scheduled_at,
+        durationMinutes: session.duration_minutes,
+        startedAt: session.started_at,
+      },
     },
     students,
     material: classMaterial,
@@ -432,6 +444,20 @@ export async function loadClassroom(roomCode: string): Promise<ClassroomData> {
     projects: projects.data.map((row) => toProject(row, students)),
     viewer,
   }
+}
+
+/**
+ * The class's students, re-read while the room is open, so a student the
+ * tutor invites mid-class can be given badges and projects straight away.
+ */
+export async function loadRoster(sessionId: string): Promise<Student[]> {
+  const { data, error } = await plannedDb
+    .from('classroom_session_students')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('position')
+  if (error) fail(error, 'Couldn’t load the students.')
+  return data.map(toStudent)
 }
 
 // ---------------------------------------------------------------------------
@@ -520,11 +546,33 @@ export async function markSessionLive(sessionId: string) {
 /**
  * Admins only: an ended or cancelled class can be joined again. The database
  * refuses this for anyone else (migration 20261111130000).
+ *
+ * The class gets a fresh time slot: if its time has passed it starts now,
+ * for the same length, so the join-window rules don't turn people away
+ * straight after the reopen. Its first join is cleared either way.
  */
 export async function reopenSession(sessionId: string) {
+  const { data: current } = await plannedDb
+    .from('classroom_sessions')
+    .select('scheduled_at, duration_minutes')
+    .eq('id', sessionId)
+    .maybeSingle()
+  const end = current
+    ? scheduledEnd({
+        scheduledAt: current.scheduled_at,
+        durationMinutes: current.duration_minutes,
+        startedAt: null,
+      })
+    : null
+  const timePassed = end !== null && end < Date.now()
   const { data, error } = await plannedDb
     .from('classroom_sessions')
-    .update({ status: 'scheduled', ended_at: null })
+    .update({
+      status: 'scheduled',
+      ended_at: null,
+      started_at: null,
+      ...(timePassed && { scheduled_at: new Date().toISOString() }),
+    })
     .eq('id', sessionId)
     .select('id')
   if (error) fail(error, 'Couldn’t reopen the class.')

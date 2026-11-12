@@ -159,12 +159,50 @@ export type ClassRecordingsClassroomColumns = {
   classroom_session_id: string | null
 }
 
+/**
+ * The class times added to both functions by migration 20261112140000.
+ * Optional: before it's applied, the functions return without them.
+ */
+type ScheduleColumns = {
+  scheduled_at?: string | null
+  duration_minutes?: number | null
+  started_at?: string | null
+}
+
 export type ClassroomFunctions = {
-  /** The join screen's class title, for guests who aren't signed in. */
+  /**
+   * The join screen's class title, status and times, for guests who aren't
+   * signed in.
+   */
   classroom_public_info: {
     Args: { p_room_code: string }
-    Returns: { title: string; status: string }[]
+    Returns: ({ title: string; status: string } & ScheduleColumns)[]
   }
+  /**
+   * The signed-in student's invites: the classes they're booked into
+   * (migration 20261112120000).
+   */
+  classroom_my_invites: {
+    Args: never
+    Returns: ({
+      session_id: string
+      room_code: string
+      title: string
+      status: string
+      tutor_name: string | null
+      invited_at: string
+      attended: boolean | null
+    } & ScheduleColumns)[]
+  }
+}
+
+/**
+ * The column migration 20261112120000 adds to `users`: the badges a student
+ * was given in class, kept in step with classroom_badge_awards by a trigger.
+ * Each entry is parsed into a `ProfileBadge` (src/types/classroom.ts).
+ */
+export type UsersBadgeColumns = {
+  badges: Json | null
 }
 
 export type ClassroomRow<Name extends keyof ClassroomTables> =

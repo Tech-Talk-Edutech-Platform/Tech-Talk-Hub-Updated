@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   STATUS_LABEL,
@@ -18,7 +18,10 @@ import {
   Shuffle,
   Trash2,
 } from 'lucide-react'
+import { END_NOT_COMPLETED } from '../../../../data/classroom'
 import { reopenSession } from '../../../../lib/classroom/repository'
+import { useNow } from '../../../../hooks/useNow'
+import { formatClassTime, isExpired } from '../../../../lib/classroom/schedule'
 import { isEndedStatus } from '../../../../lib/classroom/sessionStatus'
 import type { ClassroomSessionStatus } from '../../../../types/classroomTables'
 import type { Database } from '../../../../types/database'
@@ -33,6 +36,7 @@ import {
   listPeople,
   listSessions,
   newRoomCode,
+  sessionSchedule,
   updateSession,
   type MaterialRow,
   type Person,
@@ -73,6 +77,10 @@ const asClassType = (value: string): ClassType =>
 
 const asStatus = (value: string): ClassroomSessionStatus =>
   STATUSES.find((status) => status === value) ?? 'scheduled'
+
+/** Whether two optional timestamps are the same moment (formats differ). */
+const sameInstant = (a: string | null, b: string | null) =>
+  a === null || b === null ? a === b : Date.parse(a) === Date.parse(b)
 
 const teacherLink = (roomCode: string) =>
   `${window.location.origin}/classroom/${roomCode}`
@@ -119,6 +127,19 @@ function OpenRoomLink({ roomCode }: { roomCode: string }) {
   )
 }
 
+/**
+ * Why a class didn't happen, in one line, for the class lists. Only shown for
+ * not-completed classes: those are the ones worth a second look.
+ */
+function notCompletedNote(session: SessionSummary) {
+  if (session.status !== 'not_completed') return null
+  const reason = END_NOT_COMPLETED.find(
+    (option) => option.id === session.end_reason,
+  )
+  const parts = [reason?.label, session.end_details?.trim()].filter(Boolean)
+  return parts.length ? parts.join(' · ') : 'No reason given'
+}
+
 /** One class in a list: what, when, who, plus its room links. */
 export function SessionListItem({
   session,
@@ -126,6 +147,7 @@ export function SessionListItem({
   onManage,
   onReopen,
   reopening = false,
+  children,
 }: {
   session: SessionSummary
   tutorName: string | null
@@ -133,52 +155,77 @@ export function SessionListItem({
   /** Admins only: shown for ended or cancelled classes, which nobody can join. */
   onReopen?: () => void
   reopening?: boolean
+  /** Shown under the class, full width (e.g. the tutor's invites). */
+  children?: ReactNode
 }) {
   const names = session.students.map((student) => student.display_name)
+  const missedNote = notCompletedNote(session)
+  const schedule = sessionSchedule(session)
+  const now = useNow(60_000)
+  // Nobody joined during the class time, so the link no longer opens.
+  const expired =
+    (session.status === 'scheduled' || session.status === 'live') &&
+    isExpired(schedule, now)
   return (
-    <li className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 transition-colors hover:bg-white lg:flex-row lg:items-center dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h4 className="min-w-0 truncate text-base font-black text-slate-900 dark:text-white">
-            {session.title}
-          </h4>
-          <StatusPill status={session.status} />
+    <li className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 transition-colors hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="min-w-0 truncate text-base font-black text-slate-900 dark:text-white">
+              {session.title}
+            </h4>
+            {expired ? (
+              <span className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black tracking-wide text-slate-600 uppercase dark:bg-white/10 dark:text-slate-300">
+                Expired
+              </span>
+            ) : (
+              <StatusPill status={session.status} />
+            )}
+          </div>
+          <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="tabular-nums">
+              {session.scheduled_at
+                ? formatClassTime(schedule)
+                : formatWhen(session.scheduled_at)}
+            </span>
+            {' · '}Room{' '}
+            <span className="font-bold text-slate-700 tabular-nums dark:text-slate-200">
+              {session.room_code}
+            </span>
+            {' · '}
+            {tutorName ?? 'No tutor yet'}
+          </p>
+          <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+            {names.length
+              ? `Students: ${names.join(', ')}`
+              : 'No students booked yet'}
+          </p>
+          {missedNote && (
+            <p className="mt-1 line-clamp-2 text-xs font-medium text-amber-800 dark:text-amber-300">
+              Didn’t happen: {missedNote}
+            </p>
+          )}
         </div>
-        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span className="tabular-nums">
-            {formatWhen(session.scheduled_at)}
-          </span>
-          {' · '}Room{' '}
-          <span className="font-bold text-slate-700 tabular-nums dark:text-slate-200">
-            {session.room_code}
-          </span>
-          {' · '}
-          {tutorName ?? 'No tutor yet'}
-        </p>
-        <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-          {names.length
-            ? `Students: ${names.join(', ')}`
-            : 'No students booked yet'}
-        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <OpenRoomLink roomCode={session.room_code} />
+          <CopyButton
+            text={studentLink(session.room_code)}
+            label="Student link"
+          />
+          {onReopen && isEndedStatus(session.status) && (
+            <Button size="sm" onClick={onReopen} busy={reopening}>
+              <RotateCcw size={14} aria-hidden="true" />
+              Reopen
+            </Button>
+          )}
+          {onManage && (
+            <Button size="sm" onClick={onManage}>
+              Manage
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <OpenRoomLink roomCode={session.room_code} />
-        <CopyButton
-          text={studentLink(session.room_code)}
-          label="Student link"
-        />
-        {onReopen && isEndedStatus(session.status) && (
-          <Button size="sm" onClick={onReopen} busy={reopening}>
-            <RotateCcw size={14} aria-hidden="true" />
-            Reopen
-          </Button>
-        )}
-        {onManage && (
-          <Button size="sm" onClick={onManage}>
-            Manage
-          </Button>
-        )}
-      </div>
+      {children}
     </li>
   )
 }
@@ -453,7 +500,15 @@ function SessionForm({
 
   const save = useMutation({
     mutationFn: (next: SessionDraft) =>
-      session ? updateSession(session.id, next) : createSession(next),
+      session
+        ? updateSession(
+            session.id,
+            next,
+            // A new start time is a new slot: forget the old first join, so
+            // the link expires again if nobody comes this time.
+            !sameInstant(next.scheduled_at, session.scheduled_at),
+          )
+        : createSession(next),
     onSuccess: async (row) => {
       await queryClient.invalidateQueries({ queryKey: classroomKeys.sessions })
       if (session) setSaved(true)

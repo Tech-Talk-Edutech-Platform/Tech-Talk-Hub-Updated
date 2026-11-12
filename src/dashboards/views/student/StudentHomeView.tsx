@@ -16,6 +16,7 @@ import {
 import { Link } from 'react-router-dom'
 import { RecordingLink } from '../../../lib/classroom/recordingLink'
 import type { Tables } from '../../../types/database'
+import { ClassInvitesCard, StudentBadgesCard } from './StudentClassroomView'
 
 type RecordingWithTutor = Tables<'class_recordings'> & {
   tutor: Pick<Tables<'users'>, 'full_name'> | null
@@ -186,6 +187,12 @@ export default function StudentHomeView({ userId }: { userId: string }) {
             </div>
           </div>
         </div>
+
+        {/* Classes the student was invited to; only shown while one is open */}
+        <ClassInvitesCard userId={userId} compact />
+
+        {/* Badges given in class (users.badges) */}
+        <StudentBadgesCard userId={userId} />
 
         {/* RECENT CLASS RECORDINGS SECTION */}
         <div className="rounded-[32px] border border-purple-200/60 bg-white/90 p-6 shadow-xl backdrop-blur-2xl md:p-8 dark:border-purple-500/25 dark:bg-white/5">

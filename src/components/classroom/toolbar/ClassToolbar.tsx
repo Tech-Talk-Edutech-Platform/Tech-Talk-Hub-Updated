@@ -80,7 +80,8 @@ export function ClassToolbar({
   const toggleMenu = (name: ToolbarMenu) =>
     setMenu((current) => (current === name ? null : name))
   const teacher = mode === 'teacher'
-  const noStudent = 'Add a student to this class in Dashboard › Classroom'
+  const noStudent =
+    'Invite a student first: Dashboard › My Classrooms › Invite students'
 
   return (
     <header className="relative z-20 flex min-h-[52px] shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line bg-white px-4 py-[8px] max-md:px-3">

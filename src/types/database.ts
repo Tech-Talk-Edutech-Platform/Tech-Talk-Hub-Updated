@@ -1944,6 +1944,7 @@ export type Database = {
           assigned_course_id: string | null
           assigned_tutor_id: string | null
           avatar_url: string | null
+          badges: Json | null
           classes_per_week: number | null
           classes_remaining: number | null
           created_at: string | null
@@ -1964,6 +1965,7 @@ export type Database = {
           assigned_course_id?: string | null
           assigned_tutor_id?: string | null
           avatar_url?: string | null
+          badges?: Json | null
           classes_per_week?: number | null
           classes_remaining?: number | null
           created_at?: string | null
@@ -1984,6 +1986,7 @@ export type Database = {
           assigned_course_id?: string | null
           assigned_tutor_id?: string | null
           avatar_url?: string | null
+          badges?: Json | null
           classes_per_week?: number | null
           classes_remaining?: number | null
           created_at?: string | null
@@ -2031,6 +2034,7 @@ export type Database = {
       }
     }
     Functions: {
+      classroom_badge_entry: { Args: { p_award_id: string }; Returns: Json }
       classroom_can_read_recording: {
         Args: { p_path: string }
         Returns: boolean
@@ -2041,10 +2045,32 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: boolean
       }
+      classroom_is_my_student: {
+        Args: { p_student_id: string }
+        Returns: boolean
+      }
       classroom_is_staff: { Args: never; Returns: boolean }
+      classroom_my_invites: {
+        Args: never
+        Returns: {
+          attended: boolean
+          duration_minutes: number
+          invited_at: string
+          room_code: string
+          scheduled_at: string
+          session_id: string
+          started_at: string
+          status: string
+          title: string
+          tutor_name: string
+        }[]
+      }
       classroom_public_info: {
         Args: { p_room_code: string }
         Returns: {
+          duration_minutes: number
+          scheduled_at: string
+          started_at: string
           status: string
           title: string
         }[]

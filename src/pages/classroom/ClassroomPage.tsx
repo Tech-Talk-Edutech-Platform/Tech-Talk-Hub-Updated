@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   Copy,
   LoaderCircle,
@@ -44,9 +45,17 @@ import { useLocalMedia } from '../../hooks/classroom/useLocalMedia'
 import { useRecording } from '../../hooks/classroom/useRecording'
 import { useRoom } from '../../hooks/classroom/useRoom'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { useNow } from '../../hooks/useNow'
+import {
+  clockTime,
+  formatClassTime,
+  joinWindow,
+  scheduledEnd,
+} from '../../lib/classroom/schedule'
 import { copyText } from '../../lib/classroom/clipboard'
 import {
   deleteBadgeAward,
+  loadRoster,
   markSessionLive,
   reopenSession,
   saveAlert,
@@ -131,8 +140,56 @@ export function ClassroomPage() {
       />
     )
   }
-  // Remount per room so every piece of in-class state starts fresh.
-  return <LiveClassroom key={classroomId} data={query.data} />
+  return (
+    // Remount per room so the gate and every piece of in-class state start
+    // fresh.
+    <ScheduleGate key={classroomId} data={query.data}>
+      <LiveClassroom data={query.data} />
+    </ScheduleGate>
+  )
+}
+
+/**
+ * The class's time slot: people wait here until it opens (15 minutes before
+ * the start), and are turned away once the link has expired (nobody joined
+ * during the class time). Once someone is in, they stay in: a class may run
+ * past its end time and is never cut off. The API server enforces the same.
+ */
+function ScheduleGate({
+  data,
+  children,
+}: {
+  data: ClassroomData
+  children: ReactNode
+}) {
+  const now = useNow(5_000)
+  const [openedAt] = useState(() => Date.now())
+  const { schedule } = data.classroom
+  const slot = joinWindow(schedule, now)
+  const end = scheduledEnd(schedule)
+  // Anyone who had this page open before the end time got in (the gate
+  // opens by itself), so they stay in even if the class data loaded before
+  // the first join still says "nobody came".
+  const alreadyIn = end !== null && openedAt < end
+
+  if (slot.state === 'open' || slot.state === 'overtime') return children
+  if (slot.state === 'expired' && alreadyIn) return children
+  if (slot.state === 'early') {
+    return (
+      <RoomMessage title="This class hasn’t started yet">
+        {`It starts at ${clockTime(slot.startsAt)}. You can join from ${clockTime(slot.opensAt)}, and this page opens the class by itself then.`}
+      </RoomMessage>
+    )
+  }
+  return (
+    <RoomMessage title="This class link has expired">
+      {`Nobody joined during the class time (${formatClassTime(schedule)}). ${
+        data.viewer.isStaff
+          ? 'Start a new call from My Classrooms, or an admin can give this class a new start time.'
+          : 'Ask your tutor for a new invite.'
+      }`}
+    </RoomMessage>
+  )
 }
 
 /** An ended or cancelled class. Only an admin can reopen it. */
@@ -240,7 +297,7 @@ function RoomMessage({ title, action, children }: RoomMessageProps) {
 
 /** The live classroom: class bar, video room, side panels and modals. */
 function LiveClassroom({ data }: { data: ClassroomData }) {
-  const { classroom, students, viewer, badges, activities, material } = data
+  const { classroom, viewer, badges, activities, material } = data
   const classroomId = classroom.id
   const sessionId = classroom.sessionId
   const [params] = useSearchParams()
@@ -251,6 +308,20 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
   const teacherMode = viewer.canHost && !guestJoin
   // Saved to Supabase only for a real session run by staff.
   const persist = data.source === 'live' && teacherMode && !!sessionId
+
+  // The tutor can invite students from the dashboard while the room is open;
+  // re-read the roster so they can be given badges without a reload. A failed
+  // refresh keeps the last list.
+  const roster = useQuery({
+    queryKey: ['classroom-roster', sessionId],
+    queryFn: () => (sessionId ? loadRoster(sessionId) : data.students),
+    enabled: persist,
+    initialData: data.students,
+    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  })
+  const students = persist ? roster.data : data.students
 
   const [name, setName] = useState(() => {
     if (teacherMode) {
@@ -329,6 +400,22 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
   }, [persist, sessionId, joinStarted])
 
   useEffect(() => () => clearTimeout(celebrationTimer.current), [])
+
+  // Past the scheduled end the call keeps going; tell everyone once, so they
+  // wrap up and leave when they're done.
+  const endsAt = scheduledEnd(classroom.schedule)
+  const overtimeNoticed = useRef(false)
+  useEffect(() => {
+    if (!joinStarted || ended || endsAt === null || timer.now < endsAt) return
+    if (overtimeNoticed.current) return
+    overtimeNoticed.current = true
+    toast(
+      teacherMode
+        ? 'The class time is over. The call stays open: end the class when you’re done.'
+        : 'The class time is over. The call stays open: leave when your tutor wraps up.',
+      { duration: 12_000 },
+    )
+  }, [joinStarted, ended, endsAt, timer.now, teacherMode])
 
   const celebrate = (award: BadgeAnnouncement) => {
     clearTimeout(celebrationTimer.current)
