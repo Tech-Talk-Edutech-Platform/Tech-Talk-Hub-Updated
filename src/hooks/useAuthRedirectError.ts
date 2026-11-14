@@ -6,6 +6,7 @@ import {
   authRedirectErrorMessage,
   readAuthRedirectError,
 } from '../lib/authRedirectError'
+import { RESET_PASSWORD_PATH } from '../lib/passwordRecovery'
 
 /**
  * When Supabase sends the user back with a sign-in error (on any page, usually
@@ -13,10 +14,13 @@ import {
  * drop the error parameters from the URL so a refresh doesn't repeat it.
  */
 export function useAuthRedirectError() {
-  const { search, hash } = useLocation()
+  const { pathname, search, hash } = useLocation()
   const navigate = useNavigate()
 
   useEffect(() => {
+    // The reset page explains an expired or used reset link itself.
+    if (pathname === RESET_PASSWORD_PATH) return
+
     const authError = readAuthRedirectError(search, hash)
 
     if (!authError) {
@@ -27,5 +31,5 @@ export function useAuthRedirectError() {
       replace: true,
       state: { [AUTH_ERROR_STATE_KEY]: authRedirectErrorMessage(authError) },
     })
-  }, [search, hash, navigate])
+  }, [pathname, search, hash, navigate])
 }

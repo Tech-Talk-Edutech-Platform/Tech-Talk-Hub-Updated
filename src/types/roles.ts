@@ -5,6 +5,9 @@ export const APP_ROLES = [
   'operations_admin',
   'tech_admin',
   'student',
+  // The sales and marketing team. Not in the database's user_role enum yet;
+  // its dashboard runs on demo data until
+  // supabase/drafts/sales_trial_booking.sql is applied.
   'marketer',
 ] as const
 

@@ -35,6 +35,8 @@ export const queryKeys = {
     global: ['schedule', 'global'] as const,
     calendar: (userId: string | null, role: string | null) =>
       ['schedule', 'calendar', userId, role] as const,
+    tutorTrials: (tutorId: string) =>
+      ['schedule', 'tutor-trials', tutorId] as const,
   },
   site: {
     program: (slug: string) => ['site', 'program', slug] as const,

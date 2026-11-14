@@ -5,6 +5,12 @@ import {
   isUserCancel,
   stopStream,
 } from '../../lib/classroom/media'
+import {
+  BackgroundProcessor,
+  NO_EFFECT,
+  preloadBackgroundModel,
+  type BackgroundEffect,
+} from '../../lib/classroom/backgroundEffects'
 import { toast } from '../../lib/classroom/toast'
 
 type DeviceKind = 'videoinput' | 'audioinput'
@@ -43,11 +49,73 @@ async function listDevices(mediaDevices: MediaDevices) {
 }
 
 /**
+ * Blurs or replaces the camera's background. Returns the processed stream once
+ * it's running, and null while it starts (so the unprocessed room is never
+ * shown or published in between).
+ */
+function useBackgroundProcessing(
+  rawCam: MediaStream | null,
+  effect: BackgroundEffect,
+  onFailed: () => void,
+) {
+  const active = effect.kind !== 'none'
+  const [processed, setProcessed] = useState<{
+    source: MediaStream
+    stream: MediaStream
+  } | null>(null)
+  const processorRef = useRef<BackgroundProcessor | null>(null)
+  const latest = useRef({ effect, onFailed })
+  useEffect(() => {
+    latest.current = { effect, onFailed }
+  })
+
+  // One processor per camera stream; it lives while an effect is on.
+  useEffect(() => {
+    if (!rawCam || !active) return undefined
+    const run: {
+      cancelled: boolean
+      processor: BackgroundProcessor | null
+    } = { cancelled: false, processor: null }
+    void BackgroundProcessor.create(rawCam, latest.current.effect)
+      .then((created) => {
+        if (run.cancelled) {
+          created.stop()
+          return
+        }
+        run.processor = created
+        processorRef.current = created
+        setProcessed({ source: rawCam, stream: created.stream })
+      })
+      .catch((error: unknown) => {
+        if (run.cancelled) return
+        console.error('Background effects failed to start:', error)
+        latest.current.onFailed()
+      })
+    return () => {
+      run.cancelled = true
+      run.processor?.stop()
+      if (processorRef.current === run.processor) processorRef.current = null
+    }
+  }, [rawCam, active])
+
+  // Switching between effects reuses the running processor (no re-publish).
+  useEffect(() => {
+    processorRef.current?.setEffect(effect)
+  }, [effect])
+
+  if (!rawCam) return { stream: null, starting: false }
+  if (!active) return { stream: rawCam, starting: false }
+  const ready = processed?.source === rawCam ? processed.stream : null
+  return { stream: ready, starting: !ready }
+}
+
+/**
  * Camera, microphone and screen share for this device. Camera and mic start off,
  * like the reference room (both buttons shown in their "off" colour).
  */
 export function useLocalMedia() {
-  const [cam, setCam] = useState<MediaStream | null>(null)
+  // The camera as captured; `cam` below is what everyone sees (with effects).
+  const [rawCam, setCam] = useState<MediaStream | null>(null)
   const [mic, setMic] = useState<MediaStream | null>(null)
   const [screen, setScreen] = useState<MediaStream | null>(null)
   const [pending, setPending] = useState<Pending>({
@@ -62,11 +130,19 @@ export function useLocalMedia() {
     audiooutput: '',
   })
   const [mirror, setMirror] = useState(true)
+  const [background, setBackgroundState] = useState<BackgroundEffect>(NO_EFFECT)
+  const processing = useBackgroundProcessing(rawCam, background, () => {
+    toast(
+      'Background effects couldn’t start on this device. Showing your camera as is.',
+    )
+    setBackgroundState(NO_EFFECT)
+  })
+  const cam = processing.stream
 
   // Latest streams, so unmounting stops whatever is still live.
-  const live = useRef({ cam, mic, screen })
+  const live = useRef({ cam: rawCam, mic, screen })
   useEffect(() => {
-    live.current = { cam, mic, screen }
+    live.current = { cam: rawCam, mic, screen }
   })
   useEffect(
     () => () => {
@@ -152,8 +228,8 @@ export function useLocalMedia() {
   }
 
   const toggleCam = () => {
-    if (cam) {
-      stopStream(cam)
+    if (rawCam) {
+      stopStream(rawCam)
       setCam(null)
     } else if (!pending.cam) {
       void startCam()
@@ -184,7 +260,7 @@ export function useLocalMedia() {
   }
 
   const stopAll = () => {
-    stopStream(cam)
+    stopStream(rawCam)
     stopStream(mic)
     stopStream(screen)
     setCam(null)
@@ -195,8 +271,8 @@ export function useLocalMedia() {
   /** Switches device; a live camera or mic restarts on the new one. */
   const chooseDevice = (kind: DeviceKind, id: string) => {
     setDeviceIds((current) => ({ ...current, [kind]: id }))
-    if (kind === 'videoinput' && cam) {
-      stopStream(cam)
+    if (kind === 'videoinput' && rawCam) {
+      stopStream(rawCam)
       setCam(null)
       void startCam(id)
     }
@@ -207,11 +283,24 @@ export function useLocalMedia() {
     }
   }
 
+  /** Blur or replace the background; starts loading the model right away. */
+  const setBackground = (effect: BackgroundEffect) => {
+    if (effect.kind !== 'none') {
+      preloadBackgroundModel().catch(() => {
+        // Reported when the processor tries to start.
+      })
+    }
+    setBackgroundState(effect)
+  }
+
   return {
     cam,
     mic,
     screen,
-    pending,
+    // A camera that's on but still applying its background counts as starting.
+    pending: { ...pending, cam: pending.cam || processing.starting },
+    background,
+    setBackground,
     devices,
     deviceIds,
     mirror,

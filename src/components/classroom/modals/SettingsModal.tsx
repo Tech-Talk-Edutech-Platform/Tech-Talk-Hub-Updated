@@ -2,6 +2,7 @@ import { useAudioMeter } from '../../../hooks/classroom/useAudioMeter'
 import type { LocalMedia } from '../../../hooks/classroom/useLocalMedia'
 import type { SelectOption } from '../../../types/classroom'
 import { VideoView } from '../stage/VideoView'
+import { BackgroundPicker } from './BackgroundPicker'
 import { Modal } from '../ui/Modal'
 import { Select } from '../ui/Select'
 
@@ -24,7 +25,7 @@ type SettingsModalProps = {
   media: LocalMedia
 }
 
-/** Camera and microphone selection with a live preview and mic meter. */
+/** Camera, microphone and background, with a live preview and mic meter. */
 export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
   const level = useAudioMeter(open ? media.mic : null)
   const { devices, deviceIds } = media
@@ -43,6 +44,10 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
       <div className="mt-5 aspect-video overflow-hidden rounded-[8px] bg-stage">
         {media.cam ? (
           <VideoView stream={media.cam} mirror={media.mirror} />
+        ) : media.pending.cam ? (
+          <div className="grid size-full place-items-center text-[14px] text-white/90">
+            Starting your camera…
+          </div>
         ) : (
           <div className="grid size-full place-items-center text-center text-[14px] text-white/90">
             <div>
@@ -113,6 +118,11 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
           Mirror my video
         </label>
       </div>
+      <BackgroundPicker
+        value={media.background}
+        onChange={media.setBackground}
+        applying={media.pending.cam && media.background.kind !== 'none'}
+      />
       {devices.videoinput.some((device) => !device.label) && (
         <p className="mt-4 text-[12.5px] leading-[18px] text-muted">
           Device names appear after you allow camera and microphone access.

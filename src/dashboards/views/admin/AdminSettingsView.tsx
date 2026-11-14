@@ -4,9 +4,7 @@ import { supabase } from '../../../supabase'
 import {
   Settings,
   User,
-  Lock,
   Bell,
-  Shield,
   Save,
   Loader2,
   Sun,
@@ -18,6 +16,7 @@ import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import type { DashboardIdentity } from '../../../types/dashboardIdentity'
 import { getErrorMessage } from '../../../lib/getErrorMessage'
+import { PasswordSettingsCard } from '../shared/PasswordSettingsCard'
 
 export default function AdminSettingsView({
   user,
@@ -29,9 +28,6 @@ export default function AdminSettingsView({
   const [email] = useState(user.email || '')
   const [avatarUrl, setAvatarUrl] = useState('')
 
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [examReminders, setExamReminders] = useState(true)
 
@@ -40,7 +36,6 @@ export default function AdminSettingsView({
   )
 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
   // Show the avatar saved on the profile row
@@ -127,35 +122,6 @@ export default function AdminSettingsView({
       toast.error(getErrorMessage(err, 'Failed to update profile.'))
     } finally {
       setIsUpdatingProfile(false)
-    }
-  }
-
-  const handleUpdatePassword = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match.')
-      return
-    }
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters long.')
-      return
-    }
-
-    setIsUpdatingPassword(true)
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      })
-
-      if (error) throw error
-      toast.success('Password changed successfully!')
-      setNewPassword('')
-      setConfirmPassword('')
-    } catch (err) {
-      console.error(err)
-      toast.error(getErrorMessage(err, 'Failed to update password.'))
-    } finally {
-      setIsUpdatingPassword(false)
     }
   }
 
@@ -307,77 +273,7 @@ export default function AdminSettingsView({
         </form>
       </div>
 
-      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/10">
-            <Lock size={20} />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Security & Password
-            </h3>
-            <p className="text-xs text-slate-400">
-              Ensure your account is secure by updating your password regularly.
-            </p>
-          </div>
-        </div>
-
-        <form
-          onSubmit={(e) => void handleUpdatePassword(e)}
-          className="space-y-4"
-        >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label
-                htmlFor="admin-settings-new-password"
-                className="mb-2 block text-xs font-bold tracking-wider text-slate-600 uppercase dark:text-slate-300"
-              >
-                New Password
-              </label>
-              <input
-                id="admin-settings-new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                required
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="admin-settings-confirm-password"
-                className="mb-2 block text-xs font-bold tracking-wider text-slate-600 uppercase dark:text-slate-300"
-              >
-                Confirm New Password
-              </label>
-              <input
-                id="admin-settings-confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter password"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                required
-              />
-            </div>
-          </div>
-          <div className="flex justify-end pt-2">
-            <button
-              type="submit"
-              disabled={isUpdatingPassword}
-              className="flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-            >
-              {isUpdatingPassword ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Shield size={14} />
-              )}{' '}
-              Update Password
-            </button>
-          </div>
-        </form>
-      </div>
+      <PasswordSettingsCard user={user} />
 
       <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
         <div className="mb-6 flex items-center gap-3">

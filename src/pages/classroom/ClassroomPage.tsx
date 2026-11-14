@@ -9,6 +9,7 @@ import {
   Minimize,
   Settings,
   Share2,
+  Sparkles,
 } from 'lucide-react'
 import { ClassEnded } from '../../components/classroom/ClassEnded'
 import { GuestJoinScreen } from '../../components/classroom/GuestJoinScreen'
@@ -676,6 +677,12 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
       label: 'Share call invite',
       icon: Share2,
       onSelect: () => openModal('share'),
+    },
+    {
+      id: 'background',
+      label: 'Background effects',
+      icon: Sparkles,
+      onSelect: () => openModal('settings'),
     },
     {
       id: 'settings',

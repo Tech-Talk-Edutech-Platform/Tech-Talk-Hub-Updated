@@ -11,7 +11,7 @@ The internal operations platform for **Tech Talk Hub**, providing role-based das
 | **Admin**       | User management, courses, scheduling, analytics, leads, shop/blog/testimonials, live class monitoring |
 | **Tutor**       | Class schedule, student management, course assignments, recordings                                    |
 | **Student**     | Course access, homework, exams, grades, support                                                       |
-| **Marketer**    | Referral tracking, commission management                                                              |
+| **Marketer**    | Sales team: trial bookings, sales targets, WhatsApp follow-ups, referrals                             |
 | **Playgrounds** | Blockly & Scratch coding environments                                                                 |
 
 ---
@@ -152,14 +152,14 @@ Dashboards/
 
 ### Roles
 
-| Role               | Access Level                   |
-| ------------------ | ------------------------------ |
-| `owner`            | Full platform access           |
-| `operations_admin` | Full platform access           |
-| `tech_admin`       | Full platform access           |
-| `tutor`            | Teaching, scheduling, students |
-| `student`          | Courses, exams, grades         |
-| `marketer`         | Referrals, commissions         |
+| Role               | Access Level                            |
+| ------------------ | --------------------------------------- |
+| `owner`            | Full platform access                    |
+| `operations_admin` | Full platform access                    |
+| `tech_admin`       | Full platform access                    |
+| `tutor`            | Teaching, scheduling, students          |
+| `student`          | Courses, exams, grades                  |
+| `marketer`         | Sales: trial bookings, sales, referrals |
 
 ### Current Implementation
 

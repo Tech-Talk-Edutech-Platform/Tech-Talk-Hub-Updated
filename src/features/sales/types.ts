@@ -1,0 +1,181 @@
+/**
+ * The sales and trial-booking model. Today it runs on demo data
+ * (`demoData.ts`); `supabase/drafts/sales_trial_booking.sql` sketches the
+ * tables it maps to once the marketer role exists in the database.
+ */
+
+export type GradeCategoryId =
+  'junior-coders' | 'future-developers' | 'tech-professionals'
+
+export type GradeCategory = {
+  id: GradeCategoryId
+  label: string
+  grades: readonly string[]
+  ages: string
+  focus: string
+}
+
+/** A tutor who takes trial classes. */
+export type Mentor = {
+  id: string
+  name: string
+  categories: readonly GradeCategoryId[]
+  /** The mentor's standing meeting room, reused for every trial they take. */
+  meetLink: string
+}
+
+export type SalesRep = {
+  id: string
+  name: string
+  /** Sales to close this month. */
+  monthlyTarget: number
+}
+
+/** One hour a mentor has opened for a trial. */
+export type TrialSlot = {
+  id: string
+  mentorId: string
+  start: string
+  end: string
+  bookingId: string | null
+}
+
+export const BOOKING_SOURCES = [
+  'sales_call',
+  'whatsapp',
+  'privyr',
+  'website',
+] as const
+
+export type BookingSource = (typeof BOOKING_SOURCES)[number]
+
+export const isBookingSource = (value: string): value is BookingSource =>
+  BOOKING_SOURCES.some((source) => source === value)
+
+/**
+ * Where a parent is before their child's trial. Maps to `leads.status`:
+ * 'New', 'Contacted', 'Trial Scheduled', 'Lost'.
+ */
+export type LeadStatus = 'new' | 'contacted' | 'trial_booked' | 'not_interested'
+
+/**
+ * A parent the sales team reaches out to (a row in `leads`). It starts with
+ * only the parent's contact details; the child's details come from the
+ * conversation and are filled in when the trial is booked.
+ */
+export type Lead = {
+  id: string
+  parentName: string
+  /** With the country code, e.g. +254712345678. */
+  phone: string
+  email: string
+  source: BookingSource
+  /** The sales rep working this parent; null until someone picks it up. */
+  salesRepId: string | null
+  status: LeadStatus
+  createdAt: string
+  lastContactedAt: string | null
+  notes: string
+  bookingId: string | null
+}
+
+export type NewLead = {
+  parentName: string
+  phone: string
+  email: string
+  source: BookingSource
+  salesRepId: string | null
+  notes: string
+}
+
+export type TrialStatus =
+  'scheduled' | 'attended' | 'no_show' | 'converted' | 'lost' | 'cancelled'
+
+export type TrialBooking = {
+  id: string
+  slotId: string
+  /** The parent this trial was booked for. */
+  leadId: string | null
+  mentorId: string
+  /** Null for parents who booked themselves on the website. */
+  salesRepId: string | null
+  category: GradeCategoryId
+  parentName: string
+  parentPhone: string
+  parentEmail: string
+  studentName: string
+  studentGrade: string
+  start: string
+  end: string
+  meetLink: string
+  status: TrialStatus
+  source: BookingSource
+  notes: string
+  createdAt: string
+}
+
+export type Sale = {
+  id: string
+  bookingId: string
+  salesRepId: string
+  studentName: string
+  plan: string
+  /** Kenyan shillings. */
+  amount: number
+  closedAt: string
+}
+
+export type WhatsAppTemplate =
+  'trial_confirmation' | 'trial_reminder' | 'trial_follow_up'
+
+export type WhatsAppStatus = 'queued' | 'sent' | 'delivered' | 'read' | 'failed'
+
+export type WhatsAppMessage = {
+  id: string
+  bookingId: string | null
+  contactName: string
+  phone: string
+  direction: 'outbound' | 'inbound'
+  template: WhatsAppTemplate | null
+  body: string
+  at: string
+  /** Outbound delivery state; inbound messages are always 'read'. */
+  status: WhatsAppStatus
+}
+
+export type NewTrialBooking = {
+  slotId: string
+  leadId: string
+  salesRepId: string | null
+  category: GradeCategoryId
+  parentName: string
+  parentPhone: string
+  parentEmail: string
+  studentName: string
+  studentGrade: string
+  source: BookingSource
+  notes: string
+}
+
+export const TRIAL_STATUS_LABEL: Record<TrialStatus, string> = {
+  scheduled: 'Scheduled',
+  attended: 'Attended',
+  no_show: 'No-show',
+  converted: 'Enrolled',
+  lost: 'Not enrolled',
+  cancelled: 'Cancelled',
+}
+
+export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
+  new: 'New',
+  contacted: 'Contacted',
+  trial_booked: 'Trial booked',
+  not_interested: 'Not interested',
+}
+
+export const SOURCE_LABEL: Record<BookingSource, string> = {
+  website: 'Website form',
+  sales_call: 'Sales call',
+  whatsapp: 'WhatsApp',
+  privyr: 'Privyr',
+}

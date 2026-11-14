@@ -3,9 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { supabase } from '../../../supabase'
 import {
   User,
-  Lock,
   Bell,
-  Shield,
   Save,
   Loader2,
   Sun,
@@ -17,6 +15,7 @@ import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import type { DashboardIdentity } from '../../../types/dashboardIdentity'
 import { getErrorMessage } from '../../../lib/getErrorMessage'
+import { PasswordSettingsCard } from '../shared/PasswordSettingsCard'
 
 export default function StudentSettingsView({
   user,
@@ -28,9 +27,8 @@ export default function StudentSettingsView({
   const [email] = useState(user.email || '')
   const [avatarUrl, setAvatarUrl] = useState('')
 
-  // Password change states
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const portal =
+    user.role === 'tutor' || user.role === 'marketer' ? user.role : 'student'
 
   // Notification toggle states
   const [emailNotifications, setEmailNotifications] = useState(true)
@@ -42,7 +40,6 @@ export default function StudentSettingsView({
   )
 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
   // Sync theme state with user profile on load
@@ -136,36 +133,6 @@ export default function StudentSettingsView({
     }
   }
 
-  // Handle Password Modification
-  const handleUpdatePassword = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match.')
-      return
-    }
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters long.')
-      return
-    }
-
-    setIsUpdatingPassword(true)
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      })
-
-      if (error) throw error
-      toast.success('Password changed successfully!')
-      setNewPassword('')
-      setConfirmPassword('')
-    } catch (err) {
-      console.error(err)
-      toast.error(getErrorMessage(err, 'Failed to update password.'))
-    } finally {
-      setIsUpdatingPassword(false)
-    }
-  }
-
   // Handle Logout Session Termination
   const handleLogout = async () => {
     try {
@@ -186,7 +153,7 @@ export default function StudentSettingsView({
           Account Settings
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Manage your appearance, student profile preferences, security, and
+          Manage your appearance, {portal} profile preferences, security, and
           session options.
         </p>
       </div>
@@ -320,77 +287,7 @@ export default function StudentSettingsView({
       </div>
 
       {/* Security & Password Section */}
-      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/10">
-            <Lock size={20} />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Security & Password
-            </h2>
-            <p className="text-xs text-slate-400">
-              Ensure your account is secure by updating your password regularly.
-            </p>
-          </div>
-        </div>
-
-        <form
-          onSubmit={(e) => void handleUpdatePassword(e)}
-          className="space-y-4"
-        >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label
-                htmlFor="student-settings-new-password"
-                className="mb-2 block text-xs font-bold tracking-wider text-slate-600 uppercase dark:text-slate-300"
-              >
-                New Password
-              </label>
-              <input
-                id="student-settings-new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                required
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="student-settings-confirm-password"
-                className="mb-2 block text-xs font-bold tracking-wider text-slate-600 uppercase dark:text-slate-300"
-              >
-                Confirm New Password
-              </label>
-              <input
-                id="student-settings-confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter password"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                required
-              />
-            </div>
-          </div>
-          <div className="flex justify-end pt-2">
-            <button
-              type="submit"
-              disabled={isUpdatingPassword}
-              className="flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-            >
-              {isUpdatingPassword ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Shield size={14} />
-              )}{' '}
-              Update Password
-            </button>
-          </div>
-        </form>
-      </div>
+      <PasswordSettingsCard user={user} />
 
       {/* Notifications Section */}
       <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
@@ -455,7 +352,7 @@ export default function StudentSettingsView({
             Terminate Session
           </h2>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Sign out securely from your student portal account on this device.
+            Sign out securely from your {portal} portal account on this device.
           </p>
         </div>
         <button

@@ -101,7 +101,143 @@ const isFreeSlot = (event: CalendarEvent | null | undefined): boolean =>
 const isAdmin = isAdminRole
 const startTimeOf = (e: CalendarEvent) => new Date(e.start_time).getTime()
 
-/** Loads everything the schedule shows; `null` when nobody is signed in. */
+const ID_CHUNK = 100
+
+/** Runs an `.in('id', …)` style query in chunks so long id lists fit in the URL. */
+async function inChunks<T>(
+  ids: string[],
+  fetchChunk: (chunk: string[]) => Promise<T[]>,
+): Promise<T[]> {
+  const chunks: string[][] = []
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    chunks.push(ids.slice(i, i + ID_CHUNK))
+  }
+  const results = await Promise.all(chunks.map(fetchChunk))
+  return results.flat()
+}
+
+const unique = (values: (string | null | undefined)[]): string[] => [
+  ...new Set(values.filter((value): value is string => Boolean(value))),
+]
+
+type EventWithAttendance = CalendarEvent & { event_attendance: Attendance[] }
+
+function splitAttendance(rows: EventWithAttendance[]) {
+  const calendarEvents: CalendarEvent[] = []
+  const attendance: Attendance[] = []
+  for (const { event_attendance: rowAttendance, ...event } of rows) {
+    calendarEvents.push(event)
+    attendance.push(...rowAttendance)
+  }
+  return { calendarEvents, attendance }
+}
+
+/**
+ * The events a tutor or student is part of: a tutor's own slots and classes;
+ * a student's classes plus their own tutor's open slots to request.
+ */
+async function loadOwnEvents(profile: AppUser) {
+  if (profile.role === 'tutor') {
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*, event_attendance(*)')
+      .eq('tutor_id', profile.id)
+      .order('start_time', { ascending: true })
+    if (error) throw error
+    return splitAttendance(data)
+  }
+
+  const { data: myRows, error: myRowsError } = await supabase
+    .from('event_attendance')
+    .select('event_id')
+    .eq('student_id', profile.id)
+  if (myRowsError) throw myRowsError
+
+  const attended = await inChunks(
+    unique(myRows.map((row) => row.event_id)),
+    async (chunk) => {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*, event_attendance(*)')
+        .in('id', chunk)
+      if (error) throw error
+      return data
+    },
+  )
+
+  let openSlots: EventWithAttendance[] = []
+  if (profile.assigned_tutor_id) {
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*, event_attendance(*)')
+      .eq('tutor_id', profile.assigned_tutor_id)
+      .eq('title', 'Free Slot')
+      .gte('start_time', new Date().toISOString())
+    if (error) throw error
+    openSlots = data
+  }
+
+  const byId = new Map<string, EventWithAttendance>()
+  for (const row of [...attended, ...openSlots]) byId.set(row.id, row)
+  const rows = [...byId.values()].toSorted(
+    (a, b) =>
+      new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
+  )
+  return splitAttendance(rows)
+}
+
+/** Older databases may lack the optional booking and resources tables. */
+const isMissingTable = (error: unknown, table: string) =>
+  new RegExp(`${table}|does not exist`, 'i').test(getErrorMessage(error))
+
+async function loadUsers(admin: boolean, ids: string[]): Promise<AppUser[]> {
+  if (admin) {
+    const { data, error } = await supabase.from('users').select('*')
+    if (error) throw error
+    return data
+  }
+  return inChunks(ids, async (chunk) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', chunk)
+    if (error) throw error
+    return data
+  })
+}
+
+async function loadResources(
+  admin: boolean,
+  eventIds: string[],
+): Promise<ClassResource[]> {
+  try {
+    if (admin) {
+      const { data, error } = await supabase
+        .from('class_resources')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data
+    }
+    return await inChunks(eventIds, async (chunk) => {
+      const { data, error } = await supabase
+        .from('class_resources')
+        .select('*')
+        .in('event_id', chunk)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data
+    })
+  } catch (error) {
+    if (isMissingTable(error, 'class_resources')) return []
+    throw error
+  }
+}
+
+/**
+ * Loads what the schedule shows; `null` when nobody is signed in. Admins get
+ * every tutor's calendar; tutors and students only get their own.
+ */
 async function loadSchedule(): Promise<ScheduleSnapshot | null> {
   try {
     const { data: authData, error: authError } = await supabase.auth.getUser()
@@ -119,33 +255,63 @@ async function loadSchedule(): Promise<ScheduleSnapshot | null> {
     if (!myProfile)
       throw new Error('Your user profile was not found in the users table.')
 
-    const [eventsRes, attendanceRes, requestsRes, usersRes] = await Promise.all(
-      [
+    const admin = isAdminRole(myProfile.role)
+
+    let calendarEvents: CalendarEvent[]
+    let attendance: Attendance[]
+    if (admin) {
+      const [eventsRes, attendanceRes] = await Promise.all([
         supabase
           .from('calendar_events')
           .select('*')
           .order('start_time', { ascending: true }),
         supabase.from('event_attendance').select('*'),
-        supabase
-          .from('class_booking_requests')
-          .select('*')
-          .order('created_at', { ascending: false }),
-        supabase.from('users').select('*'),
-      ],
-    )
-    if (eventsRes.error) throw eventsRes.error
-    if (attendanceRes.error) throw attendanceRes.error
+      ])
+      if (eventsRes.error) throw eventsRes.error
+      if (attendanceRes.error) throw attendanceRes.error
+      calendarEvents = eventsRes.data
+      attendance = attendanceRes.data
+    } else {
+      const own = await loadOwnEvents(myProfile)
+      calendarEvents = own.calendarEvents
+      attendance = own.attendance
+    }
+
+    let requestsQuery = supabase
+      .from('class_booking_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (!admin) {
+      requestsQuery =
+        myProfile.role === 'tutor'
+          ? requestsQuery.eq('tutor_id', myProfile.id)
+          : requestsQuery.eq('student_id', myProfile.id)
+    }
+    const requestsRes = await requestsQuery
     if (
       requestsRes.error &&
-      !/class_booking_requests|does not exist/i.test(
-        requestsRes.error.message || '',
-      )
+      !isMissingTable(requestsRes.error, 'class_booking_requests')
     )
       throw requestsRes.error
-    if (usersRes.error) throw usersRes.error
+    const bookingRequests = requestsRes.data ?? []
+
+    // Admins manage everyone; others only need the people on their own events.
+    const users = await loadUsers(
+      admin,
+      unique([
+        myProfile.id,
+        myProfile.assigned_tutor_id,
+        ...calendarEvents.map((event) => event.tutor_id),
+        ...attendance.map((row) => row.student_id),
+        ...bookingRequests.flatMap((request) => [
+          request.student_id,
+          request.tutor_id,
+        ]),
+      ]),
+    )
 
     let leads: Lead[] = []
-    if (isAdminRole(myProfile.role)) {
+    if (admin) {
       const { data: leadRows, error: leadsError } = await supabase
         .from('leads')
         .select('*')
@@ -154,25 +320,20 @@ async function loadSchedule(): Promise<ScheduleSnapshot | null> {
       leads = leadRows
     }
 
-    const { data: resourceRows, error: resourceError } = await supabase
-      .from('class_resources')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (
-      resourceError &&
-      !/class_resources|does not exist/i.test(resourceError.message || '')
+    const resources = await loadResources(
+      admin,
+      calendarEvents.map((event) => event.id),
     )
-      throw resourceError
 
     return {
       authUser: authData.user,
       profile: myProfile,
-      users: usersRes.data,
+      users,
       leads,
-      calendarEvents: eventsRes.data,
-      attendance: attendanceRes.data,
-      bookingRequests: requestsRes.data ?? [],
-      resources: resourceRows ?? [],
+      calendarEvents,
+      attendance,
+      bookingRequests,
+      resources,
     }
   } catch (error) {
     console.error('GlobalScheduleView load error:', error)
@@ -817,8 +978,7 @@ export default function GlobalScheduleView() {
   if (loading)
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm font-semibold text-slate-500">
-        <RefreshCw className="mr-2 animate-spin" size={18} /> Loading global
-        schedule…
+        <RefreshCw className="mr-2 animate-spin" size={18} /> Loading schedule…
       </div>
     )
 
@@ -836,10 +996,14 @@ export default function GlobalScheduleView() {
           </button>
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-              Global Schedule
+              {admin ? 'Global Schedule' : 'My Schedule'}
             </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Tutor availability, bookings, trials and live class management.
+              {admin
+                ? 'Every tutor’s availability, bookings, trials and live classes.'
+                : tutor
+                  ? 'Your availability, trials and classes. Only you and the admins see this.'
+                  : 'Your classes, and your tutor’s open slots you can request.'}
             </p>
           </div>
         </div>
@@ -888,14 +1052,19 @@ export default function GlobalScheduleView() {
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
           <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-            Tutor availability
+            {admin
+              ? 'Tutor availability'
+              : tutor
+                ? 'My open slots'
+                : 'Your tutor’s open slots'}
           </p>
           <p className="mt-2 text-3xl font-black text-teal-600">
-            {admin
-              ? calendarEvents.filter(isFreeSlot).length
-              : tutor
-                ? myFreeCount
-                : calendarEvents.filter(isFreeSlot).length}
+            {tutor
+              ? myFreeCount
+              : calendarEvents.filter(
+                  (e) =>
+                    isFreeSlot(e) && new Date(e.start_time).getTime() > now,
+                ).length}
           </p>
           <p className="mt-1 text-xs text-slate-500">
             60-minute slots · 15-minute breaks
@@ -928,7 +1097,8 @@ export default function GlobalScheduleView() {
         <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs md:p-5 dark:border-white/10 dark:bg-slate-900">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">
-              <CalendarDays size={18} className="text-indigo-500" /> Calendar
+              <CalendarDays size={18} className="text-indigo-500" />{' '}
+              {admin ? 'Calendar' : 'My calendar'}
             </h2>
             <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-500">
               <span className="flex items-center gap-1">
@@ -1117,8 +1287,20 @@ export default function GlobalScheduleView() {
                 • Select a calendar event to see class details and actions.
               </li>
               <li>
-                • Students request an available slot; tutors accept or reject.
+                • Students request one of their tutor’s open slots; the tutor
+                accepts or rejects.
               </li>
+              {!admin && (
+                <li>
+                  • You only see your own classes. Admins see the full schedule.
+                </li>
+              )}
+              {student && !profile?.assigned_tutor_id && (
+                <li className="font-semibold text-amber-600">
+                  • No tutor is assigned to you yet, so there are no open slots
+                  to request. Contact the Tech Talk Hub team.
+                </li>
+              )}
               <li>
                 • Admins can reassign tutors and merge a maximum of two
                 students.

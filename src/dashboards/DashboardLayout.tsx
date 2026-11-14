@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import type { ReactNode } from 'react'
-import type { LucideIcon } from 'lucide-react'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import type { AppRole } from '../types/roles'
 import { isAdminRole } from '../types/roles'
@@ -11,9 +10,11 @@ import {
   BookOpen,
   Activity,
   Calendar,
+  CalendarHeart,
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  GraduationCap,
   Layers,
   Layers3,
   LayoutDashboard,
@@ -22,6 +23,7 @@ import {
   Presentation,
   Settings,
   ShoppingBag,
+  TrendingUp,
   Users,
   Users2,
   Video,
@@ -42,6 +44,16 @@ import TutorHomeView from './views/tutor/TutorHomeView'
 import TutorStudentsView from './views/tutor/TutorStudentsView'
 import TutorCourseAssignmentView from './views/tutor/TutorCourseAssignmentView'
 import TutorClassroomsView from './views/tutor/TutorClassroomsView'
+import TutorTrialBookingsView from './views/tutor/TutorTrialBookingsView'
+import TutorTrainingView from './views/tutor/TutorTrainingView'
+
+// Sales (demo data until the marketer role and sales tables exist)
+import {
+  AdminSalesView,
+  SalesPortalView,
+} from '../features/sales/SalesDashboardViews'
+import { isSalesView, SALES_NAV } from '../features/sales/navigation'
+import { SidebarButton, SidebarGroup } from './Sidebar'
 
 // Admin Views
 import AdminHomeView from './views/admin/AdminHomeView'
@@ -55,63 +67,6 @@ import LeadsPage from './views/admin/LeadsPage'
 import AdminShopPage from './views/admin/AdminShopPage'
 import AdminBlogPage from './views/admin/AdminBlogPage'
 import AdminTestimonialsPage from './views/admin/AdminTestimonialsPage'
-
-interface SidebarButtonProps {
-  icon: LucideIcon
-  label: string
-  view: string
-  activeView: string
-  setActiveView: (view: string) => void
-  isCollapsed: boolean
-}
-
-interface SidebarGroupProps {
-  title: string
-  children: ReactNode
-  isCollapsed: boolean
-}
-
-function SidebarButton({
-  icon: Icon,
-  label,
-  view,
-  activeView,
-  setActiveView,
-  isCollapsed,
-}: SidebarButtonProps) {
-  const isActive = activeView === view
-
-  return (
-    <button
-      type="button"
-      onClick={() => setActiveView(view)}
-      title={isCollapsed ? label : ''}
-      className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-medium transition-all duration-200 ${
-        isActive
-          ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white'
-      }`}
-    >
-      <Icon size={18} className="shrink-0" />
-
-      {!isCollapsed && <span className="whitespace-nowrap">{label}</span>}
-    </button>
-  )
-}
-
-function SidebarGroup({ title, children, isCollapsed }: SidebarGroupProps) {
-  return (
-    <div>
-      {!isCollapsed && (
-        <p className="mb-2 px-4 text-[10px] font-black tracking-wider text-gray-400 uppercase">
-          {title}
-        </p>
-      )}
-
-      <div className="space-y-1">{children}</div>
-    </div>
-  )
-}
 
 interface DashboardLayoutProps {
   role: AppRole
@@ -193,10 +148,27 @@ export default function DashboardLayout({
         case 'classrooms':
           return <TutorClassroomsView userId={currentUser.id} />
 
+        case 'trials':
+          return <TutorTrialBookingsView userId={currentUser.id} />
+
+        case 'training':
+          return <TutorTrainingView userId={currentUser.id} />
+
         case 'dashboard':
         default:
           return <TutorHomeView userId={currentUser.id} user={currentUser} />
       }
+    }
+
+    // Marketer (sales team) views
+    if (role === 'marketer') {
+      return (
+        <SalesPortalView
+          name={currentUser.full_name || ''}
+          view={isSalesView(activeView) ? activeView : 'dashboard'}
+          onNavigate={setActiveView}
+        />
+      )
     }
 
     // Admin views
@@ -235,6 +207,9 @@ export default function DashboardLayout({
 
         case 'blog':
           return <AdminBlogPage userId={currentUser.id} role={role} />
+
+        case 'sales':
+          return <AdminSalesView />
 
         case 'testimonials':
           return <AdminTestimonialsPage />
@@ -347,8 +322,17 @@ export default function DashboardLayout({
 
               <SidebarButton
                 icon={Calendar}
-                label="Master Schedule"
+                label="My Schedule"
                 view="schedule"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
+
+              <SidebarButton
+                icon={CalendarHeart}
+                label="Trial Bookings"
+                view="trials"
                 activeView={activeView}
                 setActiveView={setActiveView}
                 isCollapsed={isCollapsed}
@@ -367,6 +351,50 @@ export default function DashboardLayout({
                 icon={Video}
                 label="Class Recordings"
                 view="recordings"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
+            </SidebarGroup>
+          )}
+
+          {role === 'tutor' && (
+            <SidebarGroup title="Growth" isCollapsed={isCollapsed}>
+              <SidebarButton
+                icon={GraduationCap}
+                label="Training"
+                view="training"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
+            </SidebarGroup>
+          )}
+
+          {/* Marketer (sales team) navigation */}
+          {role === 'marketer' && (
+            <SidebarGroup title="Sales" isCollapsed={isCollapsed}>
+              {SALES_NAV.map((item) => (
+                <SidebarButton
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  view={item.id}
+                  activeView={activeView}
+                  setActiveView={setActiveView}
+                  isCollapsed={isCollapsed}
+                />
+              ))}
+            </SidebarGroup>
+          )}
+
+          {/* Sales oversight */}
+          {isAdmin && (
+            <SidebarGroup title="Sales" isCollapsed={isCollapsed}>
+              <SidebarButton
+                icon={TrendingUp}
+                label="Sales & Trials"
+                view="sales"
                 activeView={activeView}
                 setActiveView={setActiveView}
                 isCollapsed={isCollapsed}

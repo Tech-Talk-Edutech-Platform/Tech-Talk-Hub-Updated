@@ -432,8 +432,17 @@ async function loadSchedule(viewer: Viewer): Promise<ScheduleData> {
   const tutors = tutorsData ?? []
 
   const events = (calendarData ?? []).flatMap((e): ScheduleEvent[] => {
-    // Logic: Admins see everything. Tutors only see their own slots.
-    if (viewer.role === 'tutor' && e.tutor_id !== viewer.id) return []
+    // Admins see everything. Tutors only see their own slots; everyone else
+    // only sees the classes they attend.
+    if (!isAdminRole(viewer.role)) {
+      if (viewer.role === 'tutor') {
+        if (e.tutor_id !== viewer.id) return []
+      } else if (
+        !e.event_attendance.some((row) => row.student_id === viewer.id)
+      ) {
+        return []
+      }
+    }
 
     const isBooked = e.event_attendance.length > 0
     const tutorName =

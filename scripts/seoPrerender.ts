@@ -76,6 +76,8 @@ const DISALLOWED_PATHS = [
   '/users',
   '/learning',
   '/calendar',
+  // Demo-data previews (e.g. /preview/sales): public but not for search.
+  '/preview',
   ...APP_ROLES.map((role) => `/${role}`),
 ]
 

@@ -1,10 +1,12 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react'
+import React, { lazy, Suspense, useEffect } from 'react'
+import type { ReactNode } from 'react'
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
   useLocation,
+  useNavigate,
   useParams,
 } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
@@ -15,9 +17,15 @@ import {
   TUTOR_ADMIN_ROLES,
   type AppRole,
 } from './types/roles'
+import { useAuthUser } from './hooks/useAuthUser'
+import {
+  openedFromRecoveryLink,
+  RESET_PASSWORD_PATH,
+} from './lib/passwordRecovery'
 
 // Structural Layout Framework Components
 import Login from './auth/login'
+import ResetPasswordPage from './auth/ResetPasswordPage'
 import RoleGate from './auth/RoleGate'
 
 import FullCalendarView from './features/schedule/Calendar'
@@ -66,6 +74,8 @@ const ClassroomRoutes = lazy(() =>
   })),
 )
 
+const SalesPreviewPage = lazy(() => import('./features/sales/SalesPreviewPage'))
+
 /** Scrolls to `/#section` targets on the landing page; must render inside the router. */
 function ScrollToHash() {
   useScrollToHash()
@@ -76,6 +86,70 @@ function ScrollToHash() {
 function AuthRedirectErrorHandler() {
   useAuthRedirectError()
   return null
+}
+
+/**
+ * Password-reset links land on the reset page even when Supabase falls back to
+ * the site URL (the reset page isn't in its redirect allow-list yet), so a
+ * reset never quietly signs someone in without asking for a new password.
+ */
+let recoveryRedirectHandled = false
+function PasswordRecoveryRedirect() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const goToReset = () => {
+      recoveryRedirectHandled = true
+      if (window.location.pathname !== RESET_PASSWORD_PATH) {
+        void navigate(RESET_PASSWORD_PATH, { replace: true })
+      }
+    }
+    if (openedFromRecoveryLink && !recoveryRedirectHandled) goToReset()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') goToReset()
+    })
+    return () => subscription.unsubscribe()
+  }, [navigate])
+
+  return null
+}
+
+function SessionSpinner() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <output
+        aria-label="Loading your account"
+        className="block h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"
+      />
+    </div>
+  )
+}
+
+/**
+ * The home page for visitors; signed-in people go to their dashboard. Only
+ * someone with a saved session waits (briefly) while it's restored.
+ */
+function HomeRoute({ user, loading }: { user: User | null; loading: boolean }) {
+  if (user) {
+    const role: unknown = user.user_metadata?.role
+    return <Navigate to={`/${isAppRole(role) ? role : 'student'}`} replace />
+  }
+  if (loading) return <SessionSpinner />
+  return <HomePage />
+}
+
+/** Renders `children` once a saved session (if any) has been restored. */
+function AfterSessionCheck({
+  loading,
+  children,
+}: {
+  loading: boolean
+  children: ReactNode
+}) {
+  return loading ? <SessionSpinner /> : children
 }
 
 /**
@@ -111,65 +185,21 @@ import MyHomework from './features/assessments/assignment/MyHomework'
 import StudentAssignments from './features/assessments/assignment/StudentAssignments'
 
 function DashboardApp() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Public pages render immediately; only routes that need the user wait for
+  // the saved session, and only when there is one.
+  const { user, loading } = useAuthUser()
   const allRoles: readonly AppRole[] = APP_ROLES
-
-  useEffect(() => {
-    const getInitialSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
-      } catch (error) {
-        console.error('Session identity authentication link failed:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void getInitialSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center bg-gray-900 font-sans text-white">
-        <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-        <p className="text-xs font-bold tracking-widest text-gray-400 uppercase">
-          Initializing Session
-        </p>
-      </div>
-    )
-  }
 
   return (
     <BrowserRouter>
       <AuthRedirectErrorHandler />
+      <PasswordRecoveryRedirect />
       <ScrollToHash />
       <Routes>
         <Route element={<SiteLayout />}>
           <Route
             path="/"
-            element={
-              user ? (
-                <Navigate
-                  to={`/${isAppRole(user.user_metadata?.role) ? user.user_metadata.role : 'student'}`}
-                  replace
-                />
-              ) : (
-                <HomePage />
-              )
-            }
+            element={<HomeRoute user={user} loading={loading} />}
           />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/faculty" element={<FacultyPage />} />
@@ -238,17 +268,37 @@ function DashboardApp() {
         <Route path="/book" element={<LandingPage />} />
         <Route path="/book-class" element={<BookClassRedirect />} />
         <Route path="/login" element={<Login />} />
+        <Route path={RESET_PASSWORD_PATH} element={<ResetPasswordPage />} />
+        {/* Public preview of the sales (marketer) dashboard. It only ever
+            shows made-up demo data, so it needs no sign-in; it's noindex and
+            disallowed in robots.txt. */}
+        <Route
+          path="/preview/sales"
+          element={
+            <Suspense fallback={<SessionSpinner />}>
+              <SalesPreviewPage />
+            </Suspense>
+          }
+        />
         <Route path="/landing" element={<LandingOrDashboard />} />
         <Route
           path="/assign-homework"
-          element={<StudentAssignments user={user} />}
+          element={
+            <AfterSessionCheck loading={loading}>
+              <StudentAssignments user={user} />
+            </AfterSessionCheck>
+          }
         />
         {/* Public Routes */}
         <Route path="/results/:slug" element={<StudentDashboard />} />
         <Route path="/:role" element={<RoleDashboardRoute />} />
         <Route
           path="/receive-homework"
-          element={<MyHomework studentId={user?.id} />}
+          element={
+            <AfterSessionCheck loading={loading}>
+              <MyHomework studentId={user?.id} />
+            </AfterSessionCheck>
+          }
         />
         <Route path="/users" element={<UserManagement />} />
         <Route
