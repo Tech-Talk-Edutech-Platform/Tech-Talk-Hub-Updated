@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
+  Ban,
   Check,
   CheckCheck,
   Clock3,
@@ -41,6 +42,11 @@ const STATUS_TICK: Record<
     icon: AlertTriangle,
     className: 'font-bold text-rose-600',
   },
+  cancelled: {
+    label: 'Not sent · booking removed',
+    icon: Ban,
+    className: 'text-slate-400',
+  },
 }
 
 function StatusTick({ status }: { status: WhatsAppStatus }) {
@@ -74,7 +80,8 @@ export function WhatsAppFeed({ repId }: { repId: string | null }) {
       repId === null
         ? null
         : new Set(
-            data.bookings
+            // Removed bookings too, so their stopped messages still show.
+            [...data.bookings, ...data.removedBookings]
               .filter((booking) => booking.salesRepId === repId)
               .map((booking) => booking.id),
           )
@@ -84,7 +91,7 @@ export function WhatsAppFeed({ repId }: { repId: string | null }) {
           (message.bookingId !== null && bookingIds.has(message.bookingId))) &&
         (!showReplies || message.direction === 'inbound'),
     )
-  }, [data.messages, data.bookings, repId, showReplies])
+  }, [data.messages, data.bookings, data.removedBookings, repId, showReplies])
 
   const stats = useMemo(() => {
     const weekAgo = now - 7 * 86_400_000

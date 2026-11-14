@@ -51,6 +51,14 @@ export function whatsappMessage(
 }
 
 /**
+ * Sent by hand when a booking the parent was already told about is removed
+ * (booked by mistake, duplicate, wrong time).
+ */
+export function correctionMessage(booking: TrialBooking) {
+  return `Hi ${firstName(booking.parentName)}, apologies: the free trial for ${firstName(booking.studentName)} on ${trialTime(booking.start)} was booked by mistake and has been removed. Please ignore that confirmation. We'll be in touch shortly to agree the right time 🙏`
+}
+
+/**
  * The first message to a parent, sent by hand from the rep's WhatsApp. It
  * asks for what the booking needs: the child's name, grade and interests.
  */

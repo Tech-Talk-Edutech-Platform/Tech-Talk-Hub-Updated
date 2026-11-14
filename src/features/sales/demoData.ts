@@ -101,6 +101,22 @@ const STUDENTS = [
   'Tevin',
   'Nia',
   'Kofi',
+  'Wambui',
+  'Daniel',
+  'Pendo',
+  'Tumaini',
+  'Grace',
+  'Jabari',
+  'Sifa',
+  'Joel',
+  'Halima',
+  'Zuri',
+  'Ivy',
+  'Mark',
+  'Achieng',
+  'Victor',
+  'Lulu',
+  'Felix',
 ]
 
 /** Parents the team hasn't booked a trial for yet. */
@@ -183,6 +199,16 @@ export function buildDemoData(now = new Date()): SalesDemoData {
   const nextId = (prefix: string) => `${prefix}-${(counter += 1)}`
   const phone = () =>
     `+2547${String(10_000_000 + Math.floor(random() * 89_999_999)).slice(0, 8)}`
+  // Each booking is a different child, so a name never shows up twice.
+  const usedStudents = new Set<string>()
+  const studentName = (surname: string) => {
+    let name = `${pick(STUDENTS)} ${surname}`
+    for (let tries = 0; usedStudents.has(name) && tries < 20; tries += 1) {
+      name = `${pick(STUDENTS)} ${surname}`
+    }
+    usedStudents.add(name)
+    return name
+  }
 
   // Six weeks back fills the weekly sales chart; two weeks ahead fills calendars.
   for (let dayOffset = -42; dayOffset <= 14; dayOffset += 1) {
@@ -251,7 +277,7 @@ export function buildDemoData(now = new Date()): SalesDemoData {
           parentName,
           parentPhone: phone(),
           parentEmail: emailFor(parentName),
-          studentName: `${pick(STUDENTS)} ${parentName.split(' ')[1]}`,
+          studentName: studentName(parentName.split(' ')[1]),
           studentGrade: pick(grades),
           start: slot.start,
           end: slot.end,
@@ -259,6 +285,7 @@ export function buildDemoData(now = new Date()): SalesDemoData {
           status,
           source,
           notes: '',
+          removal: null,
           // Booked one to five days ahead, and never later than now.
           createdAt: new Date(
             Math.min(

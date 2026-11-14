@@ -11,6 +11,7 @@ import {
   GraduationCap,
   MessageCircle,
   Search,
+  Undo2,
   UserPlus,
   UserRound,
 } from 'lucide-react'
@@ -18,6 +19,7 @@ import { toast } from 'react-hot-toast'
 
 import { useNow } from '../../hooks/useNow'
 import { AddParentForm } from './AddParentForm'
+import { parentAlreadyMessaged } from './bookings'
 import {
   categoryForGrade,
   GRADE_CATEGORIES,
@@ -193,8 +195,41 @@ export function BookTrialWizard({
     }
   }
 
+  // Booked by mistake: take it straight back off the calendar (a soft delete,
+  // kept under "Removed") and return to the times, keeping parent and child.
+  const undo = (booking: TrialBooking) => {
+    const messaged = parentAlreadyMessaged(booking, data.messages)
+    try {
+      data.removeBooking(booking.id, {
+        reason: 'mistake',
+        note: 'Undone straight after booking.',
+        byRepId: salesRepId,
+      })
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Couldn’t undo the booking.',
+      )
+      return
+    }
+    setBooked(null)
+    setSlotId(null)
+    setStep(2)
+    toast(
+      messaged
+        ? 'Booking undone. The parent already had the confirmation, so let them know on WhatsApp.'
+        : 'Booking undone. The time is free again and the WhatsApp confirmation won’t be sent.',
+      { duration: 6000 },
+    )
+  }
+
   if (booked) {
-    return <BookingConfirmation booking={booked} onBookAnother={reset} />
+    return (
+      <BookingConfirmation
+        booking={booked}
+        onBookAnother={reset}
+        onUndo={() => undo(booked)}
+      />
+    )
   }
 
   return (
@@ -781,9 +816,11 @@ function MentorChoice({
 function BookingConfirmation({
   booking,
   onBookAnother,
+  onUndo,
 }: {
   booking: TrialBooking
   onBookAnother: () => void
+  onUndo: () => void
 }) {
   const data = useSalesData()
   const mentor = data.mentors.find((m) => m.id === booking.mentorId)
@@ -847,6 +884,18 @@ function BookingConfirmation({
         >
           Book another trial
         </button>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 dark:border-white/10">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Wrong time, mentor or parent?
+          </p>
+          <button
+            type="button"
+            onClick={onUndo}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-extrabold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+          >
+            <Undo2 size={14} aria-hidden /> Undo this booking
+          </button>
+        </div>
       </Panel>
 
       <Panel title="WhatsApp confirmation" icon={MessageCircle}>

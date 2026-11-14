@@ -51,7 +51,9 @@ create table public.mentor_grade_categories (
 -- the classroom and reminders keep working unchanged.
 create table public.trial_bookings (
   id uuid primary key default gen_random_uuid(),
-  calendar_event_id uuid not null unique
+  -- One live booking per slot (see trial_bookings_live_slot below); removed and
+  -- cancelled bookings keep their slot id for the record.
+  calendar_event_id uuid not null
     references public.calendar_events(id) on delete restrict,
   lead_id uuid references public.leads(id) on delete set null,
   mentor_id uuid not null references public.users(id),
@@ -68,12 +70,23 @@ create table public.trial_bookings (
   status text not null default 'scheduled'
     check (status in ('scheduled', 'attended', 'no_show', 'converted', 'lost', 'cancelled')),
   notes text,
+  -- Soft delete. A booking made in error (wrong time, mentor or parent, or a
+  -- duplicate) is removed rather than deleted, so it can be restored and
+  -- admins can see who removed what and why. See remove_trial_booking().
+  removed_at timestamptz,
+  removed_by uuid references public.users(id),
+  removal_reason text
+    check (removal_reason in ('mistake', 'duplicate', 'wrong_details', 'other')),
+  removal_note text,
   -- Set when the booking is copied to Privyr, so it's never copied twice.
   privyr_lead_id text unique,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+create unique index trial_bookings_live_slot
+  on public.trial_bookings (calendar_event_id)
+  where removed_at is null and status <> 'cancelled';
 create index trial_bookings_marketer_idx on public.trial_bookings (marketer_id, created_at desc);
 create index trial_bookings_mentor_idx on public.trial_bookings (mentor_id);
 
@@ -110,7 +123,8 @@ create table public.whatsapp_messages (
   template text check (template in ('trial_confirmation', 'trial_reminder', 'trial_follow_up')),
   body text not null,
   status text not null default 'queued'
-    check (status in ('queued', 'sent', 'delivered', 'read', 'failed', 'received')),
+    -- 'cancelled': was queued, but its booking was removed before it went out.
+    check (status in ('queued', 'sent', 'delivered', 'read', 'failed', 'received', 'cancelled')),
   provider_message_id text unique,
   error text,
   scheduled_for timestamptz not null default now(),
@@ -281,7 +295,7 @@ begin
   end if;
   if exists (
     select 1 from public.trial_bookings
-    where lead_id = p_lead_id and status = 'scheduled'
+    where lead_id = p_lead_id and status = 'scheduled' and removed_at is null
   ) then
     raise exception 'This parent already has a trial booked.';
   end if;
@@ -357,3 +371,176 @@ end;
 $$;
 
 grant execute on function public.book_trial(uuid, uuid, text, text, text, text) to authenticated;
+
+
+-- PART 5 ── removing a booking made in error (soft delete) ------------------
+
+-- Takes the trial off the mentor's calendar (the event is a Free Slot again),
+-- stops WhatsApp messages that haven't gone out, puts the lead back to
+-- 'Contacted' and marks the booking removed. Nothing is deleted.
+create or replace function public.remove_trial_booking(
+  p_booking_id uuid,
+  p_reason text,
+  p_note text default null
+)
+returns public.trial_bookings
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_booking public.trial_bookings;
+begin
+  select * into v_booking from public.trial_bookings
+  where id = p_booking_id
+  for update;
+
+  if v_booking.id is null then
+    raise exception 'That booking was not found.';
+  end if;
+  if not (
+    public.classroom_is_admin()
+    or (public.is_marketer()
+        and (v_booking.marketer_id = auth.uid() or v_booking.marketer_id is null))
+  ) then
+    raise exception 'You can only remove your own bookings.';
+  end if;
+  if v_booking.removed_at is not null then
+    raise exception 'This booking was already removed.';
+  end if;
+  if v_booking.status <> 'scheduled' then
+    raise exception 'This trial already has an outcome. Change the outcome instead.';
+  end if;
+  if p_reason is null or p_reason not in ('mistake', 'duplicate', 'wrong_details', 'other') then
+    raise exception 'Choose why the booking is being removed.';
+  end if;
+
+  update public.calendar_events
+  set title = 'Free Slot',
+      class_type = null,
+      booking_status = default,
+      session_status = default,
+      notes = null
+  where id = v_booking.calendar_event_id;
+
+  update public.whatsapp_messages
+  set status = 'cancelled'
+  where trial_booking_id = v_booking.id and status = 'queued';
+
+  update public.leads
+  set status = 'Contacted',
+      class_date = null,
+      class_time = null,
+      assigned_tutor_id = null
+  where id = v_booking.lead_id
+    and not exists (
+      select 1 from public.trial_bookings b
+      where b.lead_id = v_booking.lead_id
+        and b.id <> v_booking.id
+        and b.removed_at is null
+        and b.status = 'scheduled'
+    );
+
+  update public.trial_bookings
+  set removed_at = now(),
+      removed_by = auth.uid(),
+      removal_reason = p_reason,
+      removal_note = nullif(trim(p_note), ''),
+      updated_at = now()
+  where id = v_booking.id
+  returning * into v_booking;
+
+  return v_booking;
+end;
+$$;
+
+grant execute on function public.remove_trial_booking(uuid, text, text) to authenticated;
+
+-- Puts a removed booking back, if its slot is still free and in the future and
+-- the parent hasn't been booked into another trial since.
+create or replace function public.restore_trial_booking(p_booking_id uuid)
+returns public.trial_bookings
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_booking public.trial_bookings;
+  v_slot public.calendar_events;
+  v_meet_link text;
+begin
+  select * into v_booking from public.trial_bookings
+  where id = p_booking_id
+  for update;
+
+  if v_booking.id is null then
+    raise exception 'That booking was not found.';
+  end if;
+  if not (
+    public.classroom_is_admin()
+    or (public.is_marketer()
+        and (v_booking.marketer_id = auth.uid() or v_booking.marketer_id is null))
+  ) then
+    raise exception 'You can only restore your own bookings.';
+  end if;
+  if v_booking.removed_at is null then
+    raise exception 'This booking isn''t removed.';
+  end if;
+
+  select * into v_slot from public.calendar_events
+  where id = v_booking.calendar_event_id
+  for update;
+
+  if v_slot.id is null or v_slot.title <> 'Free Slot' or v_slot.class_id is not null then
+    raise exception 'Someone else has been booked into this time since.';
+  end if;
+  if v_slot.start_time <= now() then
+    raise exception 'The trial time has passed. Book a new trial instead.';
+  end if;
+  if exists (
+    select 1 from public.trial_bookings
+    where lead_id = v_booking.lead_id
+      and id <> v_booking.id
+      and removed_at is null
+      and status = 'scheduled'
+  ) then
+    raise exception 'This parent has another trial booked since.';
+  end if;
+
+  select personal_meet_link into v_meet_link
+  from public.users where id = v_slot.tutor_id;
+
+  update public.calendar_events
+  set title = 'Trial: ' || v_booking.student_name,
+      class_type = 'trial',
+      booking_status = 'confirmed',
+      session_status = 'scheduled',
+      meet_link = coalesce(v_meet_link, meet_link),
+      notes = v_booking.notes
+  where id = v_slot.id;
+
+  update public.leads
+  set status = 'Trial Scheduled',
+      class_date = (v_slot.start_time at time zone 'Africa/Nairobi')::date,
+      class_time = (v_slot.start_time at time zone 'Africa/Nairobi')::time,
+      assigned_tutor_id = v_slot.tutor_id
+  where id = v_booking.lead_id;
+
+  update public.whatsapp_messages
+  set status = 'queued'
+  where trial_booking_id = v_booking.id and status = 'cancelled';
+
+  update public.trial_bookings
+  set removed_at = null,
+      removed_by = null,
+      removal_reason = null,
+      removal_note = null,
+      updated_at = now()
+  where id = v_booking.id
+  returning * into v_booking;
+
+  return v_booking;
+end;
+$$;
+
+grant execute on function public.restore_trial_booking(uuid) to authenticated;

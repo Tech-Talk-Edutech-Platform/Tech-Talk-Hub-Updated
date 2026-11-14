@@ -91,6 +91,35 @@ export type NewLead = {
 export type TrialStatus =
   'scheduled' | 'attended' | 'no_show' | 'converted' | 'lost' | 'cancelled'
 
+export const REMOVAL_REASONS = [
+  'mistake',
+  'duplicate',
+  'wrong_details',
+  'other',
+] as const
+
+/** Why a booking was removed. Removing is for errors, not cancellations. */
+export type RemovalReason = (typeof REMOVAL_REASONS)[number]
+
+export const REMOVAL_REASON_LABEL: Record<RemovalReason, string> = {
+  mistake: 'Booked by mistake',
+  duplicate: 'Duplicate booking',
+  wrong_details: 'Wrong parent, child or time',
+  other: 'Something else',
+}
+
+/**
+ * A soft delete: the booking is kept (and can be restored) but left out of
+ * calendars, lists and the numbers.
+ */
+export type BookingRemoval = {
+  at: string
+  /** The rep who removed it; null for an admin. */
+  byRepId: string | null
+  reason: RemovalReason
+  note: string
+}
+
 export type TrialBooking = {
   id: string
   slotId: string
@@ -112,6 +141,8 @@ export type TrialBooking = {
   source: BookingSource
   notes: string
   createdAt: string
+  /** Set when the booking was removed (soft-deleted). */
+  removal: BookingRemoval | null
 }
 
 export type Sale = {
@@ -128,7 +159,9 @@ export type Sale = {
 export type WhatsAppTemplate =
   'trial_confirmation' | 'trial_reminder' | 'trial_follow_up'
 
-export type WhatsAppStatus = 'queued' | 'sent' | 'delivered' | 'read' | 'failed'
+/** 'cancelled': a queued message that won't go out because its booking was removed. */
+export type WhatsAppStatus =
+  'queued' | 'sent' | 'delivered' | 'read' | 'failed' | 'cancelled'
 
 export type WhatsAppMessage = {
   id: string

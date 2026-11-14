@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 
 import type { SalesDemoData } from './demoData'
 import type {
+  BookingRemoval,
   Lead,
   LeadStatus,
   NewLead,
@@ -17,6 +18,18 @@ import type {
  */
 export type SalesData = SalesDemoData & {
   isDemo: boolean
+  /**
+   * Removed (soft-deleted) bookings. `bookings` leaves them out, so calendars,
+   * lists and the numbers ignore them.
+   */
+  removedBookings: TrialBooking[]
+  /** Soft-deletes a booking made in error; throws if it can't be removed. */
+  removeBooking: (
+    bookingId: string,
+    removal: Omit<BookingRemoval, 'at'>,
+  ) => void
+  /** Puts a removed booking back; throws if its time is gone. */
+  restoreBooking: (bookingId: string) => void
   /** Saves a parent to reach out to. */
   addLead: (input: NewLead) => Lead
   /** Records a call or message, or that the parent isn't interested. */
