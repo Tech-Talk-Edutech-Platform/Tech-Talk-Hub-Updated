@@ -164,7 +164,7 @@ export default function Login() {
             Portal Login
           </h1>
           <p className="mt-2 text-xs font-bold tracking-[0.2em] text-slate-400 uppercase">
-            African Tech Talk
+            Tech Talk
           </p>
         </div>
 
