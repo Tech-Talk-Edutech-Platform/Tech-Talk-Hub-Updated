@@ -63,7 +63,7 @@ function getTokenResponse(value: unknown): TokenResponse | null {
 }
 
 const UNREACHABLE =
-  'The live video server isn’t reachable. Start the API server (npm --prefix server run dev) or set VITE_API_BASE_URL.'
+  'The live video server isn’t reachable. Start the API server (npm --prefix server run dev) or set VITE_BACKEND_SERVER_URL.'
 
 /** The signed-in user's Supabase token, so the server can tell tutors from guests. */
 async function authHeader(): Promise<Record<string, string>> {

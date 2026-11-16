@@ -6,6 +6,11 @@
 
 export type HttpMethod = 'get' | 'post'
 
+/** Browser-tab icon for the API's HTML pages: "TT" on the brand blue. */
+export const FAVICON_LINK = `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#3f51b5"/><text x="16" y="21" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">TT</text></svg>',
+)}">`
+
 export type ApiOperation = {
   operationId: string
   tags: [string]
@@ -431,6 +436,7 @@ export const openApiDocument: OpenApiDocument = {
             type: 'string',
             format: 'uri',
             description: 'Tutors only. Must be https.',
+            example: 'https://meet.google.com/abc-defg-hij',
           },
           subscriptionTier: {
             type: 'string',
@@ -443,12 +449,14 @@ export const openApiDocument: OpenApiDocument = {
             minimum: 0,
             maximum: 1000,
             description: 'Students only.',
+            example: 8,
           },
           classesRemaining: {
             type: 'integer',
             minimum: 0,
             maximum: 1000,
             description: 'Students only.',
+            example: 8,
           },
         },
       },

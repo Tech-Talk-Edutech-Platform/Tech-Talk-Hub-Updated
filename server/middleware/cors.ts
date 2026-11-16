@@ -15,7 +15,11 @@ export function allowOrigins(origins: string[]) {
       res.setHeader('Access-Control-Allow-Origin', origin)
       res.setHeader('Vary', 'Origin')
       res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      // Authorization carries the Supabase session token (admin, classroom).
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization',
+      )
     }
 
     if (req.method === 'OPTIONS') {

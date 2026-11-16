@@ -1,5 +1,5 @@
 import express, { type Response } from 'express'
-import { apiOperations, openApiDocument } from '../docs/openapi'
+import { apiOperations, FAVICON_LINK, openApiDocument } from '../docs/openapi'
 
 /**
  * GET /: a small status page for people who open the API's URL in a browser.
@@ -97,6 +97,7 @@ function renderHome(): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Tech Talk Hub API</title>
+${FAVICON_LINK}
 <style>
   :root {
     color-scheme: light dark;

@@ -52,6 +52,18 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
+**API server URL**, set per mode in `.env.development` and `.env.production`:
+
+```
+# .env.development: Vite proxies /api here
+VITE_BACKEND_SERVER_URL=http://localhost:5000
+# .env.production: the browser calls this origin directly
+VITE_BACKEND_SERVER_URL=https://tech-talk-hub-updated-server.vercel.app
+```
+
+These files are git-ignored, so set `VITE_BACKEND_SERVER_URL` in the frontend's
+Vercel project too. The server must then list the site in `CORS_ORIGINS`.
+
 ### Live classroom calls
 
 The classroom uses LiveKit for cross-device audio, video, screen sharing,
@@ -68,8 +80,9 @@ LIVEKIT_API_SECRET=
 Keep the API secret on the Express server; never add it to a `VITE_` variable.
 The server issues short-lived room tokens and creates rooms with a 25-person
 limit, including the host. In development, run the frontend and Express server as described above;
-Vite proxies `/api` requests to port 5000. In production, route `/api` to the
-Express service and serve the frontend over HTTPS. Without LiveKit configured,
+Vite proxies `/api` requests to `VITE_BACKEND_SERVER_URL` (port 5000). In
+production, point `VITE_BACKEND_SERVER_URL` at the Express service and serve the
+frontend over HTTPS. Without LiveKit configured,
 the classroom clearly reports that live calls are unavailable and retains its
 same-browser tab fallback; it cannot stream to other devices in that mode.
 

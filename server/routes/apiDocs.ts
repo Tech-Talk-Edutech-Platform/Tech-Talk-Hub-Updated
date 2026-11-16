@@ -1,5 +1,5 @@
 import express, { type Response } from 'express'
-import { openApiDocument } from '../docs/openapi'
+import { FAVICON_LINK, openApiDocument } from '../docs/openapi'
 
 /**
  * GET /docs: interactive API docs (Swagger UI) for docs/openapi.ts.
@@ -20,6 +20,7 @@ const docsPage = `<!doctype html>
 <meta name="color-scheme" content="light">
 <meta name="robots" content="noindex">
 <title>API Docs · Tech Talk Hub</title>
+${FAVICON_LINK}
 <link rel="stylesheet" href="${SWAGGER_UI}/swagger-ui.css">
 <style>
   body { margin: 0; background: #fff; }
