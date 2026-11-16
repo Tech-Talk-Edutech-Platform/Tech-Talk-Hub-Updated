@@ -1,17 +1,19 @@
 import { Link } from 'react-router-dom'
 import { ExternalLink, TrendingUp } from 'lucide-react'
 
-import { DEMO_SALES_REPS } from './demoData'
-import { DemoSalesDataProvider } from './DemoSalesDataProvider'
 import type { SalesView } from './navigation'
 import { SalesAdminOverview } from './SalesAdminOverview'
 import { SalesRepDashboard } from './SalesRepDashboard'
-import { DemoBanner } from './ui'
+import { useSalesData } from './salesDataContext'
+import {
+  DEFAULT_MONTHLY_TARGET,
+  SupabaseSalesDataProvider,
+} from './SupabaseSalesDataProvider'
 
-/** "Sales & Trials" in the admin dashboard. */
+/** "Sales & Trials" in the admin dashboard, on real data. */
 export function AdminSalesView() {
   return (
-    <DemoSalesDataProvider>
+    <SupabaseSalesDataProvider>
       <div className="mx-auto max-w-7xl space-y-5 p-4 md:p-8">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -28,51 +30,61 @@ export function AdminSalesView() {
             target="_blank"
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
           >
-            See it as a sales rep or mentor{' '}
-            <ExternalLink size={14} aria-hidden />
+            Try it on demo data <ExternalLink size={14} aria-hidden />
           </Link>
         </header>
-        <DemoBanner />
         <SalesAdminOverview />
       </div>
-    </DemoSalesDataProvider>
+    </SupabaseSalesDataProvider>
   )
 }
 
-/**
- * The dashboard for the `marketer` role (the sales team). It shows demo
- * data until the sales
- * tables exist; then a Supabase-backed provider replaces the demo one.
- */
+/** The dashboard for the `marketer` role (the sales team), on real data. */
 export function SalesPortalView({
+  userId,
   name,
   view,
   onNavigate,
 }: {
+  /** The signed-in rep. */
+  userId: string
   name: string
   /** The page picked in the dashboard sidebar. */
   view: SalesView
   onNavigate: (view: SalesView) => void
 }) {
-  const demoRep = DEMO_SALES_REPS[0]
-  if (!demoRep) return null
-  // The signed-in marketer stands in for the first demo rep.
-  const rep = { ...demoRep, name: name.trim() || demoRep.name }
   return (
-    <DemoSalesDataProvider>
+    <SupabaseSalesDataProvider>
       <div className="mx-auto max-w-7xl p-4 md:p-8">
-        <SalesRepDashboard
-          rep={rep}
+        <SignedInRep
+          userId={userId}
+          name={name}
           view={view}
           onNavigate={onNavigate}
-          banner={
-            <DemoBanner>
-              Your real parents, bookings and sales appear here once the sales
-              tables are live. Until then this shows example data.
-            </DemoBanner>
-          }
         />
       </div>
-    </DemoSalesDataProvider>
+    </SupabaseSalesDataProvider>
   )
+}
+
+function SignedInRep({
+  userId,
+  name,
+  view,
+  onNavigate,
+}: {
+  userId: string
+  name: string
+  view: SalesView
+  onNavigate: (view: SalesView) => void
+}) {
+  const data = useSalesData()
+  // Their own row carries this month's target; a rep whose account was just
+  // switched off still sees their work.
+  const rep = data.reps.find((candidate) => candidate.id === userId) ?? {
+    id: userId,
+    name: name.trim() || 'Sales rep',
+    monthlyTarget: DEFAULT_MONTHLY_TARGET,
+  }
+  return <SalesRepDashboard rep={rep} view={view} onNavigate={onNavigate} />
 }

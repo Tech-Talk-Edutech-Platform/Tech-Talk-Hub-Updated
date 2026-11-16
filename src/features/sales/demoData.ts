@@ -7,7 +7,9 @@ import type {
   LeadStatus,
   Mentor,
   Sale,
+  SalesPlan,
   SalesRep,
+  SalesSnapshot,
   TrialBooking,
   TrialSlot,
   TrialStatus,
@@ -15,9 +17,9 @@ import type {
 } from './types'
 
 /**
- * Made-up people, slots and sales for previewing the sales dashboard before
- * the marketer role and booking tables exist. Generated around today's date so
- * the preview always looks current; the same day always gives the same data.
+ * Made-up people, slots and sales for the public preview (/preview/sales).
+ * Generated around today's date so the preview always looks current; the same
+ * day always gives the same data.
  */
 
 export const DEMO_MENTORS: readonly Mentor[] = [
@@ -59,11 +61,11 @@ export const DEMO_SALES_REPS: readonly SalesRep[] = [
   { id: 'rep-3', name: 'Grace Njeri', monthlyTarget: 10 },
 ]
 
-export const DEMO_PLANS = [
+export const DEMO_PLANS: readonly SalesPlan[] = [
   { name: 'Monthly plan · 8 classes', amount: 12_000 },
   { name: 'Term plan · 24 classes', amount: 32_000 },
   { name: 'Annual plan · 96 classes', amount: 115_000 },
-] as const
+]
 
 const PARENTS = [
   'Wanjiku Mwangi',
@@ -167,15 +169,7 @@ function seededRandom(seed: number) {
   }
 }
 
-export type SalesDemoData = {
-  mentors: Mentor[]
-  reps: SalesRep[]
-  slots: TrialSlot[]
-  leads: Lead[]
-  bookings: TrialBooking[]
-  sales: Sale[]
-  messages: WhatsAppMessage[]
-}
+export type SalesDemoData = SalesSnapshot
 
 const emailFor = (name: string) =>
   `${name.split(' ')[0].toLowerCase()}@example.com`

@@ -26,7 +26,7 @@ import {
   gradeRange,
 } from './gradeCategories'
 import { formatPhone } from './phone'
-import { useSalesData } from './salesDataContext'
+import { problemText, useSalesData } from './salesDataContext'
 import {
   addDays,
   SHIFTS,
@@ -206,18 +206,16 @@ export function BookTrialWizard({
 
   // Booked by mistake: take it straight back off the calendar (a soft delete,
   // kept under "Removed") and return to the same shift, keeping the details.
-  const undo = (booking: TrialBooking) => {
+  const undo = async (booking: TrialBooking) => {
     const messaged = parentAlreadyMessaged(booking, data.messages)
     try {
-      data.removeBooking(booking.id, {
+      await data.removeBooking(booking.id, {
         reason: 'mistake',
         note: 'Undone straight after booking.',
         byRepId: salesRepId,
       })
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Couldn’t undo the booking.',
-      )
+      toast.error(problemText(error, 'Couldn’t undo the booking.'))
       return
     }
     setBooked(null)
@@ -265,7 +263,7 @@ export function BookTrialWizard({
               booking={booked}
               headingRef={headingRef}
               onBookAnother={reset}
-              onUndo={() => undo(booked)}
+              onUndo={() => void undo(booked)}
             />
           ) : shift ? (
             <TutorStage

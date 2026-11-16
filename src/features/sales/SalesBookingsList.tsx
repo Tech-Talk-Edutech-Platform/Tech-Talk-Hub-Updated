@@ -10,14 +10,13 @@ import { toast } from 'react-hot-toast'
 
 import { formatMoney } from '../../lib/money'
 import { restoreProblem } from './bookings'
-import { DEMO_PLANS } from './demoData'
 import { gradeCategory, gradeLabel } from './gradeCategories'
 import { RemoveBookingDialog } from './RemoveBookingDialog'
-import { useSalesData } from './salesDataContext'
-import type { TrialBooking, TrialStatus } from './types'
+import { problemText, useSalesData } from './salesDataContext'
+import type { SalesPlan, SalesRep, TrialBooking, TrialOutcome } from './types'
 import { REMOVAL_REASON_LABEL, SOURCE_LABEL, TRIAL_STATUS_LABEL } from './types'
 import { EmptyState, Panel, StatusBadge } from './ui'
-import { inlineSelectClass, selectClass } from './styles'
+import { inlineSelectClass, inputClass, selectClass } from './styles'
 import { trialTime, whatsappLink, whatsappMessage } from './whatsapp'
 
 type Filter = 'upcoming' | 'needs-update' | 'all' | 'removed'
@@ -32,7 +31,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 const removedAt = (booking: TrialBooking) =>
   new Date(booking.removal?.at ?? 0).getTime()
 
-const OUTCOMES: TrialStatus[] = ['attended', 'no_show', 'lost', 'cancelled']
+const OUTCOMES: TrialOutcome[] = ['attended', 'no_show', 'lost', 'cancelled']
 
 /**
  * Trial bookings with what happened next. `repId` limits it to one sales rep;
@@ -43,10 +42,14 @@ export function SalesBookingsList({
   creditRepId,
 }: {
   repId: string | null
-  /** Who a sale recorded from this list is credited to (the viewer). */
+  /**
+   * The viewer when they're a sales rep: sales they record are theirs (or the
+   * parent's rep's). Null for an admin, who picks who gets the credit.
+   */
   creditRepId: string | null
 }) {
   const data = useSalesData()
+  const [busyId, setBusyId] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('upcoming')
   const [mentorFilter, setMentorFilter] = useState('')
   const [openSale, setOpenSale] = useState<string | null>(null)
@@ -85,6 +88,23 @@ export function SalesBookingsList({
     data.mentors.find((mentor) => mentor.id === id)?.name ?? '—'
   const repName = (id: string | null) =>
     id ? (data.reps.find((rep) => rep.id === id)?.name ?? '—') : 'Website'
+
+  /** Saves a trial's outcome; one booking at a time. */
+  const saveOutcome = async (
+    booking: TrialBooking,
+    status: TrialOutcome,
+    done: string,
+  ) => {
+    setBusyId(booking.id)
+    try {
+      await data.setTrialStatus(booking.id, status)
+      toast.success(done)
+    } catch (error) {
+      toast.error(problemText(error, 'Couldn’t save the outcome.'))
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   return (
     <Panel
@@ -197,13 +217,15 @@ export function SalesBookingsList({
                           <select
                             aria-label={`Outcome for ${booking.studentName}`}
                             value=""
+                            disabled={busyId === booking.id}
                             onChange={(event) => {
                               const next = OUTCOMES.find(
                                 (status) => status === event.target.value,
                               )
                               if (next) {
-                                data.setTrialStatus(booking.id, next)
-                                toast.success(
+                                void saveOutcome(
+                                  booking,
+                                  next,
                                   `Marked ${TRIAL_STATUS_LABEL[next].toLowerCase()}.`,
                                 )
                               }
@@ -235,13 +257,15 @@ export function SalesBookingsList({
                     {!past && booking.status === 'scheduled' && (
                       <button
                         type="button"
-                        onClick={() => {
-                          data.setTrialStatus(booking.id, 'cancelled')
-                          toast.success(
+                        disabled={busyId === booking.id}
+                        onClick={() =>
+                          void saveOutcome(
+                            booking,
+                            'cancelled',
                             'Marked cancelled by the parent; the time is open again.',
                           )
-                        }}
-                        className="rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
+                        }
+                        className="rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-white/5"
                       >
                         Parent cancelled
                       </button>
@@ -259,12 +283,23 @@ export function SalesBookingsList({
                 </div>
                 {openSale === booking.id && (
                   <RecordSaleForm
+                    plans={data.plans}
+                    reps={data.reps}
+                    creditedTo={
+                      booking.salesRepId
+                        ? repName(booking.salesRepId)
+                        : creditRepId
+                          ? 'you'
+                          : null
+                    }
                     onCancel={() => setOpenSale(null)}
-                    onSave={(plan, amount) => {
-                      const credit =
-                        booking.salesRepId ?? creditRepId ?? data.reps[0]?.id
-                      if (!credit) return
-                      data.recordSale(booking.id, credit, plan, amount)
+                    onSave={async (plan, amount, credit) => {
+                      await data.recordSale(
+                        booking.id,
+                        plan,
+                        amount,
+                        booking.salesRepId ?? creditRepId ?? credit,
+                      )
                       setOpenSale(null)
                       toast.success(
                         `${booking.studentName} enrolled · ${formatMoney(amount)}`,
@@ -311,17 +346,18 @@ function RemovedRow({
   const remover = removal?.byRepId
     ? (data.reps.find((rep) => rep.id === removal.byRepId)?.name ?? 'a rep')
     : 'an admin'
+  const [restoring, setRestoring] = useState(false)
 
-  const restore = () => {
+  const restore = async () => {
+    setRestoring(true)
     try {
-      data.restoreBooking(booking.id)
+      await data.restoreBooking(booking.id)
       toast.success(
         `${booking.studentName}’s trial is back on ${mentorName}’s calendar.`,
       )
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Couldn’t restore it.',
-      )
+      toast.error(problemText(error, 'Couldn’t restore it.'))
+      setRestoring(false)
     }
   }
 
@@ -351,8 +387,8 @@ function RemovedRow({
       <div className="flex flex-col items-end gap-1">
         <button
           type="button"
-          onClick={restore}
-          disabled={problem !== null}
+          onClick={() => void restore()}
+          disabled={problem !== null || restoring}
           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
         >
           <RotateCcw size={13} aria-hidden /> Restore
@@ -367,45 +403,157 @@ function RemovedRow({
   )
 }
 
+const OTHER_PLAN = 'other'
+
+/**
+ * "Enrolled": the plan the family paid for. The amount starts at the plan's
+ * price and can be changed (discounts, part payments). An admin recording a
+ * family no rep worked with chooses who gets the credit, if anyone.
+ */
 function RecordSaleForm({
+  plans,
+  reps,
+  creditedTo,
   onSave,
   onCancel,
 }: {
-  onSave: (plan: string, amount: number) => void
+  plans: readonly SalesPlan[]
+  reps: readonly SalesRep[]
+  /** Who gets the credit; null lets the viewer (an admin) choose. */
+  creditedTo: string | null
+  onSave: (
+    plan: string,
+    amount: number,
+    creditRepId: string | null,
+  ) => Promise<void>
   onCancel: () => void
 }) {
-  const [planIndex, setPlanIndex] = useState(0)
-  const plan = DEMO_PLANS[planIndex] ?? DEMO_PLANS[0]
+  const [choice, setChoice] = useState(plans.length > 0 ? '0' : OTHER_PLAN)
+  const [otherPlan, setOtherPlan] = useState('')
+  const [amount, setAmount] = useState(() =>
+    plans[0] ? String(plans[0].amount) : '',
+  )
+  const [credit, setCredit] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  const choose = (value: string) => {
+    setChoice(value)
+    setProblem(null)
+    const plan = value === OTHER_PLAN ? undefined : plans[Number(value)]
+    if (plan) setAmount(String(plan.amount))
+  }
+
+  const save = async () => {
+    const plan =
+      choice === OTHER_PLAN
+        ? otherPlan.trim()
+        : (plans[Number(choice)]?.name ?? '')
+    const kes = Number(amount)
+    if (!plan) {
+      setProblem('Choose the plan they paid for.')
+      return
+    }
+    if (amount.trim() === '' || !Number.isFinite(kes) || kes < 0) {
+      setProblem('Enter the amount they paid, in KES.')
+      return
+    }
+    setSaving(true)
+    setProblem(null)
+    try {
+      await onSave(plan, Math.round(kes), credit || null)
+    } catch (error) {
+      setProblem(problemText(error, 'Couldn’t record the sale.'))
+      setSaving(false)
+    }
+  }
+
   return (
-    <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-emerald-50 p-3 dark:bg-emerald-500/10">
-      <label className="min-w-[220px] flex-1 text-xs font-bold text-emerald-900 dark:text-emerald-200">
-        Plan they paid for
-        <select
-          value={planIndex}
-          onChange={(event) => setPlanIndex(Number(event.target.value))}
-          className={`${selectClass} mt-1`}
+    <div className="mt-3 rounded-xl bg-emerald-50 p-3 dark:bg-emerald-500/10">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="min-w-[220px] flex-1 text-xs font-bold text-emerald-900 dark:text-emerald-200">
+          Plan they paid for
+          <select
+            value={choice}
+            onChange={(event) => choose(event.target.value)}
+            className={`${selectClass} mt-1`}
+          >
+            {plans.map((option, index) => (
+              <option key={option.name} value={String(index)}>
+                {option.name} · {formatMoney(option.amount)}
+              </option>
+            ))}
+            <option value={OTHER_PLAN}>Something else…</option>
+          </select>
+        </label>
+        {choice === OTHER_PLAN && (
+          <label className="min-w-[180px] flex-1 text-xs font-bold text-emerald-900 dark:text-emerald-200">
+            Plan name
+            <input
+              value={otherPlan}
+              onChange={(event) => setOtherPlan(event.target.value)}
+              placeholder="e.g. Holiday bootcamp"
+              className={`${inputClass} mt-1`}
+            />
+          </label>
+        )}
+        <label className="w-36 text-xs font-bold text-emerald-900 dark:text-emerald-200">
+          Amount paid (KES)
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            className={`${inputClass} mt-1 tabular-nums`}
+          />
+        </label>
+        {creditedTo === null && (
+          <label className="min-w-[180px] flex-1 text-xs font-bold text-emerald-900 dark:text-emerald-200">
+            Credit the sale to
+            <select
+              value={credit}
+              onChange={(event) => setCredit(event.target.value)}
+              className={`${selectClass} mt-1`}
+            >
+              <option value="">Nobody (came in on their own)</option>
+              {reps.map((rep) => (
+                <option key={rep.id} value={rep.id}>
+                  {rep.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      {creditedTo !== null && (
+        <p className="mt-2 text-xs text-emerald-900/80 dark:text-emerald-200/80">
+          Credited to {creditedTo}.
+        </p>
+      )}
+      {problem && (
+        <p role="alert" className="mt-2 text-xs font-semibold text-red-600">
+          {problem}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving}
+          className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60"
         >
-          {DEMO_PLANS.map((option, index) => (
-            <option key={option.name} value={index}>
-              {option.name} · {formatMoney(option.amount)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button
-        type="button"
-        onClick={() => onSave(plan.name, plan.amount)}
-        className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-700"
-      >
-        Record sale
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-white/60 dark:text-slate-300"
-      >
-        Cancel
-      </button>
+          {saving ? 'Saving…' : 'Record sale'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-white/60 dark:text-slate-300"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }

@@ -9,11 +9,16 @@ import {
   Link,
   ShieldCheck,
   UserPlus,
+  Copy,
+  Check,
+  KeyRound,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Constants } from '../../types/database'
-import type { Database, Tables } from '../../types/database'
+import type { Database, Tables, TablesUpdate } from '../../types/database'
 import { getErrorMessage } from '../../lib/getErrorMessage'
+import { ASSIGNABLE_ROLES, isAppRole, roleLabel } from '../../types/roles'
+import { createUserAccount, type CreatedUserAccount } from './createUserAccount'
 
 type UserRole = Database['public']['Enums']['user_role']
 
@@ -88,6 +93,20 @@ function formFromUser(user: EditingUser | null): UserFormData {
   }
 }
 
+/** The signed-in admin's role; only owners may add another owner. */
+async function loadViewerRole(): Promise<string | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+  return data?.role ?? null
+}
+
 async function loadAttendanceHistory(
   studentId: string,
 ): Promise<AttendanceHistoryRow[]> {
@@ -127,6 +146,20 @@ export default function UserManagementModal({
 
   const [history, setHistory] = useState<AttendanceHistoryRow[]>([])
   const [loading, setLoading] = useState(false)
+  const [viewerRole, setViewerRole] = useState<string | null>(null)
+  const [created, setCreated] = useState<CreatedUserAccount | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    let cancelled = false
+    void loadViewerRole().then((role) => {
+      if (!cancelled) setViewerRole(role)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen])
 
   const historyStudentId =
     isOpen && editingUser?.role === 'student' ? editingUser.id : null
@@ -159,25 +192,23 @@ export default function UserManagementModal({
     setLoading(true)
 
     try {
-      const payload = {
-        full_name: formData.fullName,
-        role: formData.role,
-        personal_meet_link:
-          formData.role === 'tutor' ? formData.meetLink : null,
-        subscription_tier:
-          formData.role === 'student' ? formData.subscriptionTier : null,
-        total_classes:
-          formData.role === 'student'
-            ? toClassCount(formData.totalClasses)
-            : null,
-        classes_remaining:
-          formData.role === 'student'
-            ? toClassCount(formData.classesRemaining)
-            : null,
-      }
+      const isStudent = formData.role === 'student'
 
       if (editingUser) {
-        // UPDATE EXISTING
+        // Only students have a package; the database keeps it empty for
+        // everyone else, so changing someone's role clears it.
+        const payload: TablesUpdate<'users'> = {
+          full_name: formData.fullName.trim(),
+          role: formData.role,
+          personal_meet_link:
+            formData.role === 'tutor' ? formData.meetLink.trim() || null : null,
+          subscription_tier: isStudent ? formData.subscriptionTier : null,
+          total_classes: isStudent ? toClassCount(formData.totalClasses) : null,
+          classes_remaining: isStudent
+            ? toClassCount(formData.classesRemaining)
+            : null,
+          ...(isStudent ? {} : { classes_per_week: null }),
+        }
         const { error } = await supabase
           .from('users')
           .update(payload)
@@ -185,22 +216,27 @@ export default function UserManagementModal({
 
         if (error) throw error
         toast.success('Profile & Package Updated')
-      } else {
-        // CREATE NEW
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: 'TempPassword123!', // You should ideally handle this via reset email
-          options: {
-            data: { ...payload },
-          },
-        })
-
-        if (error) throw error
-        toast.success('Account created successfully!')
+        onRefresh()
+        onClose()
+        return
       }
 
+      if (!isAppRole(formData.role)) {
+        throw new Error('Choose a role.')
+      }
+      const account = await createUserAccount({
+        email: formData.email.trim(),
+        fullName: formData.fullName.trim(),
+        role: formData.role,
+        meetLink: formData.role === 'tutor' ? formData.meetLink : undefined,
+        subscriptionTier: isStudent ? formData.subscriptionTier : undefined,
+        totalClasses: isStudent ? toClassCount(formData.totalClasses) : null,
+        classesRemaining: isStudent
+          ? toClassCount(formData.classesRemaining)
+          : null,
+      })
+      setCreated(account)
       onRefresh()
-      onClose()
     } catch (err) {
       toast.error(`Error: ${getErrorMessage(err, 'Unable to save user')}`)
     } finally {
@@ -209,8 +245,87 @@ export default function UserManagementModal({
   }
 
   const hasClassesRemaining = (toClassCount(formData.classesRemaining) ?? 0) > 0
+  const selectedRole = ASSIGNABLE_ROLES.find(
+    (option) => option.role === formData.role,
+  )
+
+  const copyCredentials = async (account: CreatedUserAccount) => {
+    try {
+      await navigator.clipboard.writeText(
+        [
+          'Your Tech Talk Hub account is ready.',
+          `Sign in at ${window.location.origin}/login`,
+          `Email: ${account.email}`,
+          `Temporary password: ${account.temporaryPassword}`,
+          'Please change your password after you sign in.',
+        ].join('\n'),
+      )
+      setCopied(true)
+    } catch {
+      toast.error('Couldn’t copy. Select the password and copy it instead.')
+    }
+  }
 
   if (!isOpen) return null
+
+  if (created) {
+    return (
+      <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+        <section
+          aria-labelledby="user-created-title"
+          className="w-full max-w-md rounded-[32px] bg-white p-8 shadow-2xl"
+        >
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+            <Check size={24} aria-hidden />
+          </span>
+          <h3
+            id="user-created-title"
+            className="mt-4 text-xl font-black text-slate-900"
+          >
+            {formData.fullName.trim() || 'The account'} is ready
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            {roleLabel(created.role)} · {created.email}
+          </p>
+
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="flex items-center gap-2 text-[10px] font-black tracking-widest text-amber-800 uppercase">
+              <KeyRound size={14} aria-hidden /> Temporary password
+            </p>
+            <p className="mt-2 font-mono text-lg font-black tracking-wide break-all text-slate-900 select-all">
+              {created.temporaryPassword}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-amber-900">
+              Shown only once. Send it to them privately. They sign in on the
+              sign-in page and should change it straight away.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => void copyCredentials(created)}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              {copied ? (
+                <Check size={16} aria-hidden />
+              ) : (
+                <Copy size={16} aria-hidden />
+              )}
+              {copied ? 'Copied' : 'Copy sign-in details'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl bg-blue-600 py-3 text-sm font-black text-white transition-colors hover:bg-blue-700"
+            >
+              Done
+            </button>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
@@ -295,12 +410,28 @@ export default function UserManagementModal({
                   })
                 }
               >
-                <option value="student">Student</option>
-                <option value="tutor">Tutor</option>
-                <option value="marketer">Sales & Marketing</option>
-                <option value="operations_admin">Operations Admin</option>
-                <option value="owner">Owner</option>
+                {ASSIGNABLE_ROLES.map(({ role }) => (
+                  <option
+                    key={role}
+                    value={role}
+                    disabled={role === 'owner' && viewerRole !== 'owner'}
+                  >
+                    {roleLabel(role)}
+                    {role === 'owner' && viewerRole !== 'owner'
+                      ? ' (owners only)'
+                      : ''}
+                  </option>
+                ))}
+                {editingUser && !selectedRole && (
+                  <option value={formData.role}>
+                    {roleLabel(formData.role)}
+                  </option>
+                )}
               </select>
+              <p className="ml-1 text-xs text-slate-500">
+                {selectedRole?.description ??
+                  'No access yet. Pick a role to give them a dashboard.'}
+              </p>
             </div>
 
             {/* STUDENT PACKAGE SECTION */}

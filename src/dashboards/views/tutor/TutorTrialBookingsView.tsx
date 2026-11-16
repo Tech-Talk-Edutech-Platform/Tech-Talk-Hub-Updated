@@ -7,6 +7,11 @@ import {
   MentorBookingsCalendar,
   type MentorCalendarItem,
 } from '../../../features/sales/MentorBookingsCalendar'
+import {
+  GRADE_CATEGORIES,
+  gradeLabel,
+} from '../../../features/sales/gradeCategories'
+import { TRIAL_STATUS_LABEL } from '../../../features/sales/types'
 
 const STATUS_LABEL: Record<string, string> = {
   scheduled: 'Scheduled',
@@ -14,29 +19,72 @@ const STATUS_LABEL: Record<string, string> = {
   completed: 'Completed',
 }
 
-/** Trials assigned to this tutor (from the schedule), with meeting links. */
-async function loadTrials(tutorId: string): Promise<MentorCalendarItem[]> {
-  const { data, error } = await supabase
-    .from('calendar_events')
-    .select(
-      'id, title, start_time, end_time, meet_link, notes, session_status, booking_status',
-    )
-    .eq('tutor_id', tutorId)
-    .eq('class_type', 'trial')
-    .order('start_time', { ascending: true })
-  if (error) throw error
+const programLabel = (id: string) =>
+  GRADE_CATEGORIES.find((category) => category.id === id)?.label ?? null
 
-  return data.map((event) => ({
-    id: event.id,
-    title: event.title || 'Trial class',
-    start: event.start_time,
-    end: event.end_time,
-    meetLink: event.meet_link,
-    studentName: event.title.replace(/^Trial:\s*/i, '') || 'Trial student',
-    notes: event.notes,
-    statusLabel: STATUS_LABEL[event.session_status] ?? event.session_status,
-    cancelled: event.booking_status === 'cancelled',
-  }))
+/**
+ * Trials assigned to this tutor (from the schedule), with meeting links and,
+ * when the sales team booked it, the student's grade, program and notes.
+ */
+async function loadTrials(tutorId: string): Promise<MentorCalendarItem[]> {
+  const [events, bookings] = await Promise.all([
+    supabase
+      .from('calendar_events')
+      .select(
+        'id, title, start_time, end_time, meet_link, notes, session_status, booking_status',
+      )
+      .eq('tutor_id', tutorId)
+      .eq('class_type', 'trial')
+      .order('start_time', { ascending: true }),
+    supabase
+      .from('trial_bookings')
+      .select(
+        'calendar_event_id, parent_name, student_name, student_grade, category_id, notes, status, created_at',
+      )
+      .eq('mentor_id', tutorId)
+      .is('removed_at', null)
+      .order('created_at', { ascending: true }),
+  ])
+  if (events.error) throw events.error
+
+  // The live booking for each slot (a cancelled one can be followed by a new
+  // one). Without access to bookings the calendar still shows the events.
+  const bookingBySlot = new Map(
+    (bookings.data ?? [])
+      .filter((booking) => booking.status !== 'cancelled')
+      .map((booking) => [booking.calendar_event_id, booking]),
+  )
+
+  return events.data.map((event) => {
+    const booking = bookingBySlot.get(event.id)
+    const program = booking ? programLabel(booking.category_id) : null
+    const bookingStatus = Object.entries(TRIAL_STATUS_LABEL).find(
+      ([status]) => status === booking?.status,
+    )?.[1]
+    return {
+      id: event.id,
+      title: event.title || 'Trial class',
+      start: event.start_time,
+      end: event.end_time,
+      meetLink: event.meet_link,
+      studentName:
+        booking?.student_name ||
+        event.title.replace(/^Trial:\s*/i, '') ||
+        'Trial student',
+      parentName: booking?.parent_name ?? null,
+      detail: booking
+        ? [program, gradeLabel(booking.student_grade)]
+            .filter(Boolean)
+            .join(' · ')
+        : null,
+      notes: booking?.notes ?? event.notes,
+      statusLabel:
+        bookingStatus ??
+        STATUS_LABEL[event.session_status] ??
+        event.session_status,
+      cancelled: event.booking_status === 'cancelled',
+    }
+  })
 }
 
 export default function TutorTrialBookingsView({ userId }: { userId: string }) {

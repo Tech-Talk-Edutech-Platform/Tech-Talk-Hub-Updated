@@ -1,7 +1,7 @@
 /**
- * The sales and trial-booking model. Today it runs on demo data
- * (`demoData.ts`); `supabase/drafts/sales_trial_booking.sql` sketches the
- * tables it maps to once the marketer role exists in the database.
+ * The sales and trial-booking model. `SupabaseSalesDataProvider` fills it from
+ * the database (supabase/migrations/20261116130000_sales_trials.sql);
+ * `DemoSalesDataProvider` fills it with made-up data for /preview/sales.
  */
 
 export type GradeCategoryId =
@@ -20,6 +20,11 @@ export type Mentor = {
   id: string
   name: string
   categories: readonly GradeCategoryId[]
+  /**
+   * False while an admin hasn't picked this tutor's programs; until then they
+   * take every program.
+   */
+  programsChosen?: boolean
   /** The mentor's standing meeting room, reused for every trial they take. */
   meetLink: string
 }
@@ -91,6 +96,9 @@ export type NewLead = {
 export type TrialStatus =
   'scheduled' | 'attended' | 'no_show' | 'converted' | 'lost' | 'cancelled'
 
+/** What a rep records after a trial; 'converted' comes from recording a sale. */
+export type TrialOutcome = Exclude<TrialStatus, 'scheduled' | 'converted'>
+
 export const REMOVAL_REASONS = [
   'mistake',
   'duplicate',
@@ -148,12 +156,33 @@ export type TrialBooking = {
 export type Sale = {
   id: string
   bookingId: string
-  salesRepId: string
+  /** Null when nobody on the team is credited (e.g. a website family). */
+  salesRepId: string | null
   studentName: string
   plan: string
   /** Kenyan shillings. */
   amount: number
   closedAt: string
+}
+
+/** A plan a family can pay for, offered when recording a sale. */
+export type SalesPlan = {
+  name: string
+  /** Kenyan shillings. */
+  amount: number
+}
+
+/** Everything the sales screens show. */
+export type SalesSnapshot = {
+  mentors: Mentor[]
+  reps: SalesRep[]
+  /** Upcoming one-hour sessions, open (`bookingId` null) or booked. */
+  slots: TrialSlot[]
+  leads: Lead[]
+  /** Every booking, removed ones included (`removal` set). */
+  bookings: TrialBooking[]
+  sales: Sale[]
+  messages: WhatsAppMessage[]
 }
 
 export type WhatsAppTemplate =

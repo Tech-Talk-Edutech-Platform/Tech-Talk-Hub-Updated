@@ -1,52 +1,73 @@
 import { createContext, useContext } from 'react'
 
-import type { SalesDemoData } from './demoData'
 import type {
   BookingRemoval,
+  GradeCategoryId,
   Lead,
   LeadStatus,
   NewLead,
   NewTrialBooking,
+  SalesPlan,
+  SalesSnapshot,
   TrialBooking,
-  TrialStatus,
+  TrialOutcome,
 } from './types'
 
 /**
- * Everything the sales screens read and change. `DemoSalesDataProvider` keeps
- * it in memory on demo data; a Supabase-backed provider with the same shape
- * replaces it once the sales tables exist, and the screens stay as they are.
+ * Everything the sales screens read and change. `SupabaseSalesDataProvider`
+ * reads and writes the database; `DemoSalesDataProvider` keeps made-up data in
+ * memory for /preview/sales. The screens work the same on either.
+ *
+ * Every change is async and rejects with a message to show the person
+ * (e.g. "That session was just taken. Pick another time.").
  */
-export type SalesData = SalesDemoData & {
+export type SalesData = SalesSnapshot & {
   isDemo: boolean
+  /** Plans offered when recording a sale. */
+  plans: readonly SalesPlan[]
   /**
    * Removed (soft-deleted) bookings. `bookings` leaves them out, so calendars,
    * lists and the numbers ignore them.
    */
   removedBookings: TrialBooking[]
-  /** Soft-deletes a booking made in error; throws if it can't be removed. */
+  /** Soft-deletes a booking made in error. */
   removeBooking: (
     bookingId: string,
     removal: Omit<BookingRemoval, 'at'>,
-  ) => void
-  /** Puts a removed booking back; throws if its time is gone. */
-  restoreBooking: (bookingId: string) => void
+  ) => Promise<void>
+  /** Puts a removed booking back while its time is still free. */
+  restoreBooking: (bookingId: string) => Promise<void>
   /** Saves a parent to reach out to. */
-  addLead: (input: NewLead) => Lead
+  addLead: (input: NewLead) => Promise<Lead>
   /** Records a call or message, or that the parent isn't interested. */
   setLeadStatus: (
     leadId: string,
     status: Exclude<LeadStatus, 'trial_booked'>,
     salesRepId: string | null,
-  ) => void
+  ) => Promise<void>
   /** Books a parent's child into a slot; the lead becomes "Trial booked". */
-  bookTrial: (input: NewTrialBooking) => TrialBooking
-  setTrialStatus: (bookingId: string, status: TrialStatus) => void
+  bookTrial: (input: NewTrialBooking) => Promise<TrialBooking>
+  setTrialStatus: (bookingId: string, status: TrialOutcome) => Promise<void>
+  /**
+   * Marks the trial enrolled. `creditRepId` is who gets the sale: ignored for
+   * a rep (it's theirs, or the parent's rep's); an admin may pick a rep or
+   * nobody (null) when the booking has no rep yet.
+   */
   recordSale: (
     bookingId: string,
-    salesRepId: string,
     plan: string,
     amount: number,
-  ) => void
+    creditRepId: string | null,
+  ) => Promise<void>
+  /** A scheduled message was sent by hand from the rep's own WhatsApp. */
+  markMessageSent: (messageId: string) => Promise<void>
+  /** Admins: the programs a tutor takes trials for (at least one). */
+  setMentorPrograms: (
+    mentorId: string,
+    programs: readonly GradeCategoryId[],
+  ) => Promise<void>
+  /** Admins: a rep's sales target for this month. */
+  setMonthlyTarget: (repId: string, target: number) => Promise<void>
 }
 
 export const SalesDataContext = createContext<SalesData | null>(null)
@@ -58,3 +79,7 @@ export function useSalesData(): SalesData {
   }
   return value
 }
+
+/** The message to show for a failed change. */
+export const problemText = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback

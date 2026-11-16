@@ -2,11 +2,12 @@ import { useLayoutEffect, useMemo, useReducer, useRef } from 'react'
 import type { ReactNode } from 'react'
 
 import { removeProblem, restoreProblem } from './bookings'
-import { buildDemoData, type SalesDemoData } from './demoData'
+import { buildDemoData, DEMO_PLANS, type SalesDemoData } from './demoData'
 import { SalesDataContext, type SalesData } from './salesDataContext'
 import { whatsappMessage } from './whatsapp'
 import type {
   BookingRemoval,
+  GradeCategoryId,
   Lead,
   LeadStatus,
   Sale,
@@ -29,6 +30,9 @@ type Action =
   | { type: 'sale'; sale: Sale }
   | { type: 'remove'; bookingId: string; removal: BookingRemoval }
   | { type: 'restore'; bookingId: string }
+  | { type: 'message-sent'; messageId: string; at: string }
+  | { type: 'programs'; mentorId: string; programs: GradeCategoryId[] }
+  | { type: 'target'; repId: string; target: number }
 
 /**
  * After a booking is removed, the parent goes back to how they were: still
@@ -57,6 +61,36 @@ function unlinkLead(
 }
 
 function reducer(state: SalesDemoData, action: Action): SalesDemoData {
+  if (action.type === 'programs') {
+    return {
+      ...state,
+      mentors: state.mentors.map((mentor) =>
+        mentor.id === action.mentorId
+          ? { ...mentor, categories: action.programs, programsChosen: true }
+          : mentor,
+      ),
+    }
+  }
+  if (action.type === 'target') {
+    return {
+      ...state,
+      reps: state.reps.map((rep) =>
+        rep.id === action.repId
+          ? { ...rep, monthlyTarget: action.target }
+          : rep,
+      ),
+    }
+  }
+  if (action.type === 'message-sent') {
+    return {
+      ...state,
+      messages: state.messages.map((message) =>
+        message.id === action.messageId
+          ? { ...message, status: 'sent', at: action.at }
+          : message,
+      ),
+    }
+  }
   if (action.type === 'remove') {
     const { bookingId, removal } = action
     return {
@@ -185,7 +219,10 @@ const newId = (prefix: string) => {
   return `${prefix}-new-${Date.now()}-${localId}`
 }
 
-/** Demo data in memory: changes last until the page reloads. */
+/**
+ * Demo data in memory: changes last until the page reloads. Changes are async
+ * like the real provider's, and reject with the same kind of message.
+ */
 export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, () =>
     buildDemoData(),
@@ -198,7 +235,16 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
   }, [state])
 
   const value = useMemo<SalesData>(() => {
-    const addLead: SalesData['addLead'] = (input) => {
+    const addLead: SalesData['addLead'] = async (input) => {
+      const digits = input.phone.replace(/\D/g, '')
+      const duplicate = latest.current.leads.find(
+        (lead) => lead.phone.replace(/\D/g, '') === digits,
+      )
+      if (duplicate) {
+        throw new Error(
+          `${duplicate.parentName} already has this number. Find them in the parents list instead.`,
+        )
+      }
       const lead: Lead = {
         ...input,
         id: newId('lead'),
@@ -211,7 +257,7 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
       return lead
     }
 
-    const bookTrial: SalesData['bookTrial'] = (input) => {
+    const bookTrial: SalesData['bookTrial'] = async (input) => {
       const lead = state.leads.find(
         (candidate) => candidate.id === input.leadId,
       )
@@ -259,7 +305,10 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
       return booking
     }
 
-    const removeBooking: SalesData['removeBooking'] = (bookingId, removal) => {
+    const removeBooking: SalesData['removeBooking'] = async (
+      bookingId,
+      removal,
+    ) => {
       const booking = latest.current.bookings.find((b) => b.id === bookingId)
       if (!booking) throw new Error('That booking was not found.')
       const problem = removeProblem(booking)
@@ -271,7 +320,7 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
       })
     }
 
-    const restoreBooking: SalesData['restoreBooking'] = (bookingId) => {
+    const restoreBooking: SalesData['restoreBooking'] = async (bookingId) => {
       const booking = latest.current.bookings.find((b) => b.id === bookingId)
       if (!booking) throw new Error('That booking was not found.')
       const problem = restoreProblem(booking, latest.current, Date.now())
@@ -284,10 +333,11 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
       bookings: state.bookings.filter((booking) => !booking.removal),
       removedBookings: state.bookings.filter((booking) => booking.removal),
       isDemo: true,
+      plans: DEMO_PLANS,
       removeBooking,
       restoreBooking,
       addLead,
-      setLeadStatus: (leadId, status, salesRepId) =>
+      setLeadStatus: async (leadId, status, salesRepId) =>
         dispatch({
           type: 'lead-status',
           leadId,
@@ -296,23 +346,43 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
           at: new Date().toISOString(),
         }),
       bookTrial,
-      setTrialStatus: (bookingId, status) =>
+      setTrialStatus: async (bookingId, status) =>
         dispatch({ type: 'status', bookingId, status }),
-      recordSale: (bookingId, salesRepId, plan, amount) => {
-        const booking = state.bookings.find((b) => b.id === bookingId)
-        if (!booking) return
+      recordSale: async (bookingId, plan, amount, creditRepId) => {
+        const booking = latest.current.bookings.find((b) => b.id === bookingId)
+        if (!booking || booking.removal) {
+          throw new Error('That booking was not found.')
+        }
         dispatch({
           type: 'sale',
           sale: {
             id: newId('sale'),
             bookingId,
-            salesRepId,
+            salesRepId: booking.salesRepId ?? creditRepId,
             studentName: booking.studentName,
             plan,
             amount,
             closedAt: new Date().toISOString(),
           },
         })
+      },
+      markMessageSent: async (messageId) =>
+        dispatch({
+          type: 'message-sent',
+          messageId,
+          at: new Date().toISOString(),
+        }),
+      setMentorPrograms: async (mentorId, programs) => {
+        if (programs.length === 0) {
+          throw new Error('Pick at least one program.')
+        }
+        dispatch({ type: 'programs', mentorId, programs: [...programs] })
+      },
+      setMonthlyTarget: async (repId, target) => {
+        if (!Number.isInteger(target) || target < 1) {
+          throw new Error('A target is a whole number of sales, 1 or more.')
+        }
+        dispatch({ type: 'target', repId, target })
       },
     }
   }, [state])

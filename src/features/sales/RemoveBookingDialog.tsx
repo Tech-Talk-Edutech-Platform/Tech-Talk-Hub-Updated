@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 
 import { Modal } from '../../components/ui/Modal'
 import { parentAlreadyMessaged } from './bookings'
-import { useSalesData } from './salesDataContext'
+import { problemText, useSalesData } from './salesDataContext'
 import type { RemovalReason, TrialBooking } from './types'
 import { REMOVAL_REASON_LABEL, REMOVAL_REASONS } from './types'
 import { correctionMessage, trialTime, whatsappLink } from './whatsapp'
@@ -34,19 +34,27 @@ export function RemoveBookingDialog({
   const [reason, setReason] = useState<RemovalReason>('mistake')
   const [note, setNote] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  const [removing, setRemoving] = useState(false)
   const mentor = data.mentors.find((m) => m.id === booking.mentorId)
   const alreadyMessaged = parentAlreadyMessaged(booking, data.messages)
   const parentFirstName = booking.parentName.split(' ')[0]
 
-  const remove = () => {
+  const remove = async () => {
+    if (removing) return
     if (reason === 'other' && !note.trim()) {
       setProblem('Add a short note saying why.')
       return
     }
+    setRemoving(true)
     try {
-      data.removeBooking(booking.id, { reason, note: note.trim(), byRepId })
+      await data.removeBooking(booking.id, {
+        reason,
+        note: note.trim(),
+        byRepId,
+      })
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'Couldn’t remove it.')
+      setProblem(problemText(error, 'Couldn’t remove it.'))
+      setRemoving(false)
       return
     }
     onClose()
@@ -60,16 +68,12 @@ export function RemoveBookingDialog({
             type="button"
             onClick={() => {
               toast.dismiss(shown.id)
-              try {
-                data.restoreBooking(booking.id)
-                toast.success('Booking restored.')
-              } catch (error) {
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : 'Couldn’t restore it.',
+              data
+                .restoreBooking(booking.id)
+                .then(() => toast.success('Booking restored.'))
+                .catch((error: unknown) =>
+                  toast.error(problemText(error, 'Couldn’t restore it.')),
                 )
-              }
             }}
             className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-extrabold text-purple-700 hover:bg-purple-50"
           >
@@ -165,10 +169,12 @@ export function RemoveBookingDialog({
         </button>
         <button
           type="button"
-          onClick={remove}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-rose-700"
+          onClick={() => void remove()}
+          disabled={removing}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-wait disabled:opacity-60"
         >
-          <Trash2 size={16} aria-hidden /> Remove booking
+          <Trash2 size={16} aria-hidden />{' '}
+          {removing ? 'Removing…' : 'Remove booking'}
         </button>
       </div>
     </Modal>

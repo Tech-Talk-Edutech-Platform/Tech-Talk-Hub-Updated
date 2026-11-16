@@ -18,7 +18,7 @@ import {
 /**
  * Progress lives in this browser for now (one key per tutor). It moves to a
  * `tutor_training_progress` table so admins can follow it; see
- * supabase/drafts/sales_trial_booking.sql.
+ * supabase/drafts/tutor_training_progress.sql.
  */
 const storageKey = (userId: string) => `tth:tutor-training:${userId}`
 

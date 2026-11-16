@@ -91,7 +91,18 @@ function buildUserUpdate(
 ): TablesUpdate<'users'> | null {
   if (field === 'role') {
     const role = Constants.public.Enums.user_role.find((r) => r === value)
-    return role ? { role } : null
+    if (!role) return null
+    // Only students have a package; the database requires it to be empty for
+    // everyone else.
+    return role === 'student'
+      ? { role }
+      : {
+          role,
+          subscription_tier: null,
+          classes_per_week: null,
+          total_classes: null,
+          classes_remaining: null,
+        }
   }
   return field === 'assigned_course_id'
     ? { assigned_course_id: value || null }

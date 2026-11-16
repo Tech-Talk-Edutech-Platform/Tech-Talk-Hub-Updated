@@ -18,7 +18,8 @@ import AddUserModal from '../../../features/accounts/AddUserModal'
 import { toast } from 'react-hot-toast'
 import { Constants } from '../../../types/database'
 import type { Database } from '../../../types/database'
-import { roleLabel } from '../../../types/roles'
+import { ADMIN_ROLES, ASSIGNABLE_ROLES, roleLabel } from '../../../types/roles'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
 
 type UserRole = Database['public']['Enums']['user_role']
 
@@ -50,8 +51,8 @@ function toUserRole(value: string): UserRole | undefined {
   return Constants.public.Enums.user_role.find((role) => role === value)
 }
 
-/** Postgres "invalid input value for enum": the database lacks a role value. */
-const INVALID_ENUM_VALUE = '22P02'
+/** "Admins" in the role filter covers all three admin roles. */
+const ADMIN_FILTER = 'admins'
 
 /** Number inputs hold strings while editing; an empty field clears the value. */
 function toClassCount(value: number | string | null | undefined) {
@@ -152,29 +153,40 @@ export default function AdminUsersView() {
     if (!editingUser) return
     setSaving(true)
 
+    // Only students have a plan, tutor and course; the database keeps the plan
+    // empty for everyone else, so changing someone's role clears it.
+    const isStudent = editingUser.role === 'student'
     const { error } = await supabase
       .from('users')
       .update({
-        full_name: editingUser.full_name,
+        full_name: editingUser.full_name.trim(),
         role: editingUser.role,
         is_active: editingUser.is_active,
-        assigned_tutor_id: editingUser.assigned_tutor_id || null,
-        assigned_course_id: editingUser.assigned_course_id || null,
-        subscription_tier: editingUser.subscription_tier || null,
-        classes_per_week: toClassCount(editingUser.classes_per_week),
-        classes_remaining: toClassCount(editingUser.classes_remaining),
+        assigned_tutor_id: isStudent
+          ? editingUser.assigned_tutor_id || null
+          : null,
+        assigned_course_id: isStudent
+          ? editingUser.assigned_course_id || null
+          : null,
+        subscription_tier: isStudent
+          ? editingUser.subscription_tier || null
+          : null,
+        classes_per_week: isStudent
+          ? toClassCount(editingUser.classes_per_week)
+          : null,
+        classes_remaining: isStudent
+          ? toClassCount(editingUser.classes_remaining)
+          : null,
+        ...(isStudent ? {} : { total_classes: null }),
       })
       .eq('id', editingUser.id)
 
     setSaving(false)
 
-    if (error?.code === INVALID_ENUM_VALUE && editingUser.role === 'marketer') {
+    if (error) {
       toast.error(
-        'The database doesn’t have the Sales & Marketing role yet. Apply supabase/migrations/20261116120000_marketer_role.sql, then try again.',
-        { duration: 8000 },
+        `Couldn’t update ${editingUser.full_name || 'this user'}: ${getErrorMessage(error, 'unknown error')}`,
       )
-    } else if (error) {
-      toast.error('Failed to update user details')
     } else {
       toast.success('User updated successfully')
       setEditingUser(null)
@@ -186,7 +198,11 @@ export default function AdminUsersView() {
     const matchesSearch =
       u.full_name?.toLowerCase().includes(query.toLowerCase()) ||
       u.email?.toLowerCase().includes(query.toLowerCase())
-    const matchesRole = roleFilter === 'all' || u.role === roleFilter
+    const matchesRole =
+      roleFilter === 'all' ||
+      u.role === roleFilter ||
+      (roleFilter === ADMIN_FILTER &&
+        ADMIN_ROLES.some((role) => role === u.role))
     return matchesSearch && matchesRole
   })
 
@@ -256,11 +272,11 @@ export default function AdminUsersView() {
               <option value="marketer" className="dark:bg-slate-900">
                 Sales & Marketing
               </option>
-              <option value="tech_admin" className="dark:bg-slate-900">
-                Admins
+              <option value={ADMIN_FILTER} className="dark:bg-slate-900">
+                Admins & owners
               </option>
-              <option value="owner" className="dark:bg-slate-900">
-                Owners
+              <option value="non_user" className="dark:bg-slate-900">
+                No access yet
               </option>
             </select>
           </div>
@@ -550,31 +566,24 @@ export default function AdminUsersView() {
                     }
                     className="w-full cursor-pointer rounded-2xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs font-black tracking-wider text-slate-700 uppercase outline-hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
                   >
-                    <option value="student" className="dark:bg-slate-900">
-                      Student
-                    </option>
-                    <option value="tutor" className="dark:bg-slate-900">
-                      Tutor
-                    </option>
-                    <option value="marketer" className="dark:bg-slate-900">
-                      Sales & Marketing
-                    </option>
-                    <option value="tech_admin" className="dark:bg-slate-900">
-                      Admin
-                    </option>
-                    <option value="owner" className="dark:bg-slate-900">
-                      Owner
-                    </option>
-                    <option
-                      value="operations_admin"
-                      className="dark:bg-slate-900"
-                    >
-                      Operations Admin
-                    </option>
+                    {ASSIGNABLE_ROLES.map(({ role }) => (
+                      <option
+                        key={role}
+                        value={role}
+                        className="dark:bg-slate-900"
+                      >
+                        {roleLabel(role)}
+                      </option>
+                    ))}
                     <option value="non_user" className="dark:bg-slate-900">
-                      Non User
+                      No access
                     </option>
                   </select>
+                  <p className="mt-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    {ASSIGNABLE_ROLES.find(
+                      (option) => option.role === editingUser.role,
+                    )?.description ?? 'Can sign in but sees no dashboard.'}
+                  </p>
                 </div>
 
                 <div>

@@ -14,6 +14,9 @@ export function trialTime(iso: string) {
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
 
+/** Said instead of the link while the tutor has no meeting link yet. */
+export const JOIN_LINK_TO_FOLLOW = 'we will send it before the class'
+
 /**
  * The text of each automatic message. These become WhatsApp Business message
  * templates (Meta approves them before they can be sent automatically), so
@@ -29,6 +32,7 @@ export function whatsappMessage(
   const program = gradeCategory(booking.category).label
   const when = trialTime(booking.start)
   const tutor = mentor?.name ?? 'your tutor'
+  const link = booking.meetLink || JOIN_LINK_TO_FOLLOW
 
   const messages: Record<WhatsAppTemplate, () => string> = {
     trial_confirmation: () =>
@@ -38,12 +42,12 @@ export function whatsappMessage(
         `👦 Student: ${booking.studentName} (${program})`,
         `📅 When: ${when}`,
         `👩‍🏫 Tutor: ${tutor}`,
-        `🔗 Join link: ${booking.meetLink}`,
+        `🔗 Join link: ${link}`,
         ``,
         `Please join from a laptop or desktop with a working camera and microphone. Reply to this message if you need to change the time.`,
       ].join('\n'),
     trial_reminder: () =>
-      `Hi ${parent}, a reminder that ${student}'s free coding trial with ${tutor} starts at ${when}. Join here: ${booking.meetLink} 🎉`,
+      `Hi ${parent}, a reminder that ${student}'s free coding trial with ${tutor} starts at ${when}. Join link: ${link} 🎉`,
     trial_follow_up: () =>
       `Hi ${parent}, thank you for joining today's trial! ${tutor} enjoyed working with ${student}. Would you like us to share the class plan and fees for ${program}?`,
   }

@@ -1,4 +1,5 @@
 import type { TrialBooking, TrialSlot, WhatsAppMessage } from './types'
+import { JOIN_LINK_TO_FOLLOW } from './whatsapp'
 
 /**
  * Removing (soft-deleting) a booking is for errors: booked by mistake, a
@@ -81,9 +82,9 @@ export function googleCalendarLink(booking: TrialBooking, tutorName: string) {
       `Free coding trial with Tech Talk Hub (${bookingReference(booking.id)}).`,
       `Student: ${booking.studentName}`,
       `Parent: ${booking.parentName}`,
-      `Join: ${booking.meetLink}`,
+      `Join: ${booking.meetLink || JOIN_LINK_TO_FOLLOW}`,
     ].join('\n'),
-    location: booking.meetLink,
+    location: booking.meetLink || 'Online',
   })
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }

@@ -12,6 +12,7 @@ import {
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './supabase'
 import {
+  ADMIN_ROLES,
   APP_ROLES,
   isAppRole,
   TUTOR_ADMIN_ROLES,
@@ -300,7 +301,14 @@ function DashboardApp() {
             </AfterSessionCheck>
           }
         />
-        <Route path="/users" element={<UserManagement />} />
+        <Route
+          path="/users"
+          element={
+            <RoleGate allowedRoles={ADMIN_ROLES}>
+              <UserManagement />
+            </RoleGate>
+          }
+        />
         <Route
           path="/calendar"
           element={

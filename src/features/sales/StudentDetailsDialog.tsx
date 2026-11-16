@@ -12,7 +12,7 @@ import {
 } from './gradeCategories'
 import { visibleLeads, waitingForTrial } from './leads'
 import { formatPhone } from './phone'
-import { useSalesData } from './salesDataContext'
+import { problemText, useSalesData } from './salesDataContext'
 import { inputClass, searchInputClass, selectClass } from './styles'
 import { draftFor, type StudentDraft } from './studentDraft'
 import type {
@@ -69,6 +69,7 @@ export function StudentDetailsDialog({
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [adding, setAdding] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [booking, setBooking] = useState(false)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -110,8 +111,9 @@ export function StudentDetailsDialog({
     setAdding(false)
   }
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (booking) return
     const studentName = draft.studentName.trim()
     if (!lead) {
       setProblem('Choose the parent, or add a new one.')
@@ -131,8 +133,10 @@ export function StudentDetailsDialog({
       )
       return
     }
+    setBooking(true)
+    setProblem(null)
     try {
-      const booking = data.bookTrial({
+      const booked = await data.bookTrial({
         slotId: slot.id,
         leadId: lead.id,
         salesRepId: salesRepId ?? lead.salesRepId,
@@ -145,11 +149,10 @@ export function StudentDetailsDialog({
         source: lead.source,
         notes: draft.notes.trim(),
       })
-      onBooked(booking)
+      onBooked(booked)
     } catch (error) {
-      setProblem(
-        error instanceof Error ? error.message : 'Couldn’t book that session.',
-      )
+      setProblem(problemText(error, 'Couldn’t book that session.'))
+      setBooking(false)
     }
   }
 
@@ -229,7 +232,12 @@ export function StudentDetailsDialog({
             />
           )}
 
-          <form onSubmit={submit} noValidate className="mt-4 space-y-4">
+          <form
+            onSubmit={(event) => void submit(event)}
+            noValidate
+            aria-busy={booking}
+            className="mt-4 space-y-4"
+          >
             <Field label="Student’s full name">
               <input
                 value={draft.studentName}
@@ -304,8 +312,18 @@ export function StudentDetailsDialog({
               </p>
             )}
 
-            <button type="submit" className={`${gradientButton} w-full`}>
-              Confirm & book session <ArrowRight size={16} aria-hidden />
+            <button
+              type="submit"
+              disabled={booking}
+              className={`${gradientButton} w-full disabled:cursor-wait disabled:opacity-70`}
+            >
+              {booking ? (
+                'Booking…'
+              ) : (
+                <>
+                  Confirm & book session <ArrowRight size={16} aria-hidden />
+                </>
+              )}
             </button>
             <p className="text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
               It goes on {tutor}’s calendar with the meeting link

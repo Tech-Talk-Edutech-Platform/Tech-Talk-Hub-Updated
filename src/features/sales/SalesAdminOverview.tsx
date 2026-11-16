@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   MessageCircle,
   Percent,
+  Settings2,
   Trophy,
   Users,
   Wallet,
@@ -28,6 +29,7 @@ import { funnelStats, percent, startOfMonth, weeklySales } from './metrics'
 import { useSalesData } from './salesDataContext'
 import { ParentsList } from './ParentsList'
 import { SalesBookingsList } from './SalesBookingsList'
+import { SalesTeamSetup } from './SalesTeamSetup'
 import { SalesWeeklyChart } from './SalesWeeklyChart'
 import { TRIAL_STATUS_LABEL } from './types'
 import { Initials, Kpi, Panel, TabBar } from './ui'
@@ -35,7 +37,13 @@ import { selectClass } from './styles'
 import { WhatsAppFeed } from './WhatsAppFeed'
 
 type AdminTab =
-  'overview' | 'parents' | 'book' | 'bookings' | 'mentors' | 'whatsapp'
+  | 'overview'
+  | 'parents'
+  | 'book'
+  | 'bookings'
+  | 'mentors'
+  | 'whatsapp'
+  | 'setup'
 
 const ADMIN_TABS = [
   { id: 'overview', label: 'Team overview', icon: LayoutDashboard },
@@ -44,6 +52,7 @@ const ADMIN_TABS = [
   { id: 'bookings', label: 'All bookings', icon: ClipboardList },
   { id: 'mentors', label: 'Mentor calendars', icon: CalendarDays },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { id: 'setup', label: 'Team setup', icon: Settings2 },
 ] as const satisfies readonly {
   id: AdminTab
   label: string
@@ -90,6 +99,7 @@ export function SalesAdminOverview() {
       )}
       {tab === 'mentors' && <MentorCalendars />}
       {tab === 'whatsapp' && <WhatsAppFeed repId={null} />}
+      {tab === 'setup' && <SalesTeamSetup />}
     </div>
   )
 }

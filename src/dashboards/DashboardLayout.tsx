@@ -47,7 +47,7 @@ import TutorClassroomsView from './views/tutor/TutorClassroomsView'
 import TutorTrialBookingsView from './views/tutor/TutorTrialBookingsView'
 import TutorTrainingView from './views/tutor/TutorTrainingView'
 
-// Sales (demo data until the marketer role and sales tables exist)
+// Sales & trials (src/features/sales)
 import {
   AdminSalesView,
   SalesPortalView,
@@ -164,6 +164,7 @@ export default function DashboardLayout({
     if (role === 'marketer') {
       return (
         <SalesPortalView
+          userId={currentUser.id}
           name={currentUser.full_name || ''}
           view={isSalesView(activeView) ? activeView : 'dashboard'}
           onNavigate={setActiveView}

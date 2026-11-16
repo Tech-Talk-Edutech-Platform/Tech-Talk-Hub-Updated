@@ -157,14 +157,24 @@ export function BookingComplete({
             ))}
           </dl>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <a
-              href={booking.meetLink}
-              target="_blank"
-              rel="noreferrer"
-              className={secondaryButton}
-            >
-              <Video size={16} aria-hidden /> Join meeting
-            </a>
+            {booking.meetLink ? (
+              <a
+                href={booking.meetLink}
+                target="_blank"
+                rel="noreferrer"
+                className={secondaryButton}
+              >
+                <Video size={16} aria-hidden /> Join meeting
+              </a>
+            ) : (
+              // The tutor has no standing meeting link yet (Users & Staff).
+              <span
+                className={`${secondaryButton} cursor-default opacity-60`}
+                title="Add the tutor’s meeting link in Users & Staff"
+              >
+                <Video size={16} aria-hidden /> No meeting link yet
+              </span>
+            )}
             <a
               href={googleCalendarLink(booking, tutorName)}
               target="_blank"

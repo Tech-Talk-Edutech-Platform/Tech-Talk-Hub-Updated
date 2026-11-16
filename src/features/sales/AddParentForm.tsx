@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { UserPlus } from 'lucide-react'
 
 import { COUNTRIES, DEFAULT_COUNTRY_CODE, fullPhoneNumber } from './phone'
-import { useSalesData } from './salesDataContext'
+import { problemText, useSalesData } from './salesDataContext'
 import {
   countryCodeClass,
   inputClass,
@@ -38,9 +38,11 @@ export function AddParentForm({
   const [source, setSource] = useState<BookingSource>('privyr')
   const [notes, setNotes] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (saving) return
     const name = parentName.trim()
     const number = fullPhoneNumber(countryCode, phone)
     if (!name) {
@@ -51,27 +53,43 @@ export function AddParentForm({
       setProblem('Add the parent’s phone number.')
       return
     }
-    const duplicate = data.leads.find((lead) => lead.phone === number)
+    const digits = number.replace(/\D/g, '')
+    const duplicate = data.leads.find(
+      (lead) => lead.phone.replace(/\D/g, '') === digits,
+    )
     if (duplicate) {
       setProblem(
         `${duplicate.parentName} already has this number. Find them in the parents list instead.`,
       )
       return
     }
-    const lead = data.addLead({
-      parentName: name,
-      phone: number,
-      email: email.trim(),
-      source,
-      salesRepId,
-      notes: notes.trim(),
-    })
-    onSaved(lead)
+    setSaving(true)
+    setProblem(null)
+    try {
+      const lead = await data.addLead({
+        parentName: name,
+        phone: number,
+        email: email.trim(),
+        source,
+        salesRepId,
+        notes: notes.trim(),
+      })
+      onSaved(lead)
+    } catch (error) {
+      // e.g. another rep already has this parent.
+      setProblem(problemText(error, 'Couldn’t save the parent.'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div className="@container">
-      <form onSubmit={submit} className="grid gap-4 @lg:grid-cols-2">
+      <form
+        onSubmit={(event) => void submit(event)}
+        aria-busy={saving}
+        className="grid gap-4 @lg:grid-cols-2"
+      >
         <Field label="Parent’s name">
           <input
             value={parentName}
@@ -154,8 +172,13 @@ export function AddParentForm({
           <button type="button" onClick={onCancel} className={secondaryButton}>
             Cancel
           </button>
-          <button type="submit" className={primaryButton}>
-            <UserPlus size={16} aria-hidden /> {submitLabel}
+          <button
+            type="submit"
+            disabled={saving}
+            className={`${primaryButton} disabled:cursor-wait disabled:opacity-60`}
+          >
+            <UserPlus size={16} aria-hidden />{' '}
+            {saving ? 'Saving…' : submitLabel}
           </button>
         </div>
       </form>

@@ -8,6 +8,7 @@ import sendCurriculumRoute from './routes/sendCurriculum'
 import classroomTokenRoute from './routes/classroomToken'
 import classroomEndRoute from './routes/classroomEnd'
 import cronRemindersRoute from './routes/cronReminders'
+import adminUsersRoute from './routes/adminUsers'
 import { allowOrigins } from './middleware/cors'
 import { requireServerEnv } from './env'
 import { supabase } from './supabase'
@@ -54,6 +55,7 @@ app.use('/api/send-curriculum', sendCurriculumRoute)
 app.use('/api/classroom/token', classroomTokenRoute)
 app.use('/api/classroom/end', classroomEndRoute)
 app.use('/api/cron/reminders', cronRemindersRoute)
+app.use('/api/admin/users', adminUsersRoute)
 
 // =========================
 // PUSH SETUP

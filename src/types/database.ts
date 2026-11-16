@@ -1006,6 +1006,27 @@ export type Database = {
           },
         ]
       }
+      grade_categories: {
+        Row: {
+          grades: string[]
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          grades: string[]
+          id: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          grades?: string[]
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           assigned_tutor_id: string | null
@@ -1019,7 +1040,9 @@ export type Database = {
           id: string
           last_contacted_at: string | null
           lead_source: string | null
+          marketer_id: string | null
           next_follow_up_at: string | null
+          notes: string | null
           parent_name: string | null
           personal_meet_link: string | null
           phone: string | null
@@ -1040,7 +1063,9 @@ export type Database = {
           id?: string
           last_contacted_at?: string | null
           lead_source?: string | null
+          marketer_id?: string | null
           next_follow_up_at?: string | null
+          notes?: string | null
           parent_name?: string | null
           personal_meet_link?: string | null
           phone?: string | null
@@ -1061,7 +1086,9 @@ export type Database = {
           id?: string
           last_contacted_at?: string | null
           lead_source?: string | null
+          marketer_id?: string | null
           next_follow_up_at?: string | null
+          notes?: string | null
           parent_name?: string | null
           personal_meet_link?: string | null
           phone?: string | null
@@ -1072,8 +1099,45 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: 'leads_marketer_id_fkey'
+            columns: ['marketer_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
             foreignKeyName: 'leads_student_user_id_fkey'
             columns: ['student_user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      mentor_grade_categories: {
+        Row: {
+          category_id: string
+          mentor_id: string
+        }
+        Insert: {
+          category_id: string
+          mentor_id: string
+        }
+        Update: {
+          category_id?: string
+          mentor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'mentor_grade_categories_category_id_fkey'
+            columns: ['category_id']
+            isOneToOne: false
+            referencedRelation: 'grade_categories'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'mentor_grade_categories_mentor_id_fkey'
+            columns: ['mentor_id']
             isOneToOne: false
             referencedRelation: 'users'
             referencedColumns: ['id']
@@ -1444,6 +1508,87 @@ export type Database = {
           transaction_code?: string | null
         }
         Relationships: []
+      }
+      sales: {
+        Row: {
+          amount_kes: number
+          closed_at: string
+          id: string
+          marketer_id: string | null
+          plan: string
+          recorded_by: string | null
+          student_name: string
+          trial_booking_id: string | null
+        }
+        Insert: {
+          amount_kes: number
+          closed_at?: string
+          id?: string
+          marketer_id?: string | null
+          plan: string
+          recorded_by?: string | null
+          student_name: string
+          trial_booking_id?: string | null
+        }
+        Update: {
+          amount_kes?: number
+          closed_at?: string
+          id?: string
+          marketer_id?: string | null
+          plan?: string
+          recorded_by?: string | null
+          student_name?: string
+          trial_booking_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'sales_marketer_id_fkey'
+            columns: ['marketer_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'sales_recorded_by_fkey'
+            columns: ['recorded_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'sales_trial_booking_id_fkey'
+            columns: ['trial_booking_id']
+            isOneToOne: true
+            referencedRelation: 'trial_bookings'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      sales_targets: {
+        Row: {
+          marketer_id: string
+          month: string
+          target_sales: number
+        }
+        Insert: {
+          marketer_id: string
+          month: string
+          target_sales: number
+        }
+        Update: {
+          marketer_id?: string
+          month?: string
+          target_sales?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'sales_targets_marketer_id_fkey'
+            columns: ['marketer_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
       }
       shop_order_items: {
         Row: {
@@ -1910,6 +2055,138 @@ export type Database = {
         }
         Relationships: []
       }
+      trial_bookings: {
+        Row: {
+          booked_by: string | null
+          calendar_event_id: string
+          category_id: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          marketer_id: string | null
+          mentor_id: string
+          notes: string | null
+          parent_email: string | null
+          parent_name: string
+          parent_phone: string
+          privyr_lead_id: string | null
+          removal_note: string | null
+          removal_reason: string | null
+          removed_at: string | null
+          removed_by: string | null
+          source: string
+          status: string
+          student_grade: string
+          student_name: string
+          updated_at: string
+        }
+        Insert: {
+          booked_by?: string | null
+          calendar_event_id: string
+          category_id: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          marketer_id?: string | null
+          mentor_id: string
+          notes?: string | null
+          parent_email?: string | null
+          parent_name: string
+          parent_phone: string
+          privyr_lead_id?: string | null
+          removal_note?: string | null
+          removal_reason?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          source: string
+          status?: string
+          student_grade: string
+          student_name: string
+          updated_at?: string
+        }
+        Update: {
+          booked_by?: string | null
+          calendar_event_id?: string
+          category_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          marketer_id?: string | null
+          mentor_id?: string
+          notes?: string | null
+          parent_email?: string | null
+          parent_name?: string
+          parent_phone?: string
+          privyr_lead_id?: string | null
+          removal_note?: string | null
+          removal_reason?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          source?: string
+          status?: string
+          student_grade?: string
+          student_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'trial_bookings_booked_by_fkey'
+            columns: ['booked_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trial_bookings_calendar_event_id_fkey'
+            columns: ['calendar_event_id']
+            isOneToOne: false
+            referencedRelation: 'calendar_events'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trial_bookings_calendar_event_id_fkey'
+            columns: ['calendar_event_id']
+            isOneToOne: false
+            referencedRelation: 'v_upcoming_student_classes'
+            referencedColumns: ['event_id']
+          },
+          {
+            foreignKeyName: 'trial_bookings_category_id_fkey'
+            columns: ['category_id']
+            isOneToOne: false
+            referencedRelation: 'grade_categories'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trial_bookings_lead_id_fkey'
+            columns: ['lead_id']
+            isOneToOne: false
+            referencedRelation: 'leads'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trial_bookings_marketer_id_fkey'
+            columns: ['marketer_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trial_bookings_mentor_id_fkey'
+            columns: ['mentor_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trial_bookings_removed_by_fkey'
+            columns: ['removed_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       user_notes_progress: {
         Row: {
           created_at: string | null
@@ -2020,6 +2297,69 @@ export type Database = {
           },
         ]
       }
+      whatsapp_messages: {
+        Row: {
+          body: string
+          created_at: string
+          direction: string
+          error: string | null
+          id: string
+          lead_id: string | null
+          phone: string
+          provider_message_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          template: string | null
+          trial_booking_id: string | null
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          direction: string
+          error?: string | null
+          id?: string
+          lead_id?: string | null
+          phone: string
+          provider_message_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          template?: string | null
+          trial_booking_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          direction?: string
+          error?: string | null
+          id?: string
+          lead_id?: string | null
+          phone?: string
+          provider_message_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          template?: string | null
+          trial_booking_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'whatsapp_messages_lead_id_fkey'
+            columns: ['lead_id']
+            isOneToOne: false
+            referencedRelation: 'leads'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'whatsapp_messages_trial_booking_id_fkey'
+            columns: ['trial_booking_id']
+            isOneToOne: false
+            referencedRelation: 'trial_bookings'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       v_upcoming_student_classes: {
@@ -2034,6 +2374,46 @@ export type Database = {
       }
     }
     Functions: {
+      book_trial: {
+        Args: {
+          p_category: string
+          p_lead_id: string
+          p_notes?: string
+          p_slot_id: string
+          p_student_grade: string
+          p_student_name: string
+        }
+        Returns: {
+          booked_by: string | null
+          calendar_event_id: string
+          category_id: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          marketer_id: string | null
+          mentor_id: string
+          notes: string | null
+          parent_email: string | null
+          parent_name: string
+          parent_phone: string
+          privyr_lead_id: string | null
+          removal_note: string | null
+          removal_reason: string | null
+          removed_at: string | null
+          removed_by: string | null
+          source: string
+          status: string
+          student_grade: string
+          student_name: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'trial_bookings'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       classroom_badge_entry: { Args: { p_award_id: string }; Returns: Json }
       classroom_can_read_recording: {
         Args: { p_path: string }
@@ -2110,6 +2490,31 @@ export type Database = {
           id: string
         }[]
       }
+      is_marketer: { Args: never; Returns: boolean }
+      mark_whatsapp_sent: {
+        Args: { p_message_id: string }
+        Returns: {
+          body: string
+          created_at: string
+          direction: string
+          error: string | null
+          id: string
+          lead_id: string | null
+          phone: string
+          provider_message_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          template: string | null
+          trial_booking_id: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'whatsapp_messages'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       notify_admins_booking_rejected: {
         Args: {
           p_reason?: string
@@ -2118,6 +2523,63 @@ export type Database = {
           p_tutor_id: string
         }
         Returns: undefined
+      }
+      record_sale: {
+        Args: {
+          p_amount_kes: number
+          p_booking_id: string
+          p_marketer_id?: string
+          p_plan: string
+        }
+        Returns: {
+          amount_kes: number
+          closed_at: string
+          id: string
+          marketer_id: string | null
+          plan: string
+          recorded_by: string | null
+          student_name: string
+          trial_booking_id: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'sales'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      remove_trial_booking: {
+        Args: { p_booking_id: string; p_note?: string; p_reason: string }
+        Returns: {
+          booked_by: string | null
+          calendar_event_id: string
+          category_id: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          marketer_id: string | null
+          mentor_id: string
+          notes: string | null
+          parent_email: string | null
+          parent_name: string
+          parent_phone: string
+          privyr_lead_id: string | null
+          removal_note: string | null
+          removal_reason: string | null
+          removed_at: string | null
+          removed_by: string | null
+          source: string
+          status: string
+          student_grade: string
+          student_name: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'trial_bookings'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       respond_to_class_booking_request: {
         Args: { p_decision: string; p_request_id: string; p_response?: string }
@@ -2136,6 +2598,149 @@ export type Database = {
         SetofOptions: {
           from: '*'
           to: 'class_booking_requests'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      restore_trial_booking: {
+        Args: { p_booking_id: string }
+        Returns: {
+          booked_by: string | null
+          calendar_event_id: string
+          category_id: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          marketer_id: string | null
+          mentor_id: string
+          notes: string | null
+          parent_email: string | null
+          parent_name: string
+          parent_phone: string
+          privyr_lead_id: string | null
+          removal_note: string | null
+          removal_reason: string | null
+          removed_at: string | null
+          removed_by: string | null
+          source: string
+          status: string
+          student_grade: string
+          student_name: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'trial_bookings'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      sales_add_lead: {
+        Args: {
+          p_email?: string
+          p_notes?: string
+          p_parent_name: string
+          p_phone: string
+          p_source?: string
+        }
+        Returns: {
+          assigned_tutor_id: string | null
+          class_date: string | null
+          class_time: string | null
+          country: string | null
+          created_at: string | null
+          email: string | null
+          follow_up_missed: boolean | null
+          grade: string | null
+          id: string
+          last_contacted_at: string | null
+          lead_source: string | null
+          marketer_id: string | null
+          next_follow_up_at: string | null
+          notes: string | null
+          parent_name: string | null
+          personal_meet_link: string | null
+          phone: string | null
+          referal_code: string | null
+          status: string | null
+          student_name: string | null
+          student_user_id: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'leads'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      sales_can_work: { Args: { p_marketer_id: string }; Returns: boolean }
+      sales_release_slot: {
+        Args: {
+          p_booking: Database['public']['Tables']['trial_bookings']['Row']
+        }
+        Returns: undefined
+      }
+      sales_set_lead_status: {
+        Args: { p_lead_id: string; p_status: string }
+        Returns: {
+          assigned_tutor_id: string | null
+          class_date: string | null
+          class_time: string | null
+          country: string | null
+          created_at: string | null
+          email: string | null
+          follow_up_missed: boolean | null
+          grade: string | null
+          id: string
+          last_contacted_at: string | null
+          lead_source: string | null
+          marketer_id: string | null
+          next_follow_up_at: string | null
+          notes: string | null
+          parent_name: string | null
+          personal_meet_link: string | null
+          phone: string | null
+          referal_code: string | null
+          status: string | null
+          student_name: string | null
+          student_user_id: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'leads'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_trial_status: {
+        Args: { p_booking_id: string; p_status: string }
+        Returns: {
+          booked_by: string | null
+          calendar_event_id: string
+          category_id: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          marketer_id: string | null
+          mentor_id: string
+          notes: string | null
+          parent_email: string | null
+          parent_name: string
+          parent_phone: string
+          privyr_lead_id: string | null
+          removal_note: string | null
+          removal_reason: string | null
+          removed_at: string | null
+          removed_by: string | null
+          source: string
+          status: string
+          student_grade: string
+          student_name: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'trial_bookings'
           isOneToOne: true
           isSetofReturn: false
         }

@@ -5,10 +5,9 @@ export const APP_ROLES = [
   'operations_admin',
   'tech_admin',
   'student',
-  // The sales and marketing team ("Sales & Marketing" on screen). The role
-  // comes from supabase/migrations/20261116120000_marketer_role.sql; its
-  // dashboard runs on demo data until supabase/drafts/sales_trial_booking.sql
-  // is applied.
+  // The sales and marketing team ("Sales & Marketing" on screen). Their
+  // dashboard is src/features/sales (tables and rules:
+  // supabase/migrations/20261116130000_sales_trials.sql).
   'marketer',
 ] as const
 
@@ -22,6 +21,38 @@ const ROLE_LABELS: Record<AppRole, string> = {
   student: 'Student',
   marketer: 'Sales & Marketing',
 }
+
+/**
+ * The roles an admin can give someone, in the order the role pickers list
+ * them, with what each one can do. `non_user` (an account with no access yet)
+ * isn't offered for new people.
+ */
+export const ASSIGNABLE_ROLES = [
+  {
+    role: 'student',
+    description: 'Joins classes, sees their courses and homework.',
+  },
+  {
+    role: 'tutor',
+    description: 'Teaches classes and trials, opens free slots.',
+  },
+  {
+    role: 'marketer',
+    description: 'Works parent leads, books trials and records sales.',
+  },
+  {
+    role: 'operations_admin',
+    description: 'Full admin: people, schedule, sales and the website.',
+  },
+  {
+    role: 'tech_admin',
+    description: 'Full admin, for the technical team.',
+  },
+  {
+    role: 'owner',
+    description: 'Full admin. Only an owner can add another owner.',
+  },
+] as const satisfies readonly { role: AppRole; description: string }[]
 
 /** A role's name on screen, e.g. 'marketer' → "Sales & Marketing". */
 export function roleLabel(role: string | null | undefined): string {

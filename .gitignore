@@ -32,3 +32,6 @@ coverage/
 .env.*
 !.env.example
 /public/sw.js
+
+# Supabase CLI cache (written by `supabase link` / `db query --linked`)
+supabase/.temp/

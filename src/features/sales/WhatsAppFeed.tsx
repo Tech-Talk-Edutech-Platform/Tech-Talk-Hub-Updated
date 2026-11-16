@@ -7,10 +7,12 @@ import {
   Clock3,
   MessageCircle,
   PlugZap,
+  Send,
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 import { useNow } from '../../hooks/useNow'
-import { useSalesData } from './salesDataContext'
+import { problemText, useSalesData } from './salesDataContext'
 import type { WhatsAppMessage, WhatsAppStatus, WhatsAppTemplate } from './types'
 import { EmptyState, Panel } from './ui'
 import { whatsappLink } from './whatsapp'
@@ -165,7 +167,9 @@ export function WhatsAppFeed({ repId }: { repId: string | null }) {
               </p>
               <p className="mt-1 text-xs leading-5 text-slate-500">
                 Once connected, confirmations, reminders and follow-ups send
-                automatically, and parents’ replies land here.
+                automatically, and parents’ replies land here. Until then, tap
+                “Send on WhatsApp” on a scheduled message: it opens WhatsApp
+                with the text filled in and marks it sent.
               </p>
             </li>
             <li>
@@ -195,6 +199,35 @@ function Stat({ label, value }: { label: string; value: string | number }) {
         {value}
       </dd>
     </div>
+  )
+}
+
+/**
+ * Sends a scheduled message from the rep's own WhatsApp (until the Business
+ * API sends them automatically) and marks it sent.
+ */
+function SendByHand({ message }: { message: WhatsAppMessage }) {
+  const data = useSalesData()
+  const [marking, setMarking] = useState(false)
+  return (
+    <a
+      href={whatsappLink(message.phone, message.body)}
+      target="_blank"
+      rel="noreferrer"
+      aria-disabled={marking}
+      onClick={() => {
+        setMarking(true)
+        data
+          .markMessageSent(message.id)
+          .catch((error: unknown) =>
+            toast.error(problemText(error, 'Couldn’t mark it sent.')),
+          )
+          .finally(() => setMarking(false))
+      }}
+      className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 font-extrabold text-white hover:bg-emerald-700"
+    >
+      <Send size={12} aria-hidden /> Send on WhatsApp
+    </a>
   )
 }
 
@@ -228,6 +261,9 @@ function MessageRow({ message }: { message: WhatsAppMessage }) {
             >
               Reply in WhatsApp
             </a>
+          )}
+          {!inbound && message.status === 'queued' && message.body && (
+            <SendByHand message={message} />
           )}
           <span>{when(message.at)}</span>
           {!inbound && <StatusTick status={message.status} />}

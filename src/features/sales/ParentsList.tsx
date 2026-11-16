@@ -6,7 +6,7 @@ import { useNow } from '../../hooks/useNow'
 import { AddParentForm } from './AddParentForm'
 import { needsRebooking, timeAgo, visibleLeads, waitingForTrial } from './leads'
 import { formatPhone } from './phone'
-import { useSalesData } from './salesDataContext'
+import { problemText, useSalesData } from './salesDataContext'
 import { primaryButton, searchInputClass } from './styles'
 import type { Lead, TrialBooking } from './types'
 import { SOURCE_LABEL } from './types'
@@ -191,10 +191,16 @@ export function ParentsList({
                 showRep={repId === null}
                 repName={repName}
                 onBook={() => onBook(lead.id)}
-                onStatus={(status) => {
-                  data.setLeadStatus(lead.id, status, repId)
-                  if (status === 'not_interested') {
-                    toast(`${lead.parentName} moved to “Not interested”.`)
+                onStatus={async (status) => {
+                  try {
+                    await data.setLeadStatus(lead.id, status, repId)
+                    if (status === 'not_interested') {
+                      toast(`${lead.parentName} moved to “Not interested”.`)
+                    }
+                  } catch (error) {
+                    toast.error(
+                      problemText(error, 'Couldn’t update the parent.'),
+                    )
                   }
                 }}
               />
@@ -221,9 +227,18 @@ function ParentRow({
   showRep: boolean
   repName: string | null
   onBook: () => void
-  onStatus: (status: 'contacted' | 'not_interested') => void
+  onStatus: (status: 'contacted' | 'not_interested') => Promise<void>
 }) {
   const data = useSalesData()
+  const [busy, setBusy] = useState(false)
+  const setStatus = async (status: 'contacted' | 'not_interested') => {
+    setBusy(true)
+    try {
+      await onStatus(status)
+    } finally {
+      setBusy(false)
+    }
+  }
   const rebook = lead.status === 'trial_booked' && needsRebooking(booking)
   const open = lead.status === 'new' || lead.status === 'contacted'
   const mentor = booking
@@ -315,8 +330,9 @@ function ParentRow({
         {lead.status === 'new' && (
           <button
             type="button"
-            onClick={() => onStatus('contacted')}
-            className={`${smallButton} border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5`}
+            disabled={busy}
+            onClick={() => void setStatus('contacted')}
+            className={`${smallButton} border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5`}
           >
             Mark contacted
           </button>
@@ -324,8 +340,9 @@ function ParentRow({
         {open && (
           <button
             type="button"
-            onClick={() => onStatus('not_interested')}
-            className={`${smallButton} text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-white/5 dark:hover:text-white`}
+            disabled={busy}
+            onClick={() => void setStatus('not_interested')}
+            className={`${smallButton} text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50 dark:hover:bg-white/5 dark:hover:text-white`}
           >
             Not interested
           </button>
@@ -333,8 +350,9 @@ function ParentRow({
         {lead.status === 'not_interested' && (
           <button
             type="button"
-            onClick={() => onStatus('contacted')}
-            className={`${smallButton} border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5`}
+            disabled={busy}
+            onClick={() => void setStatus('contacted')}
+            className={`${smallButton} border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5`}
           >
             Reopen
           </button>
