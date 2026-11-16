@@ -62,7 +62,8 @@ VITE_BACKEND_SERVER_URL=https://tech-talk-hub-updated-server.vercel.app
 ```
 
 These files are git-ignored, so set `VITE_BACKEND_SERVER_URL` in the frontend's
-Vercel project too. The server must then list the site in `CORS_ORIGINS`.
+Vercel project too. The server already allows the site's own origins (see
+`server/middleware/cors.ts`); list any other origin in its `CORS_ORIGINS`.
 
 ### Live classroom calls
 

@@ -11,7 +11,7 @@ import cronRemindersRoute from './routes/cronReminders'
 import adminUsersRoute from './routes/adminUsers'
 import homeRoute from './routes/home'
 import apiDocsRoute from './routes/apiDocs'
-import { allowOrigins } from './middleware/cors'
+import { allowOrigins, DEFAULT_CORS_ORIGINS } from './middleware/cors'
 import { requireServerEnv } from './env'
 import { supabase } from './supabase'
 
@@ -32,14 +32,13 @@ if (trustedProxyHops > 0) {
   app.set('trust proxy', trustedProxyHops)
 }
 
-const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+// The site's own origins are always allowed; CORS_ORIGINS adds extras.
+const extraCorsOrigins = (process.env.CORS_ORIGINS ?? '')
   .split(',')
-  .map((origin) => origin.trim())
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
   .filter(Boolean)
 
-if (corsOrigins.length > 0) {
-  app.use(allowOrigins(corsOrigins))
-}
+app.use(allowOrigins([...DEFAULT_CORS_ORIGINS, ...extraCorsOrigins]))
 
 app.use(express.json({ limit: '100kb' }))
 
