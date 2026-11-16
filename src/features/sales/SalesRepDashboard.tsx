@@ -40,7 +40,7 @@ const PAGE_INTRO: Record<SalesView, string> = {
   dashboard: 'Your trials, sales and follow-ups this month.',
   parents:
     'Everyone to reach out to. Message or call them, then book a trial once you know about their child.',
-  book: 'Start with the parent, add their child’s details from your conversation, then pick the right mentor and time.',
+  book: 'Pick a day and shift, choose a tutor’s open session, then add the student and their parent.',
   bookings: 'Your trials and what happened next.',
   whatsapp: 'Messages to your parents and their replies.',
 }

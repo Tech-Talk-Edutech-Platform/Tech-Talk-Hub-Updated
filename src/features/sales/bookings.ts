@@ -55,3 +55,35 @@ export function parentAlreadyMessaged(
         message.status === 'read'),
   )
 }
+
+/** A short reference to quote to the parent, e.g. "TTH-B8ABE697". */
+export function bookingReference(bookingId: string) {
+  // FNV-1a, so a booking always gets the same reference.
+  let hash = 0x81_1c_9d_c5
+  for (let index = 0; index < bookingId.length; index += 1) {
+    hash ^= bookingId.charCodeAt(index)
+    hash = Math.imul(hash, 0x01_00_01_93)
+  }
+  return `TTH-${(hash >>> 0).toString(16).toUpperCase().padStart(8, '0')}`
+}
+
+/** "2026-11-16T13:00:00.000Z" → "20261116T130000Z", as Google Calendar wants. */
+const calendarStamp = (iso: string) =>
+  new Date(iso).toISOString().replace(/[-:]|\.\d{3}/g, '')
+
+/** Opens Google Calendar with the trial filled in, to save to your own calendar. */
+export function googleCalendarLink(booking: TrialBooking, tutorName: string) {
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `Coding trial: ${booking.studentName} with ${tutorName}`,
+    dates: `${calendarStamp(booking.start)}/${calendarStamp(booking.end)}`,
+    details: [
+      `Free coding trial with Tech Talk Hub (${bookingReference(booking.id)}).`,
+      `Student: ${booking.studentName}`,
+      `Parent: ${booking.parentName}`,
+      `Join: ${booking.meetLink}`,
+    ].join('\n'),
+    location: booking.meetLink,
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}

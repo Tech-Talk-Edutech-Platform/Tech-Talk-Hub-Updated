@@ -277,6 +277,7 @@ export default function UserManagement({
                     >
                       <option value="student">Student</option>
                       <option value="tutor">Tutor</option>
+                      <option value="marketer">Sales & Marketing</option>
                     </select>
                   </div>
                   {u.role === 'student' && (

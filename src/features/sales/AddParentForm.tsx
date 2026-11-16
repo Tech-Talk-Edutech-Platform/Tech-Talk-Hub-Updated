@@ -70,93 +70,95 @@ export function AddParentForm({
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-      <Field label="Parent’s name">
-        <input
-          value={parentName}
-          onChange={(event) => setParentName(event.target.value)}
-          className={inputClass}
-          autoComplete="off"
-          required
-        />
-      </Field>
-      <Field label="Phone (WhatsApp)">
-        <div className="flex gap-2">
-          <select
-            aria-label="Country code"
-            value={countryCode}
-            onChange={(event) => setCountryCode(event.target.value)}
-            className={countryCodeClass}
-          >
-            {COUNTRIES.map((country) => (
-              <option key={country.code} value={country.code}>
-                {country.code} {country.name}
-              </option>
-            ))}
-          </select>
+    <div className="@container">
+      <form onSubmit={submit} className="grid gap-4 @lg:grid-cols-2">
+        <Field label="Parent’s name">
           <input
-            type="tel"
-            inputMode="tel"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="712 345 678"
+            value={parentName}
+            onChange={(event) => setParentName(event.target.value)}
             className={inputClass}
             autoComplete="off"
             required
           />
-        </div>
-      </Field>
-      <Field label="Email">
-        <input
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className={inputClass}
-          autoComplete="off"
-        />
-      </Field>
-      <Field label="Came from">
-        <select
-          value={source}
-          onChange={(event) => {
-            const { value } = event.target
-            if (isBookingSource(value)) setSource(value)
-          }}
-          className={selectClass}
-        >
-          {BOOKING_SOURCES.map((option) => (
-            <option key={option} value={option}>
-              {SOURCE_LABEL[option]}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <div className="sm:col-span-2">
-        <Field label="Notes (optional)">
+        </Field>
+        <Field label="Phone (WhatsApp)">
+          <div className="flex gap-2">
+            <select
+              aria-label="Country code"
+              value={countryCode}
+              onChange={(event) => setCountryCode(event.target.value)}
+              className={countryCodeClass}
+            >
+              {COUNTRIES.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.code} {country.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="712 345 678"
+              className={inputClass}
+              autoComplete="off"
+              required
+            />
+          </div>
+        </Field>
+        <Field label="Email">
           <input
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Best time to call, how they heard about us…"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             className={inputClass}
+            autoComplete="off"
           />
         </Field>
-      </div>
-      {problem && (
-        <p
-          role="alert"
-          className="text-sm font-semibold text-red-600 sm:col-span-2"
-        >
-          {problem}
-        </p>
-      )}
-      <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
-        <button type="button" onClick={onCancel} className={secondaryButton}>
-          Cancel
-        </button>
-        <button type="submit" className={primaryButton}>
-          <UserPlus size={16} aria-hidden /> {submitLabel}
-        </button>
-      </div>
-    </form>
+        <Field label="Came from">
+          <select
+            value={source}
+            onChange={(event) => {
+              const { value } = event.target
+              if (isBookingSource(value)) setSource(value)
+            }}
+            className={selectClass}
+          >
+            {BOOKING_SOURCES.map((option) => (
+              <option key={option} value={option}>
+                {SOURCE_LABEL[option]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="@lg:col-span-2">
+          <Field label="Notes (optional)">
+            <input
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Best time to call, how they heard about us…"
+              className={inputClass}
+            />
+          </Field>
+        </div>
+        {problem && (
+          <p
+            role="alert"
+            className="text-sm font-semibold text-red-600 @lg:col-span-2"
+          >
+            {problem}
+          </p>
+        )}
+        <div className="flex flex-wrap justify-end gap-2 @lg:col-span-2">
+          <button type="button" onClick={onCancel} className={secondaryButton}>
+            Cancel
+          </button>
+          <button type="submit" className={primaryButton}>
+            <UserPlus size={16} aria-hidden /> {submitLabel}
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }

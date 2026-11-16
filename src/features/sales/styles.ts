@@ -1,7 +1,7 @@
 /** Shared control styles for the sales screens. */
 
 const control =
-  'rounded-xl border border-slate-200 bg-white text-sm text-slate-900 outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-slate-800 dark:text-white'
+  'rounded-xl border border-slate-200 bg-white text-sm font-normal text-slate-900 outline-hidden focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-slate-800 dark:text-white'
 
 /** Full-width form controls. */
 export const selectClass = `w-full px-3 py-2.5 ${control}`

@@ -12,7 +12,8 @@
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "types": ["node", "africastalking"]
   },
   "include": ["**/*.ts", "types/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]

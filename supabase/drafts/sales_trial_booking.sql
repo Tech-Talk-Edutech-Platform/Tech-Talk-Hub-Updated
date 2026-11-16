@@ -3,8 +3,9 @@
 --
 -- This folder is outside supabase/migrations on purpose, so `supabase db push`
 -- ignores it. When the sales dashboard preview (/preview/sales) is signed off:
---   1. Move PART 1 into its own migration (a new enum value must be committed
---      before anything uses it), and PARTS 2+ into the next one.
+--   1. PART 1 (the role) is already its own migration:
+--      supabase/migrations/20261116120000_marketer_role.sql. Move PARTS 2+
+--      into the next one.
 --   2. Apply, then `npm run gen:types`.
 --   3. Add a Supabase-backed provider next to
 --      src/features/sales/DemoSalesDataProvider.tsx and use it instead.
@@ -13,6 +14,8 @@
 
 -- PART 1 ── the role ---------------------------------------------------------
 -- `marketer` is the sales and marketing team (front end: src/types/roles.ts).
+-- Shipped as migrations/20261116120000_marketer_role.sql; kept here (it's a
+-- no-op once applied) so this file still reads top to bottom.
 alter type public.user_role add value if not exists 'marketer';
 
 

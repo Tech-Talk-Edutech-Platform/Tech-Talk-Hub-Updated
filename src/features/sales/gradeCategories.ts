@@ -38,3 +38,7 @@ export function categoryForGrade(grade: string): GradeCategory | undefined {
 
 export const gradeLabel = (grade: string) =>
   grade === 'K' ? 'Kindergarten' : `Grade ${grade}`
+
+/** "K–3", "4–7", "8–12". */
+export const gradeRange = (category: GradeCategory) =>
+  `${category.grades[0] ?? ''}–${category.grades[category.grades.length - 1] ?? ''}`

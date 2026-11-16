@@ -1,5 +1,6 @@
 import 'dotenv/config'
-import express, { type Request, type Response } from 'express'
+import express from 'express'
+import type { Request, Response } from './types/express'
 import WebPush from 'web-push'
 import { startReminderScheduler } from './reminderScheduler'
 import sendReceiptRoute from './routes/sendReceipt'

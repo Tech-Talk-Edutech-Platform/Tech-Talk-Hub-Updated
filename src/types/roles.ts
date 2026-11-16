@@ -5,13 +5,29 @@ export const APP_ROLES = [
   'operations_admin',
   'tech_admin',
   'student',
-  // The sales and marketing team. Not in the database's user_role enum yet;
-  // its dashboard runs on demo data until
-  // supabase/drafts/sales_trial_booking.sql is applied.
+  // The sales and marketing team ("Sales & Marketing" on screen). The role
+  // comes from supabase/migrations/20261116120000_marketer_role.sql; its
+  // dashboard runs on demo data until supabase/drafts/sales_trial_booking.sql
+  // is applied.
   'marketer',
 ] as const
 
 export type AppRole = (typeof APP_ROLES)[number]
+
+const ROLE_LABELS: Record<AppRole, string> = {
+  tutor: 'Tutor',
+  owner: 'Owner',
+  operations_admin: 'Operations Admin',
+  tech_admin: 'Tech Admin',
+  student: 'Student',
+  marketer: 'Sales & Marketing',
+}
+
+/** A role's name on screen, e.g. 'marketer' → "Sales & Marketing". */
+export function roleLabel(role: string | null | undefined): string {
+  if (!role) return 'No role'
+  return isAppRole(role) ? ROLE_LABELS[role] : role.replaceAll('_', ' ')
+}
 
 export const ADMIN_ROLES = [
   'owner',

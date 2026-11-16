@@ -130,7 +130,7 @@ export default function SalesPreviewPage() {
                   Tech Talk Hub
                 </p>
                 <p className="mt-0.5 text-xs font-medium whitespace-nowrap text-gray-400">
-                  Marketer Portal 🚀
+                  Sales &amp; Marketing Portal 🚀
                 </p>
               </div>
               <nav

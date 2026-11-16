@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { FlaskConical, Mail, MessageCircle, Phone } from 'lucide-react'
 
+import type { TutorTone } from './bookingStyles'
 import {
   LEAD_STATUS_LABEL,
   TRIAL_STATUS_LABEL,
@@ -235,6 +236,27 @@ export function Initials({ name, size = 32 }: { name: string; size?: number }) {
       aria-hidden
       style={{ width: size, height: size }}
       className="inline-flex shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-black text-purple-700 dark:bg-purple-500/20 dark:text-purple-200"
+    >
+      {letters}
+    </span>
+  )
+}
+
+/** A tutor's initials on an orange or violet tile, as on the booking portal. */
+export function TutorAvatar({ name, tone }: { name: string; tone: TutorTone }) {
+  const letters = name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('')
+  return (
+    <span
+      aria-hidden
+      className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br text-sm font-black text-white shadow-sm ${
+        tone === 'orange'
+          ? 'from-orange-500 to-orange-700'
+          : 'from-violet-500 to-violet-800'
+      }`}
     >
       {letters}
     </span>

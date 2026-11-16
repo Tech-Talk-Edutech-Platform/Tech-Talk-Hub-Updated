@@ -1,202 +1,211 @@
-import { useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarCheck2,
+  ArrowUpRight,
   Check,
-  Contact,
-  Copy,
-  ExternalLink,
-  GraduationCap,
-  MessageCircle,
-  Search,
-  Undo2,
-  UserPlus,
-  UserRound,
+  X,
+  Zap,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 import { useNow } from '../../hooks/useNow'
-import { AddParentForm } from './AddParentForm'
+import { BookingComplete } from './BookingComplete'
 import { parentAlreadyMessaged } from './bookings'
+import {
+  eyebrowClass,
+  SHIFT_TONE,
+  stepHeadingClass,
+  tutorTone,
+} from './bookingStyles'
 import {
   categoryForGrade,
   GRADE_CATEGORIES,
   gradeCategory,
-  gradeLabel,
+  gradeRange,
 } from './gradeCategories'
-import { timeAgo, visibleLeads, waitingForTrial } from './leads'
 import { formatPhone } from './phone'
 import { useSalesData } from './salesDataContext'
 import {
-  inlineSelectClass,
-  inputClass,
-  primaryButton,
-  searchInputClass,
-  secondaryButton,
-  selectClass,
-  whatsappButton,
-} from './styles'
-import type { GradeCategoryId, Lead, TrialBooking, TrialSlot } from './types'
-import { SOURCE_LABEL } from './types'
-import {
-  ContactButtons,
-  EmptyState,
-  Field,
-  Initials,
-  LeadStatusBadge,
-  Panel,
-} from './ui'
-import {
-  introMessage,
-  trialTime,
-  whatsappLink,
-  whatsappMessage,
-} from './whatsapp'
+  addDays,
+  SHIFTS,
+  shiftEnd,
+  shiftHours,
+  shiftOf,
+  startOfDay,
+  type Shift,
+  type ShiftId,
+} from './shifts'
+import { StudentDetailsDialog } from './StudentDetailsDialog'
+import { draftFor, EMPTY_DRAFT, type StudentDraft } from './studentDraft'
+import type {
+  GradeCategoryId,
+  Lead,
+  Mentor,
+  TrialBooking,
+  TrialSlot,
+} from './types'
+import { EmptyState, Initials, TutorAvatar } from './ui'
+import { trialTime } from './whatsapp'
 
-const ANY_MENTOR = 'any'
+/** How far ahead the day picker reaches. */
+const DAYS_AHEAD = 14
 
-const STEPS = ['Parent', 'Child', 'Mentor & time', 'Confirm'] as const
+const STEPS = ['Choose a shift', 'Pick a tutor', 'Student details'] as const
 
-const dayKey = (iso: string) => new Date(iso).toDateString()
-const dayHeading = (iso: string) =>
-  new Date(iso).toLocaleDateString([], {
+type ProgramFilter = GradeCategoryId | 'all'
+
+type ShiftStat = { shift: Shift; open: number; booked: number; over: boolean }
+
+const msOf = (iso: string) => new Date(iso).getTime()
+const clock = (iso: string) =>
+  new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+const longDay = (ms: number) =>
+  new Date(ms).toLocaleDateString([], {
     weekday: 'long',
     day: 'numeric',
-    month: 'short',
+    month: 'long',
   })
-const timeOnly = (iso: string) =>
-  new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
-
-type Child = { name: string; grade: string; notes: string }
-
-const NO_CHILD: Child = { name: '', grade: '', notes: '' }
 
 /**
- * Parent → child → mentor & time → confirm. The team starts with a parent's
- * contact details, gets the child's details by talking to them, then picks a
- * mentor who teaches the child's program. Booking puts the trial on that
- * mentor's calendar (with the meeting link) and queues the WhatsApp
- * confirmation to the parent.
+ * Shift → tutor → student, like the booking portal. The rep picks a day and a
+ * two-hour shift, then one of the tutors' open one-hour sessions, then fills
+ * in the parent and student. Booking puts the trial on the tutor's calendar
+ * (with the meeting link) and queues the parent's WhatsApp confirmation.
  */
 export function BookTrialWizard({
   salesRepId,
   initialLeadId = null,
 }: {
   salesRepId: string | null
-  /** Start on the child's details for this parent (from the parents list). */
+  /** Book for this parent (from the parents list). */
   initialLeadId?: string | null
 }) {
   const data = useSalesData()
-  const [step, setStep] = useState(initialLeadId ? 1 : 0)
-  const [leadId, setLeadId] = useState<string | null>(initialLeadId)
-  const [child, setChild] = useState<Child>(() =>
-    previousChild(data.leads, data.bookings, initialLeadId),
+  const now = useNow(60_000)
+  const today = startOfDay(now)
+  const [draft, setDraft] = useState<StudentDraft>(() =>
+    draftFor(data.leads, data.bookings, initialLeadId),
   )
-  const [programOverride, setProgramOverride] =
-    useState<GradeCategoryId | null>(null)
-  const [mentorId, setMentorId] = useState(ANY_MENTOR)
+  // A rebooking starts on the student's program; otherwise every tutor shows.
+  const [program, setProgram] = useState<ProgramFilter>(
+    () => draft.program ?? categoryForGrade(draft.grade)?.id ?? 'all',
+  )
+  const [pickedDay, setPickedDay] = useState(today)
+  const [shiftId, setShiftId] = useState<ShiftId | null>(null)
   const [slotId, setSlotId] = useState<string | null>(null)
-  const [problem, setProblem] = useState<string | null>(null)
   const [booked, setBooked] = useState<TrialBooking | null>(null)
-  // Read once: the open-slot list doesn't need to tick while the form is open.
-  const [now] = useState(() => Date.now())
+  const headingRef = useRef<HTMLHeadingElement>(null)
 
-  const lead = data.leads.find((candidate) => candidate.id === leadId) ?? null
-  const category = programOverride ?? categoryForGrade(child.grade)?.id ?? null
-  const repName =
-    data.reps.find((rep) => rep.id === (salesRepId ?? lead?.salesRepId))
-      ?.name ?? null
+  // Left open past midnight, yesterday's pick moves on to today.
+  const day = Math.max(pickedDay, today)
+  const lead = data.leads.find((c) => c.id === draft.leadId) ?? null
 
-  const mentorsForCategory = useMemo(
+  const mentors = useMemo(
     () =>
-      category
-        ? data.mentors.filter((mentor) => mentor.categories.includes(category))
-        : [],
-    [data.mentors, category],
+      program === 'all'
+        ? data.mentors
+        : data.mentors.filter((mentor) => mentor.categories.includes(program)),
+    [data.mentors, program],
   )
 
-  const openSlots = useMemo(() => {
-    const mentorIds = new Set(mentorsForCategory.map((mentor) => mentor.id))
+  /** Sessions still to come, inside a shift, with a tutor for the program. */
+  const upcoming = useMemo(() => {
+    const ids = new Set(mentors.map((mentor) => mentor.id))
     return data.slots
       .filter(
         (slot) =>
-          !slot.bookingId &&
-          new Date(slot.start).getTime() > now &&
-          mentorIds.has(slot.mentorId),
+          ids.has(slot.mentorId) &&
+          msOf(slot.start) > now &&
+          shiftOf(slot.start) !== undefined,
       )
-      .toSorted(
-        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime(),
-      )
-  }, [data.slots, mentorsForCategory, now])
+      .toSorted((a, b) => msOf(a.start) - msOf(b.start))
+  }, [data.slots, mentors, now])
 
-  const slotsByDay = useMemo(() => {
-    const chosen =
-      mentorId === ANY_MENTOR
-        ? openSlots
-        : openSlots.filter((slot) => slot.mentorId === mentorId)
-    const groups = new Map<string, TrialSlot[]>()
-    for (const slot of chosen) {
-      const key = dayKey(slot.start)
-      groups.set(key, [...(groups.get(key) ?? []), slot])
-    }
-    return [...groups.values()]
-  }, [openSlots, mentorId])
+  const days = useMemo(
+    () =>
+      Array.from({ length: DAYS_AHEAD }, (_, offset) => {
+        const start = addDays(today, offset)
+        const end = addDays(today, offset + 1)
+        const open = upcoming.filter(
+          (slot) =>
+            !slot.bookingId &&
+            msOf(slot.start) >= start &&
+            msOf(slot.start) < end,
+        ).length
+        return { start, open }
+      }),
+    [today, upcoming],
+  )
 
+  const daySlots = useMemo(() => {
+    const end = addDays(day, 1)
+    return upcoming.filter(
+      (slot) => msOf(slot.start) >= day && msOf(slot.start) < end,
+    )
+  }, [upcoming, day])
+
+  const shiftStats = useMemo<ShiftStat[]>(
+    () =>
+      SHIFTS.map((shift) => {
+        const inShift = daySlots.filter(
+          (slot) => shiftOf(slot.start)?.id === shift.id,
+        )
+        const open = inShift.filter((slot) => !slot.bookingId).length
+        return {
+          shift,
+          open,
+          booked: inShift.length - open,
+          over: shiftEnd(shift, day) <= now,
+        }
+      }),
+    [daySlots, day, now],
+  )
+
+  const soonest = upcoming.find((slot) => !slot.bookingId) ?? null
+  const shift = SHIFTS.find((candidate) => candidate.id === shiftId) ?? null
+  const slot = data.slots.find((candidate) => candidate.id === slotId) ?? null
+  const slotMentor = slot
+    ? data.mentors.find((mentor) => mentor.id === slot.mentorId)
+    : undefined
   const mentorName = (id: string) =>
-    data.mentors.find((mentor) => mentor.id === id)?.name ?? 'Mentor'
-  const chosenSlot = data.slots.find((slot) => slot.id === slotId) ?? null
+    data.mentors.find((mentor) => mentor.id === id)?.name ?? 'a tutor'
 
-  const chooseParent = (chosen: Lead) => {
-    setLeadId(chosen.id)
-    setChild(previousChild(data.leads, data.bookings, chosen.id))
-    setProgramOverride(null)
+  // Each new step takes focus (and scrolls into view) at its heading.
+  const stage = booked ? 'done' : shift ? 'tutor' : 'shift'
+  const shownStage = useRef(stage)
+  useEffect(() => {
+    if (shownStage.current === stage) return
+    shownStage.current = stage
+    headingRef.current?.focus()
+  }, [stage])
+
+  const step = booked ? STEPS.length : slot ? 2 : shift ? 1 : 0
+
+  const openSession = (chosen: TrialSlot) => {
+    setPickedDay(startOfDay(msOf(chosen.start)))
+    setShiftId(shiftOf(chosen.start)?.id ?? null)
+    setSlotId(chosen.id)
+  }
+
+  const onBooked = (booking: TrialBooking) => {
+    setBooked(booking)
     setSlotId(null)
-    setStep(1)
+    toast.success(`Trial booked with ${mentorName(booking.mentorId)}.`)
   }
 
   const reset = () => {
-    setStep(0)
-    setLeadId(null)
-    setChild(NO_CHILD)
-    setProgramOverride(null)
-    setMentorId(ANY_MENTOR)
+    setDraft(EMPTY_DRAFT)
+    setProgram('all')
+    setPickedDay(today)
+    setShiftId(null)
     setSlotId(null)
-    setProblem(null)
     setBooked(null)
   }
 
-  const book = () => {
-    if (!lead || !category || !chosenSlot) return
-    try {
-      const booking = data.bookTrial({
-        slotId: chosenSlot.id,
-        leadId: lead.id,
-        // Admins book on behalf of the parent's rep.
-        salesRepId: salesRepId ?? lead.salesRepId,
-        category,
-        parentName: lead.parentName,
-        parentPhone: lead.phone,
-        parentEmail: lead.email,
-        studentName: child.name.trim(),
-        studentGrade: child.grade,
-        source: lead.source,
-        notes: child.notes.trim(),
-      })
-      setBooked(booking)
-      setProblem(null)
-      toast.success('Trial booked and assigned to the mentor.')
-    } catch (error) {
-      setProblem(
-        error instanceof Error ? error.message : 'Couldn’t book that slot.',
-      )
-    }
-  }
-
   // Booked by mistake: take it straight back off the calendar (a soft delete,
-  // kept under "Removed") and return to the times, keeping parent and child.
+  // kept under "Removed") and return to the same shift, keeping the details.
   const undo = (booking: TrialBooking) => {
     const messaged = parentAlreadyMessaged(booking, data.messages)
     try {
@@ -212,8 +221,8 @@ export function BookTrialWizard({
       return
     }
     setBooked(null)
-    setSlotId(null)
-    setStep(2)
+    setPickedDay(startOfDay(msOf(booking.start)))
+    setShiftId(shiftOf(booking.start)?.id ?? null)
     toast(
       messaged
         ? 'Booking undone. The parent already had the confirmation, so let them know on WhatsApp.'
@@ -222,713 +231,586 @@ export function BookTrialWizard({
     )
   }
 
-  if (booked) {
-    return (
-      <BookingConfirmation
-        booking={booked}
-        onBookAnother={reset}
-        onUndo={() => undo(booked)}
-      />
-    )
-  }
-
   return (
-    <div className="space-y-4">
-      <ol className="flex flex-wrap gap-2" aria-label="Booking steps">
-        {STEPS.map((label, index) => (
+    <div className="overflow-hidden rounded-[28px] border border-orange-100/80 bg-[#fbf7f5] dark:border-white/10 dark:bg-slate-950/40">
+      <header className="relative px-4 pt-8 pb-6 text-center sm:px-8 sm:pt-10">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(251,146,60,0.16),transparent_45%),radial-gradient(circle_at_88%_8%,rgba(167,139,250,0.18),transparent_45%)]"
+        />
+        <div className="relative">
+          <p className={eyebrowClass}>Coding trial bookings</p>
+          <h2 className="mt-3 text-[32px] leading-[1.05] font-black tracking-tight text-balance sm:text-5xl">
+            <span className="text-fuchsia-900 dark:text-white">
+              Great learning{' '}
+            </span>
+            <span className="bg-linear-to-r from-orange-600 via-pink-500 to-violet-700 bg-clip-text text-transparent dark:from-orange-300 dark:via-pink-300 dark:to-violet-300">
+              starts here.
+            </span>
+          </h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-slate-600 sm:text-base dark:text-slate-300">
+            Pick a time, choose a tutor and get the student booked in minutes.
+          </p>
+          <Steps current={step} />
+        </div>
+      </header>
+
+      <div className="px-2 pb-2 sm:px-6 sm:pb-6">
+        {lead && !booked && (
+          <ParentBanner lead={lead} onClear={() => setDraft(EMPTY_DRAFT)} />
+        )}
+        <section className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-[0_24px_60px_-36px_rgba(88,28,135,0.4)] sm:p-8 dark:border-white/10 dark:bg-slate-900 dark:shadow-none">
+          {booked ? (
+            <BookingComplete
+              booking={booked}
+              headingRef={headingRef}
+              onBookAnother={reset}
+              onUndo={() => undo(booked)}
+            />
+          ) : shift ? (
+            <TutorStage
+              headingRef={headingRef}
+              shift={shift}
+              day={day}
+              slots={daySlots.filter(
+                (candidate) => shiftOf(candidate.start)?.id === shift.id,
+              )}
+              mentors={mentors}
+              allMentors={data.mentors}
+              program={program}
+              onProgram={setProgram}
+              onBack={() => setShiftId(null)}
+              onPick={openSession}
+            />
+          ) : (
+            <ShiftStage
+              headingRef={headingRef}
+              program={program}
+              onProgram={setProgram}
+              days={days}
+              day={day}
+              onDay={setPickedDay}
+              stats={shiftStats}
+              onShift={setShiftId}
+              soonest={soonest}
+              soonestTutor={soonest ? mentorName(soonest.mentorId) : ''}
+              onSoonest={openSession}
+            />
+          )}
+        </section>
+      </div>
+
+      {slot && slotMentor && !booked && (
+        <StudentDetailsDialog
+          slot={slot}
+          mentor={slotMentor}
+          draft={draft}
+          onDraftChange={setDraft}
+          salesRepId={salesRepId}
+          onClose={() => setSlotId(null)}
+          onBooked={onBooked}
+        />
+      )}
+    </div>
+  )
+}
+
+function Steps({ current }: { current: number }) {
+  return (
+    <ol
+      aria-label="Booking progress"
+      className="mt-7 flex items-center justify-center gap-2 sm:gap-3"
+    >
+      {STEPS.map((label, index) => {
+        const done = index < current
+        const active = index === current
+        return (
           <li
             key={label}
-            aria-current={index === step ? 'step' : undefined}
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${
-              index === step
-                ? 'bg-purple-600 text-white'
-                : index < step
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-200'
-                  : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400'
-            }`}
+            aria-current={active ? 'step' : undefined}
+            className="flex items-center gap-2 sm:gap-3"
           >
-            {index < step ? <Check size={12} aria-hidden /> : index + 1}
-            <span>{label}</span>
-          </li>
-        ))}
-      </ol>
-
-      {step > 0 && (
-        <button
-          type="button"
-          onClick={() => {
-            setProblem(null)
-            setStep((current) => current - 1)
-          }}
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white"
-        >
-          <ArrowLeft size={15} aria-hidden /> Back
-        </button>
-      )}
-
-      {step === 0 && (
-        <ParentStep salesRepId={salesRepId} onChoose={chooseParent} />
-      )}
-
-      {step === 1 && lead && (
-        <ChildStep
-          lead={lead}
-          repName={repName}
-          child={child}
-          onChildChange={setChild}
-          category={category}
-          programOverride={programOverride}
-          onProgramOverride={setProgramOverride}
-          onContinue={() => {
-            setSlotId(null)
-            setMentorId(ANY_MENTOR)
-            setStep(2)
-          }}
-        />
-      )}
-
-      {step === 2 && category && (
-        <Panel
-          title={`${gradeCategory(category).label} mentors for ${firstName(child.name)}`}
-          icon={UserRound}
-        >
-          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            Every mentor here teaches {gradeCategory(category).label} (
-            {gradeCategory(category).ages}). Pick one, or take the earliest time
-            with anyone.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <MentorChoice
-              title="Earliest available"
-              subtitle="Any mentor for this program"
-              openCount={openSlots.length}
-              next={openSlots[0]?.start}
-              selected={mentorId === ANY_MENTOR}
-              onChoose={() => setMentorId(ANY_MENTOR)}
-            />
-            {mentorsForCategory.map((mentor) => {
-              const theirs = openSlots.filter((s) => s.mentorId === mentor.id)
-              return (
-                <MentorChoice
-                  key={mentor.id}
-                  title={mentor.name}
-                  subtitle={mentor.categories
-                    .map((id) => gradeCategory(id).label)
-                    .join(' · ')}
-                  openCount={theirs.length}
-                  next={theirs[0]?.start}
-                  selected={mentorId === mentor.id}
-                  onChoose={() => setMentorId(mentor.id)}
-                />
-              )
-            })}
-          </div>
-
-          <h3 className="mt-6 mb-3 flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white">
-            <CalendarCheck2 size={16} className="text-purple-500" aria-hidden />
-            {mentorId === ANY_MENTOR
-              ? 'Open times · all mentors'
-              : `Open times · ${mentorName(mentorId)}`}
-          </h3>
-          {slotsByDay.length === 0 ? (
-            <EmptyState>
-              No open times. Ask the mentor to add availability, or choose
-              another mentor.
-            </EmptyState>
-          ) : (
-            <div className="max-h-[420px] space-y-4 overflow-y-auto pr-1">
-              {slotsByDay.map((slots) => (
-                <div key={slots[0]?.id}>
-                  <h4 className="mb-2 text-xs font-extrabold tracking-wide text-slate-500 uppercase">
-                    {dayHeading(slots[0]?.start ?? '')}
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        onClick={() => {
-                          setSlotId(slot.id)
-                          setStep(3)
-                        }}
-                        className={`rounded-xl border px-3 py-2 text-left text-sm transition hover:border-purple-400 ${
-                          slotId === slot.id
-                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-500/10'
-                            : 'border-slate-200 dark:border-white/10'
-                        }`}
-                      >
-                        <span className="block font-extrabold text-slate-900 tabular-nums dark:text-white">
-                          {timeOnly(slot.start)}
-                        </span>
-                        {mentorId === ANY_MENTOR && (
-                          <span className="block text-xs text-slate-500">
-                            {mentorName(slot.mentorId)}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Panel>
-      )}
-
-      {step === 3 && lead && category && chosenSlot && (
-        <Panel title="Check and book" icon={CalendarCheck2}>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-sm">
-            <dt className="text-slate-500">Parent</dt>
-            <dd className="font-bold text-slate-900 dark:text-white">
-              {lead.parentName}
-              <span className="block text-xs font-normal text-slate-500">
-                {formatPhone(lead.phone)}
-                {lead.email && ` · ${lead.email}`}
-              </span>
-            </dd>
-            <dt className="text-slate-500">Child</dt>
-            <dd className="font-bold text-slate-900 dark:text-white">
-              {child.name.trim()} · {gradeLabel(child.grade)}
-            </dd>
-            <dt className="text-slate-500">Program</dt>
-            <dd className="font-bold text-slate-900 dark:text-white">
-              {gradeCategory(category).label}
-            </dd>
-            <dt className="text-slate-500">Mentor</dt>
-            <dd className="font-bold text-slate-900 dark:text-white">
-              {mentorName(chosenSlot.mentorId)}
-            </dd>
-            <dt className="text-slate-500">When</dt>
-            <dd className="font-bold text-slate-900 dark:text-white">
-              {trialTime(chosenSlot.start)}
-            </dd>
-            {child.notes.trim() && (
-              <>
-                <dt className="text-slate-500">For the mentor</dt>
-                <dd className="text-slate-700 dark:text-slate-200">
-                  {child.notes.trim()}
-                </dd>
-              </>
-            )}
-            <dt className="text-slate-500">Came from</dt>
-            <dd className="text-slate-700 dark:text-slate-200">
-              {SOURCE_LABEL[lead.source]}
-            </dd>
-          </dl>
-          <p className="mt-5 rounded-xl bg-purple-50 px-3 py-2 text-sm text-purple-900 dark:bg-purple-500/10 dark:text-purple-200">
-            The trial goes on {mentorName(chosenSlot.mentorId)}’s calendar with
-            the meeting link, and {firstName(lead.parentName)} gets a WhatsApp
-            confirmation.
-          </p>
-          {problem && (
-            <p role="alert" className="mt-3 text-sm font-semibold text-red-600">
-              {problem}
-            </p>
-          )}
-          <div className="mt-5 flex justify-end">
-            <button type="button" onClick={book} className={primaryButton}>
-              <CalendarCheck2 size={16} aria-hidden /> Book trial
-            </button>
-          </div>
-        </Panel>
-      )}
-    </div>
-  )
-}
-
-/** For a rebooking, the child's details from the trial that didn't happen. */
-function previousChild(
-  leads: readonly Lead[],
-  bookings: readonly TrialBooking[],
-  leadId: string | null,
-): Child {
-  const bookingId = leads.find((lead) => lead.id === leadId)?.bookingId
-  const previous = bookings.find((booking) => booking.id === bookingId)
-  return previous
-    ? {
-        name: previous.studentName,
-        grade: previous.studentGrade,
-        notes: previous.notes,
-      }
-    : NO_CHILD
-}
-
-function ParentStep({
-  salesRepId,
-  onChoose,
-}: {
-  salesRepId: string | null
-  onChoose: (lead: Lead) => void
-}) {
-  const data = useSalesData()
-  const now = useNow(60_000)
-  const [query, setQuery] = useState('')
-  const [adding, setAdding] = useState(false)
-
-  const candidates = useMemo(() => {
-    const bookings = new Map(data.bookings.map((b) => [b.id, b]))
-    const needle = query.trim().toLowerCase()
-    const digits = needle.replace(/\D/g, '')
-    return visibleLeads(data.leads, salesRepId)
-      .filter((lead) => waitingForTrial(lead, bookings))
-      .filter(
-        (lead) =>
-          !needle ||
-          lead.parentName.toLowerCase().includes(needle) ||
-          lead.email.toLowerCase().includes(needle) ||
-          (digits.length >= 3 && lead.phone.includes(digits)),
-      )
-      .toSorted(
-        (a, b) =>
-          // Parents already spoken to are the likeliest to book now.
-          Number(b.status === 'contacted') - Number(a.status === 'contacted') ||
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-  }, [data.leads, data.bookings, salesRepId, query])
-
-  if (adding) {
-    return (
-      <Panel title="New parent" icon={UserPlus}>
-        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          Start with the parent’s contact details. You’ll add the child’s
-          details next.
-        </p>
-        <AddParentForm
-          salesRepId={salesRepId}
-          submitLabel="Save and continue"
-          onCancel={() => setAdding(false)}
-          onSaved={onChoose}
-        />
-      </Panel>
-    )
-  }
-
-  return (
-    <Panel
-      title="Which parent is this trial for?"
-      icon={Contact}
-      action={
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className={secondaryButton}
-        >
-          <UserPlus size={16} aria-hidden /> New parent
-        </button>
-      }
-    >
-      <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-        Choose a parent you’ve reached out to. You’ll fill in their child’s
-        details from your conversation next.
-      </p>
-      <label className="relative mb-4 block">
-        <span className="sr-only">Search parents</span>
-        <Search
-          size={16}
-          aria-hidden
-          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
-        />
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name, phone or email"
-          className={searchInputClass}
-        />
-      </label>
-      {candidates.length === 0 ? (
-        <EmptyState>
-          {query
-            ? 'No parents match that search.'
-            : 'No parents waiting for a trial.'}{' '}
-          Add a new parent to book for them.
-        </EmptyState>
-      ) : (
-        <ul className="max-h-[440px] space-y-2 overflow-y-auto pr-1">
-          {candidates.map((lead) => (
-            <li key={lead.id}>
-              <button
-                type="button"
-                onClick={() => onChoose(lead)}
-                className="flex w-full items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition hover:border-purple-400 hover:bg-purple-50/40 dark:border-white/10 dark:hover:bg-purple-500/5"
-              >
-                <Initials name={lead.parentName} size={36} />
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-extrabold text-slate-900 dark:text-white">
-                      {lead.parentName}
-                    </span>
-                    <LeadStatusBadge status={lead.status} />
-                  </span>
-                  <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-                    {formatPhone(lead.phone)}
-                    {lead.email && ` · ${lead.email}`} ·{' '}
-                    {SOURCE_LABEL[lead.source]} · added{' '}
-                    {timeAgo(lead.createdAt, now)}
-                  </span>
-                </span>
-                <ArrowRight
-                  size={16}
-                  aria-hidden
-                  className="shrink-0 text-slate-400"
-                />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
-  )
-}
-
-function ChildStep({
-  lead,
-  repName,
-  child,
-  onChildChange,
-  category,
-  programOverride,
-  onProgramOverride,
-  onContinue,
-}: {
-  lead: Lead
-  repName: string | null
-  child: Child
-  onChildChange: (child: Child) => void
-  category: GradeCategoryId | null
-  programOverride: GradeCategoryId | null
-  onProgramOverride: (program: GradeCategoryId | null) => void
-  onContinue: () => void
-}) {
-  const [problem, setProblem] = useState<string | null>(null)
-  const byGrade = categoryForGrade(child.grade)
-  const program = category ? gradeCategory(category) : null
-
-  const update = <K extends keyof Child>(key: K, value: Child[K]) =>
-    onChildChange({ ...child, [key]: value })
-
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!child.name.trim()) {
-      setProblem('Add the child’s name.')
-      return
-    }
-    if (!child.grade) {
-      setProblem('Choose the child’s grade.')
-      return
-    }
-    setProblem(null)
-    onContinue()
-  }
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <Panel title="The child’s details" icon={GraduationCap}>
-        <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-          <Field label="Child’s name">
-            <input
-              value={child.name}
-              onChange={(event) => update('name', event.target.value)}
-              className={inputClass}
-              autoComplete="off"
-              required
-            />
-          </Field>
-          <Field label="Grade">
-            <select
-              value={child.grade}
-              onChange={(event) => update('grade', event.target.value)}
-              className={selectClass}
-              required
-            >
-              <option value="">Choose a grade…</option>
-              {GRADE_CATEGORIES.map((group) => (
-                <optgroup
-                  key={group.id}
-                  label={`${group.label} · ${group.ages}`}
-                >
-                  {group.grades.map((grade) => (
-                    <option key={grade} value={grade}>
-                      {gradeLabel(grade)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </Field>
-          <div className="sm:col-span-2">
-            <Field
-              label="Interests and experience (optional)"
-              hint="The mentor reads this before the trial."
-            >
-              <textarea
-                value={child.notes}
-                onChange={(event) => update('notes', event.target.value)}
-                rows={3}
-                placeholder="Loves Minecraft, has tried Scratch at school, a bit shy…"
-                className={inputClass}
+            {index > 0 && (
+              <span
+                aria-hidden
+                className={`h-px w-5 sm:w-10 ${
+                  done || active
+                    ? 'bg-violet-900/40 dark:bg-violet-300/50'
+                    : 'bg-slate-300 dark:bg-white/15'
+                }`}
               />
-            </Field>
-          </div>
-
-          {program && (
-            <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 sm:col-span-2 dark:border-purple-500/30 dark:bg-purple-500/10">
-              <p className="text-xs font-bold text-purple-700 dark:text-purple-300">
-                Program
-              </p>
-              <p className="mt-0.5 text-base font-black text-slate-900 dark:text-white">
-                {program.label}{' '}
-                <span className="text-sm font-bold text-slate-500">
-                  · {program.ages}
-                </span>
-              </p>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                {program.focus}
-              </p>
-              <label className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
-                Change program
-                <select
-                  value={programOverride ?? ''}
-                  onChange={(event) => {
-                    const chosen = GRADE_CATEGORIES.find(
-                      (option) => option.id === event.target.value,
-                    )
-                    onProgramOverride(chosen?.id ?? null)
-                  }}
-                  className={inlineSelectClass}
-                >
-                  <option value="">
-                    {byGrade
-                      ? `Match the grade (${byGrade.label})`
-                      : 'Match the grade'}
-                  </option>
-                  {GRADE_CATEGORIES.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="font-normal text-slate-500">
-                  If the child is ahead of or behind their grade.
-                </span>
-              </label>
-            </div>
-          )}
-
-          {problem && (
-            <p
-              role="alert"
-              className="text-sm font-semibold text-red-600 sm:col-span-2"
-            >
-              {problem}
-            </p>
-          )}
-          <div className="flex justify-end sm:col-span-2">
-            <button type="submit" className={primaryButton}>
-              Choose a mentor <ArrowRight size={16} aria-hidden />
-            </button>
-          </div>
-        </form>
-      </Panel>
-
-      <Panel title="Parent" icon={Contact}>
-        <div className="flex items-start gap-3">
-          <Initials name={lead.parentName} size={40} />
-          <div className="min-w-0">
-            <p className="font-extrabold text-slate-900 dark:text-white">
-              {lead.parentName}
-            </p>
-            <p className="text-sm text-slate-600 tabular-nums dark:text-slate-300">
-              {formatPhone(lead.phone)}
-            </p>
-            {lead.email && (
-              <p className="text-sm break-all text-slate-600 dark:text-slate-300">
-                {lead.email}
-              </p>
             )}
-            <p className="mt-1 text-xs text-slate-500">
-              {SOURCE_LABEL[lead.source]}
-            </p>
-          </div>
-        </div>
-        {lead.notes && (
-          <p className="mt-3 text-xs text-slate-500 italic">“{lead.notes}”</p>
-        )}
-        <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400">
-          Haven’t spoken to {firstName(lead.parentName)} yet? The WhatsApp
-          message asks for the child’s name, grade and interests.
-        </p>
-        <div className="mt-3">
-          <ContactButtons
-            phone={lead.phone}
-            email={lead.email}
-            message={introMessage(lead.parentName, repName)}
-          />
-        </div>
-      </Panel>
+            <span
+              className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-black transition-colors duration-300 ${
+                done || active
+                  ? 'bg-violet-900 text-white dark:bg-violet-300 dark:text-slate-950'
+                  : 'bg-slate-200/80 text-slate-500 dark:bg-white/10 dark:text-slate-400'
+              } ${active ? 'ring-4 ring-violet-900/10 dark:ring-violet-300/20' : ''}`}
+            >
+              {done ? (
+                <Check size={14} strokeWidth={3} aria-hidden />
+              ) : (
+                index + 1
+              )}
+            </span>
+            <span
+              className={`text-xs font-bold ${active ? 'inline' : 'hidden sm:inline'} ${
+                done || active
+                  ? 'text-violet-950 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              {label}
+              {done && <span className="sr-only"> (done)</span>}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+function ParentBanner({ lead, onClear }: { lead: Lead; onClear: () => void }) {
+  return (
+    <div className="mb-3 flex items-center gap-3 rounded-2xl border border-violet-200/70 bg-white/70 px-4 py-2.5 dark:border-violet-400/20 dark:bg-white/5">
+      <Initials name={lead.parentName} size={30} />
+      <p className="min-w-0 flex-1 truncate text-sm text-slate-600 dark:text-slate-300">
+        Booking for{' '}
+        <strong className="font-extrabold text-slate-900 dark:text-white">
+          {lead.parentName}
+        </strong>
+        <span className="tabular-nums"> · {formatPhone(lead.phone)}</span>
+      </p>
+      <button
+        type="button"
+        onClick={onClear}
+        className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-white"
+      >
+        <X size={14} aria-hidden /> Someone else
+      </button>
     </div>
   )
 }
 
-function MentorChoice({
+function StepHeading({
+  eyebrow,
   title,
   subtitle,
-  openCount,
-  next,
-  selected,
-  onChoose,
+  headingRef,
 }: {
+  eyebrow: string
   title: string
   subtitle: string
-  openCount: number
-  next: string | undefined
-  selected: boolean
+  headingRef: RefObject<HTMLHeadingElement>
+}) {
+  return (
+    <div>
+      <p className={eyebrowClass}>{eyebrow}</p>
+      <h3 ref={headingRef} tabIndex={-1} className={`mt-2 ${stepHeadingClass}`}>
+        {title}
+      </h3>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        {subtitle}
+      </p>
+    </div>
+  )
+}
+
+const PROGRAM_OPTIONS: { id: ProgramFilter; label: string; grades: string }[] =
+  [
+    { id: 'all', label: 'All programs', grades: 'K–12' },
+    ...GRADE_CATEGORIES.map((category) => ({
+      id: category.id,
+      label: category.label,
+      grades: gradeRange(category),
+    })),
+  ]
+
+/** Narrows the tutors to those who teach the student's program. */
+function ProgramFilterChips({
+  value,
+  onChange,
+}: {
+  value: ProgramFilter
+  onChange: (program: ProgramFilter) => void
+}) {
+  return (
+    <fieldset className="mt-6 min-w-0">
+      <legend className="mb-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+        Who’s the trial for?
+      </legend>
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {PROGRAM_OPTIONS.map((option) => {
+          const active = value === option.id
+          return (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(option.id)}
+              className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors ${
+                active
+                  ? 'border-violet-900 bg-violet-900 text-white dark:border-violet-300 dark:bg-violet-300 dark:text-slate-950'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-900 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:text-white'
+              }`}
+            >
+              {option.label}{' '}
+              <span className={active ? 'opacity-70' : 'text-slate-400'}>
+                · {option.grades}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
+}
+
+function ShiftStage({
+  headingRef,
+  program,
+  onProgram,
+  days,
+  day,
+  onDay,
+  stats,
+  onShift,
+  soonest,
+  soonestTutor,
+  onSoonest,
+}: {
+  headingRef: RefObject<HTMLHeadingElement>
+  program: ProgramFilter
+  onProgram: (program: ProgramFilter) => void
+  days: readonly { start: number; open: number }[]
+  day: number
+  onDay: (day: number) => void
+  stats: readonly ShiftStat[]
+  onShift: (shift: ShiftId) => void
+  soonest: TrialSlot | null
+  soonestTutor: string
+  onSoonest: (slot: TrialSlot) => void
+}) {
+  return (
+    <>
+      <StepHeading
+        headingRef={headingRef}
+        eyebrow="Step 01"
+        title="When would you like to book?"
+        subtitle="Choose a day and a shift that suits the family."
+      />
+      <ProgramFilterChips value={program} onChange={onProgram} />
+
+      <fieldset className="mt-5 min-w-0">
+        <legend className="mb-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+          Day
+        </legend>
+        <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-2">
+          {days.map(({ start, open }, index) => {
+            const date = new Date(start)
+            const active = start === day
+            return (
+              <button
+                key={start}
+                type="button"
+                aria-pressed={active}
+                aria-label={`${longDay(start)}: ${
+                  open ? `${open} open sessions` : 'no open sessions'
+                }`}
+                onClick={() => onDay(start)}
+                className={`flex w-[4.5rem] shrink-0 snap-start flex-col items-center rounded-2xl border px-2 py-2.5 transition-colors ${
+                  active
+                    ? 'border-violet-900 bg-violet-900 text-white dark:border-violet-300 dark:bg-violet-300 dark:text-slate-950'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-violet-300 dark:border-white/10 dark:bg-transparent dark:text-slate-200 dark:hover:border-violet-400/50'
+                }`}
+              >
+                <span className="text-[11px] font-bold tracking-wide uppercase opacity-80">
+                  {index === 0
+                    ? 'Today'
+                    : date.toLocaleDateString([], { weekday: 'short' })}
+                </span>
+                <span className="text-xl leading-tight font-black tabular-nums">
+                  {date.getDate()}
+                </span>
+                <span className="text-[11px] opacity-70">
+                  {date.toLocaleDateString([], { month: 'short' })}
+                </span>
+                <span
+                  className={`mt-1.5 rounded-full px-1.5 py-px text-[10px] font-extrabold ${
+                    active
+                      ? 'bg-white/20'
+                      : open
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                        : 'text-slate-400'
+                  }`}
+                >
+                  {open ? `${open} open` : 'None'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {stats.map((stat) => (
+          <ShiftCard
+            key={stat.shift.id}
+            stat={stat}
+            onChoose={() => onShift(stat.shift.id)}
+          />
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-violet-50/80 px-4 py-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
+        <Zap size={16} className="shrink-0 text-orange-500" aria-hidden />
+        {soonest ? (
+          <>
+            <span className="min-w-0 flex-1">
+              Soonest open session:{' '}
+              <strong className="font-extrabold text-slate-900 dark:text-white">
+                {trialTime(soonest.start)}
+              </strong>{' '}
+              with {soonestTutor}
+            </span>
+            <button
+              type="button"
+              onClick={() => onSoonest(soonest)}
+              className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 font-extrabold text-violet-800 transition-colors hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-white/10"
+            >
+              Book it <ArrowRight size={14} aria-hidden />
+            </button>
+          </>
+        ) : (
+          <span className="min-w-0 flex-1">
+            No open sessions coming up
+            {program === 'all' ? '' : ' for this program'}. Ask a tutor to open
+            some times.
+          </span>
+        )}
+      </div>
+    </>
+  )
+}
+
+function ShiftCard({
+  stat,
+  onChoose,
+}: {
+  stat: ShiftStat
   onChoose: () => void
 }) {
+  const { shift, open, booked, over } = stat
+  const Icon = shift.icon
+  const tone = SHIFT_TONE[shift.tone]
+  const status = over
+    ? 'Already over'
+    : open > 0
+      ? `${open} open ${open === 1 ? 'session' : 'sessions'}`
+      : booked > 0
+        ? 'Fully booked'
+        : 'No tutors on'
+
   return (
     <button
       type="button"
+      disabled={open === 0}
       onClick={onChoose}
-      disabled={openCount === 0}
-      aria-pressed={selected}
-      className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition hover:border-purple-400 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 ${
-        selected
-          ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-500/30 dark:bg-purple-500/10'
-          : 'border-slate-200 dark:border-white/10'
+      className={`group relative flex flex-col items-start rounded-2xl border p-4 text-left transition-[translate,box-shadow,border-color,scale] duration-200 ease-out sm:p-5 ${tone.card} ${
+        open > 0
+          ? `hover:shadow-lg active:scale-[0.98] motion-safe:hover:-translate-y-0.5 ${tone.hover}`
+          : 'cursor-not-allowed opacity-55 saturate-50'
       }`}
     >
-      <Initials name={title} size={40} />
-      <span className="min-w-0">
-        <span className="block font-extrabold text-slate-900 dark:text-white">
-          {title}
-        </span>
-        <span className="block text-xs text-slate-500">{subtitle}</span>
-        <span className="mt-2 block text-xs font-bold text-purple-600 dark:text-purple-300">
-          {openCount === 0
-            ? 'No open times'
-            : `${openCount} open · next ${next ? trialTime(next) : ''}`}
-        </span>
+      <span
+        className={`flex size-11 items-center justify-center rounded-xl ${tone.icon}`}
+      >
+        <Icon size={22} aria-hidden />
+      </span>
+      {open > 0 && (
+        <ArrowUpRight
+          size={18}
+          aria-hidden
+          className="absolute top-4 right-4 opacity-40 transition-[opacity,translate] duration-200 group-hover:opacity-90 motion-safe:group-hover:translate-x-0.5 motion-safe:group-hover:-translate-y-0.5"
+        />
+      )}
+      <span className="mt-4 text-base font-extrabold">{shift.label}</span>
+      <span className="mt-0.5 text-sm opacity-75">{shiftHours(shift)}</span>
+      <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold">
+        <span
+          aria-hidden
+          className={`size-2 rounded-full ${open > 0 ? 'bg-emerald-500' : 'bg-slate-400'}`}
+        />
+        {status}
       </span>
     </button>
   )
 }
 
-function BookingConfirmation({
-  booking,
-  onBookAnother,
-  onUndo,
+function TutorStage({
+  headingRef,
+  shift,
+  day,
+  slots,
+  mentors,
+  allMentors,
+  program,
+  onProgram,
+  onBack,
+  onPick,
 }: {
-  booking: TrialBooking
-  onBookAnother: () => void
-  onUndo: () => void
+  headingRef: RefObject<HTMLHeadingElement>
+  shift: Shift
+  day: number
+  /** Upcoming sessions in this shift, for the tutors shown. */
+  slots: readonly TrialSlot[]
+  /** Tutors for the chosen program. */
+  mentors: readonly Mentor[]
+  allMentors: readonly Mentor[]
+  program: ProgramFilter
+  onProgram: (program: ProgramFilter) => void
+  onBack: () => void
+  onPick: (slot: TrialSlot) => void
 }) {
-  const data = useSalesData()
-  const mentor = data.mentors.find((m) => m.id === booking.mentorId)
-  const message = whatsappMessage('trial_confirmation', booking, mentor)
-  const [copied, setCopied] = useState(false)
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(message)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      toast.error('Couldn’t copy. Select the text and copy it instead.')
+  const Icon = shift.icon
+  const tone = SHIFT_TONE[shift.tone]
+  const rows = mentors.map((mentor) => {
+    const theirs = slots.filter((slot) => slot.mentorId === mentor.id)
+    return {
+      mentor,
+      slots: theirs,
+      open: theirs.filter((slot) => !slot.bookingId).length,
     }
-  }
+  })
+  const teaching = rows
+    .filter((row) => row.slots.length > 0)
+    .toSorted((a, b) => b.open - a.open)
+  const idle = rows.filter((row) => row.slots.length === 0)
+  const openTotal = slots.filter((slot) => !slot.bookingId).length
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="Trial booked" icon={CalendarCheck2}>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-          <dt className="text-slate-500">Child</dt>
-          <dd className="font-bold text-slate-900 dark:text-white">
-            {booking.studentName} · {gradeLabel(booking.studentGrade)}
-          </dd>
-          <dt className="text-slate-500">Program</dt>
-          <dd className="font-bold text-slate-900 dark:text-white">
-            {gradeCategory(booking.category).label}
-          </dd>
-          <dt className="text-slate-500">When</dt>
-          <dd className="font-bold text-slate-900 dark:text-white">
-            {trialTime(booking.start)}
-          </dd>
-          <dt className="text-slate-500">Mentor</dt>
-          <dd className="font-bold text-slate-900 dark:text-white">
-            {mentor?.name ?? '—'}
-          </dd>
-          <dt className="text-slate-500">Meeting</dt>
-          <dd>
-            <a
-              href={booking.meetLink}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 font-bold break-all text-purple-600 hover:underline dark:text-purple-300"
-            >
-              {booking.meetLink} <ExternalLink size={13} aria-hidden />
-            </a>
-          </dd>
-          <dt className="text-slate-500">Parent</dt>
-          <dd className="font-bold text-slate-900 dark:text-white">
-            {booking.parentName} · {formatPhone(booking.parentPhone)}
-          </dd>
-        </dl>
-        <p className="mt-4 text-xs text-slate-500">
-          It’s now on {mentor?.name ?? 'the mentor'}’s trial calendar with the
-          meeting link.
-        </p>
-        <button
-          type="button"
-          onClick={onBookAnother}
-          className={`${secondaryButton} mt-4`}
-        >
-          Book another trial
-        </button>
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 dark:border-white/10">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Wrong time, mentor or parent?
-          </p>
-          <button
-            type="button"
-            onClick={onUndo}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-extrabold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-          >
-            <Undo2 size={14} aria-hidden /> Undo this booking
-          </button>
-        </div>
-      </Panel>
+    <>
+      <StepHeading
+        headingRef={headingRef}
+        eyebrow="Step 02"
+        title="Find the perfect time."
+        subtitle={`Open one-hour sessions in the ${shift.label.toLowerCase()} shift.`}
+      />
+      <button
+        type="button"
+        onClick={onBack}
+        className="mt-5 inline-flex items-center gap-1.5 rounded-lg py-1 pr-2 text-sm font-extrabold text-violet-800 transition-colors hover:text-violet-950 dark:text-violet-300 dark:hover:text-white"
+      >
+        <ArrowLeft size={16} aria-hidden /> All shifts
+      </button>
 
-      <Panel title="WhatsApp confirmation" icon={MessageCircle}>
-        <div className="rounded-2xl bg-[#e7ffdb] p-4 text-sm leading-6 whitespace-pre-line text-slate-900 shadow-inner dark:bg-emerald-950/60 dark:text-emerald-50">
-          {message}
+      <div
+        className={`mt-3 flex items-center gap-4 rounded-2xl border p-4 ${tone.card}`}
+      >
+        <span
+          className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${tone.icon}`}
+        >
+          <Icon size={24} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-extrabold">{shift.label}</p>
+          <p className="text-sm opacity-80">
+            {shiftHours(shift)} · {longDay(day)}
+          </p>
         </div>
-        <p className="mt-3 text-xs leading-5 text-slate-500">
-          Queued to send automatically once WhatsApp Business is connected.
-          Until then, send it yourself in one tap:
+        <span className="shrink-0 rounded-full bg-white/80 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:bg-white/10 dark:text-emerald-300">
+          {openTotal} open
+        </span>
+      </div>
+
+      <ProgramFilterChips value={program} onChange={onProgram} />
+
+      <div className="mt-5 flex items-center gap-4 text-xs font-bold text-slate-500 dark:text-slate-400">
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-full bg-emerald-500" />
+          Available
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-full bg-slate-400" />
+          Booked
+        </span>
+      </div>
+
+      {teaching.length === 0 ? (
+        <div className="mt-3">
+          <EmptyState>
+            No {program === 'all' ? '' : `${gradeCategory(program).label} `}
+            tutors are teaching in this shift. Try another shift
+            {program === 'all' ? '' : ' or program'}.
+          </EmptyState>
+        </div>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {teaching.map(({ mentor, slots: theirs, open }) => (
+            <li
+              key={mentor.id}
+              className="rounded-2xl border border-slate-200 p-4 sm:p-5 dark:border-white/10"
+            >
+              <div className="flex items-center gap-3">
+                <TutorAvatar
+                  name={mentor.name}
+                  tone={tutorTone(mentor.id, allMentors)}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-extrabold text-slate-900 dark:text-white">
+                    {mentor.name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {mentor.categories
+                      .map((id) => gradeCategory(id).label)
+                      .join(' · ')}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs font-bold text-slate-500 dark:text-slate-400">
+                  {open} of {theirs.length} free
+                </span>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {theirs.map((slot) =>
+                  slot.bookingId ? (
+                    <span
+                      key={slot.id}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500"
+                    >
+                      <span className="font-bold tabular-nums line-through decoration-slate-300 dark:decoration-slate-600">
+                        {clock(slot.start)}
+                      </span>
+                      <span className="text-[11px] font-bold">Booked</span>
+                    </span>
+                  ) : (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      onClick={() => onPick(slot)}
+                      aria-label={`Book ${clock(slot.start)} with ${mentor.name}`}
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800 transition-[background-color,border-color,scale] duration-150 hover:border-emerald-400 hover:bg-emerald-100 active:scale-[0.97] dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                    >
+                      <span className="font-extrabold tabular-nums">
+                        {clock(slot.start)}
+                      </span>
+                      <span className="text-[11px] font-bold opacity-80">
+                        Available
+                      </span>
+                    </button>
+                  ),
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {idle.length > 0 && teaching.length > 0 && (
+        <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+          Not teaching this shift:{' '}
+          {idle.map((row) => row.mentor.name).join(', ')}.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <a
-            href={whatsappLink(booking.parentPhone, message)}
-            target="_blank"
-            rel="noreferrer"
-            className={whatsappButton}
-          >
-            <MessageCircle size={16} aria-hidden /> Open in WhatsApp
-          </a>
-          <button
-            type="button"
-            onClick={() => void copy()}
-            className={secondaryButton}
-          >
-            {copied ? (
-              <Check size={16} aria-hidden />
-            ) : (
-              <Copy size={16} aria-hidden />
-            )}
-            {copied ? 'Copied' : 'Copy message'}
-          </button>
-        </div>
-      </Panel>
-    </div>
+      )}
+    </>
   )
 }

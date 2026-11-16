@@ -18,6 +18,7 @@ import AddUserModal from '../../../features/accounts/AddUserModal'
 import { toast } from 'react-hot-toast'
 import { Constants } from '../../../types/database'
 import type { Database } from '../../../types/database'
+import { roleLabel } from '../../../types/roles'
 
 type UserRole = Database['public']['Enums']['user_role']
 
@@ -48,6 +49,9 @@ interface CourseOption {
 function toUserRole(value: string): UserRole | undefined {
   return Constants.public.Enums.user_role.find((role) => role === value)
 }
+
+/** Postgres "invalid input value for enum": the database lacks a role value. */
+const INVALID_ENUM_VALUE = '22P02'
 
 /** Number inputs hold strings while editing; an empty field clears the value. */
 function toClassCount(value: number | string | null | undefined) {
@@ -164,7 +168,12 @@ export default function AdminUsersView() {
 
     setSaving(false)
 
-    if (error) {
+    if (error?.code === INVALID_ENUM_VALUE && editingUser.role === 'marketer') {
+      toast.error(
+        'The database doesn’t have the Sales & Marketing role yet. Apply supabase/migrations/20261116120000_marketer_role.sql, then try again.',
+        { duration: 8000 },
+      )
+    } else if (error) {
       toast.error('Failed to update user details')
     } else {
       toast.success('User updated successfully')
@@ -244,6 +253,9 @@ export default function AdminUsersView() {
               <option value="tutor" className="dark:bg-slate-900">
                 Tutors
               </option>
+              <option value="marketer" className="dark:bg-slate-900">
+                Sales & Marketing
+              </option>
               <option value="tech_admin" className="dark:bg-slate-900">
                 Admins
               </option>
@@ -296,7 +308,7 @@ export default function AdminUsersView() {
                     {user.full_name || 'Unnamed'}
                   </h4>
                   <span className="shrink-0 rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1 text-[10px] font-black tracking-wider text-purple-600 uppercase dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
-                    {user.role}
+                    {roleLabel(user.role)}
                   </span>
                 </div>
                 <p className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -388,7 +400,7 @@ export default function AdminUsersView() {
                   </td>
                   <td className="p-4">
                     <span className="rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1 text-[10px] font-black tracking-wider text-purple-600 uppercase dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400">
-                      {user.role}
+                      {roleLabel(user.role)}
                     </span>
                   </td>
                   <td className="p-4">
@@ -543,6 +555,9 @@ export default function AdminUsersView() {
                     </option>
                     <option value="tutor" className="dark:bg-slate-900">
                       Tutor
+                    </option>
+                    <option value="marketer" className="dark:bg-slate-900">
+                      Sales & Marketing
                     </option>
                     <option value="tech_admin" className="dark:bg-slate-900">
                       Admin

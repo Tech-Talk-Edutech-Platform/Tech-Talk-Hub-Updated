@@ -312,16 +312,8 @@ type RealTablesWithPlannedColumns = {
     { student_id: string | null; topic: string | null }
   >
 
-  /**
-   * Marketers sign in with a 'marketer' role. Students' class badges
-   * (classroom invites/badges migration).
-   */
-  users: WithPlannedColumns<
-    'users',
-    {
-      role: RealSchema['Enums']['user_role'] | 'marketer' | null
-    } & UsersBadgeColumns
-  >
+  /** Students' class badges (classroom invites/badges migration). */
+  users: WithPlannedColumns<'users', UsersBadgeColumns>
 
   /** Classroom recordings link to their session (classroom migration). */
   class_recordings: WithPlannedColumns<

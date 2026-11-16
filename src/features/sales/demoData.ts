@@ -214,12 +214,15 @@ export function buildDemoData(now = new Date()): SalesDemoData {
   for (let dayOffset = -42; dayOffset <= 14; dayOffset += 1) {
     const day = new Date(today.getTime() + dayOffset * DAY)
     const weekend = day.getDay() === 0 || day.getDay() === 6
-    // Weekday trials run after school; weekends through the day.
-    const hours = weekend ? [9, 11, 14, 16] : [16, 18]
+    // Sessions fall in the booking shifts (8 AM – 8 PM): mostly after school
+    // on weekdays, through the day at weekends.
+    const hours = weekend
+      ? [8, 9, 10, 11, 12, 14, 15, 16]
+      : [10, 13, 16, 17, 18, 19]
 
     for (const mentor of DEMO_MENTORS) {
       for (const hour of hours) {
-        if (random() < 0.45) continue
+        if (random() < 0.6) continue
         const start = new Date(day)
         start.setHours(hour, 0, 0, 0)
         const slot: TrialSlot = {
@@ -232,7 +235,9 @@ export function buildDemoData(now = new Date()): SalesDemoData {
         slots.push(slot)
 
         const past = start.getTime() < now.getTime()
-        if (random() > (past ? 0.75 : 0.4)) continue
+        // About 40% of past sessions were booked and 30% of upcoming ones,
+        // which keeps the weekly totals realistic.
+        if (random() > (past ? 0.4 : 0.3)) continue
 
         const category: GradeCategoryId = pick(mentor.categories)
         const grades = GRADE_CATEGORIES.find((c) => c.id === category)!.grades

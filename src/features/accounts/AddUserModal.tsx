@@ -297,6 +297,7 @@ export default function UserManagementModal({
               >
                 <option value="student">Student</option>
                 <option value="tutor">Tutor</option>
+                <option value="marketer">Sales & Marketing</option>
                 <option value="operations_admin">Operations Admin</option>
                 <option value="owner">Owner</option>
               </select>

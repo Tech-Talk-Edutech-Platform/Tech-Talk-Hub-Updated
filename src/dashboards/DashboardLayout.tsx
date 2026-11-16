@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import type { AppRole } from '../types/roles'
-import { isAdminRole } from '../types/roles'
+import { isAdminRole, roleLabel } from '../types/roles'
 
 import {
   BookOpen,
@@ -250,7 +250,7 @@ export default function DashboardLayout({
             </h1>
 
             <div className="mt-0.5 text-xs font-medium whitespace-nowrap text-gray-400 capitalize">
-              {role?.replaceAll('_', ' ')} Portal 🚀
+              {roleLabel(role)} Portal 🚀
             </div>
           </div>
         )}
