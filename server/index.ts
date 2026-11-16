@@ -9,6 +9,8 @@ import classroomTokenRoute from './routes/classroomToken'
 import classroomEndRoute from './routes/classroomEnd'
 import cronRemindersRoute from './routes/cronReminders'
 import adminUsersRoute from './routes/adminUsers'
+import homeRoute from './routes/home'
+import apiDocsRoute from './routes/apiDocs'
 import { allowOrigins } from './middleware/cors'
 import { requireServerEnv } from './env'
 import { supabase } from './supabase'
@@ -50,6 +52,8 @@ app.use((req, res, next) => {
 // =========================
 // ROUTES
 // =========================
+app.use('/', homeRoute)
+app.use(['/docs', '/api/docs'], apiDocsRoute)
 app.use('/api/send-receipt', sendReceiptRoute)
 app.use('/api/send-curriculum', sendCurriculumRoute)
 app.use('/api/classroom/token', classroomTokenRoute)
