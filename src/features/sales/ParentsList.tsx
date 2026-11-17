@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast'
 import { useNow } from '../../hooks/useNow'
 import { AddParentForm } from './AddParentForm'
 import { needsRebooking, timeAgo, visibleLeads, waitingForTrial } from './leads'
+import { pageOf } from './paging'
 import { formatPhone } from './phone'
 import { problemText, useSalesData } from './salesDataContext'
 import { primaryButton, searchInputClass } from './styles'
@@ -15,6 +16,7 @@ import {
   EmptyState,
   Initials,
   LeadStatusBadge,
+  Pager,
   Panel,
   StatusBadge,
 } from './ui'
@@ -28,6 +30,8 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: 'not-interested', label: 'Not interested' },
   { id: 'all', label: 'All' },
 ]
+
+const PAGE_SIZE = 15
 
 const smallButton =
   'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-extrabold transition'
@@ -48,6 +52,7 @@ export function ParentsList({
   const [filter, setFilter] = useState<Filter>('to-contact')
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState(false)
+  const [page, setPage] = useState(0)
 
   const repName =
     repId === null
@@ -95,6 +100,7 @@ export function ParentsList({
         )
       : matches.toSorted(newest)
   }, [groups, filter, query])
+  const paged = pageOf(rows, page, PAGE_SIZE)
 
   return (
     <div className="space-y-4">
@@ -112,6 +118,7 @@ export function ParentsList({
               setAdding(false)
               setFilter('to-contact')
               setQuery('')
+              setPage(0)
               toast.success(`${lead.parentName} added. Reach out next!`)
             }}
           />
@@ -141,7 +148,10 @@ export function ParentsList({
                 key={option.id}
                 type="button"
                 aria-pressed={filter === option.id}
-                onClick={() => setFilter(option.id)}
+                onClick={() => {
+                  setFilter(option.id)
+                  setPage(0)
+                }}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap ${
                   filter === option.id
                     ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
@@ -165,7 +175,10 @@ export function ParentsList({
             <input
               type="search"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value)
+                setPage(0)
+              }}
               placeholder="Name, phone or email"
               className={searchInputClass}
             />
@@ -181,31 +194,40 @@ export function ParentsList({
                 : 'No parents here yet.'}
           </EmptyState>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-white/10">
-            {rows.map((lead) => (
-              <ParentRow
-                key={lead.id}
-                lead={lead}
-                booking={bookingFor(lead)}
-                now={now}
-                showRep={repId === null}
-                repName={repName}
-                onBook={() => onBook(lead.id)}
-                onStatus={async (status) => {
-                  try {
-                    await data.setLeadStatus(lead.id, status, repId)
-                    if (status === 'not_interested') {
-                      toast(`${lead.parentName} moved to “Not interested”.`)
+          <>
+            <ul className="divide-y divide-slate-100 dark:divide-white/10">
+              {paged.items.map((lead) => (
+                <ParentRow
+                  key={lead.id}
+                  lead={lead}
+                  booking={bookingFor(lead)}
+                  now={now}
+                  showRep={repId === null}
+                  repName={repName}
+                  onBook={() => onBook(lead.id)}
+                  onStatus={async (status) => {
+                    try {
+                      await data.setLeadStatus(lead.id, status, repId)
+                      if (status === 'not_interested') {
+                        toast(`${lead.parentName} moved to “Not interested”.`)
+                      }
+                    } catch (error) {
+                      toast.error(
+                        problemText(error, 'Couldn’t update the parent.'),
+                      )
                     }
-                  } catch (error) {
-                    toast.error(
-                      problemText(error, 'Couldn’t update the parent.'),
-                    )
-                  }
-                }}
-              />
-            ))}
-          </ul>
+                  }}
+                />
+              ))}
+            </ul>
+            <Pager
+              page={paged.page}
+              pageCount={paged.pageCount}
+              total={rows.length}
+              noun="parents"
+              onPage={setPage}
+            />
+          </>
         )}
       </Panel>
     </div>

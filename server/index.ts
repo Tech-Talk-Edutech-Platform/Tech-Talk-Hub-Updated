@@ -9,6 +9,7 @@ import classroomTokenRoute from './routes/classroomToken'
 import classroomEndRoute from './routes/classroomEnd'
 import cronRemindersRoute from './routes/cronReminders'
 import adminUsersRoute from './routes/adminUsers'
+import trialInvitesRoute from './routes/trialInvites'
 import homeRoute from './routes/home'
 import apiDocsRoute from './routes/apiDocs'
 import { allowOrigins, DEFAULT_CORS_ORIGINS } from './middleware/cors'
@@ -59,6 +60,7 @@ app.use('/api/classroom/token', classroomTokenRoute)
 app.use('/api/classroom/end', classroomEndRoute)
 app.use('/api/cron/reminders', cronRemindersRoute)
 app.use('/api/admin/users', adminUsersRoute)
+app.use('/api/trials', trialInvitesRoute)
 
 // =========================
 // PUSH SETUP

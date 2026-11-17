@@ -1,6 +1,13 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { FlaskConical, Mail, MessageCircle, Phone } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  FlaskConical,
+  Mail,
+  MessageCircle,
+  Phone,
+} from 'lucide-react'
 
 import type { TutorTone } from './bookingStyles'
 import {
@@ -268,5 +275,59 @@ export function EmptyState({ children }: { children: ReactNode }) {
     <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
       {children}
     </p>
+  )
+}
+
+const pagerButton =
+  'inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5'
+
+/** Previous / Next under a paged list; nothing when it fits on one page. */
+export function Pager({
+  page,
+  pageCount,
+  total,
+  noun,
+  onPage,
+}: {
+  page: number
+  pageCount: number
+  total: number
+  /** Plural, e.g. "parents". */
+  noun: string
+  onPage: (page: number) => void
+}) {
+  if (pageCount <= 1) return null
+  return (
+    <nav
+      aria-label={`Pages of ${noun}`}
+      className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-white/10"
+    >
+      <button
+        type="button"
+        onClick={() => onPage(page - 1)}
+        disabled={page === 0}
+        className={pagerButton}
+      >
+        <ChevronLeft size={14} aria-hidden /> Previous
+      </button>
+      <p
+        aria-live="polite"
+        className="text-center text-xs font-semibold text-slate-500 tabular-nums dark:text-slate-400"
+      >
+        Page {page + 1} of {pageCount}
+        <span className="hidden sm:inline">
+          {' '}
+          · {total} {noun}
+        </span>
+      </p>
+      <button
+        type="button"
+        onClick={() => onPage(page + 1)}
+        disabled={page >= pageCount - 1}
+        className={pagerButton}
+      >
+        Next <ChevronRight size={14} aria-hidden />
+      </button>
+    </nav>
   )
 }

@@ -9,6 +9,7 @@ import {
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { supabase } from '../../../supabase'
 import { useNow } from '../../../hooks/useNow'
+import { sendWaitingInvites } from '../../../lib/sendWaitingInvites'
 import type {
   Tables,
   TablesInsert,
@@ -777,6 +778,9 @@ export default function LeadsPage() {
         setSelectedLead(data)
         showSuccess('Lead added successfully.')
       }
+
+      // A tutor and time make it a trial booking; email the family its link.
+      if (payload.assigned_tutor_id) sendWaitingInvites()
 
       setShowLeadForm(false)
       setEditingLead(null)

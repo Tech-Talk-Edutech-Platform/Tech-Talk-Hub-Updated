@@ -31,6 +31,7 @@ import { ParentsList } from './ParentsList'
 import { SalesBookingsList } from './SalesBookingsList'
 import { SalesTeamSetup } from './SalesTeamSetup'
 import { SalesWeeklyChart } from './SalesWeeklyChart'
+import { classroomHostPath } from './trialInvites'
 import { TRIAL_STATUS_LABEL } from './types'
 import { Initials, Kpi, Panel, TabBar } from './ui'
 import { selectClass } from './styles'
@@ -312,6 +313,7 @@ export function MentorCalendars({
   const [mentorId, setMentorId] = useState(
     initialMentorId ?? data.mentors[0]?.id ?? '',
   )
+  const [now] = useState(() => Date.now())
   const items = useMemo<MentorCalendarItem[]>(
     () =>
       data.bookings
@@ -321,7 +323,21 @@ export function MentorCalendars({
           title: `Trial: ${booking.studentName}`,
           start: booking.start,
           end: booking.end,
-          meetLink: booking.meetLink,
+          // Staff open the classroom to host; the family has its own link.
+          meetLink: booking.classroomCode
+            ? classroomHostPath(booking.classroomCode)
+            : booking.meetLink,
+          invite:
+            booking.classroomCode &&
+            booking.status === 'scheduled' &&
+            new Date(booking.end).getTime() > now
+              ? {
+                  bookingId: booking.id,
+                  roomCode: booking.classroomCode,
+                  parentEmail: booking.parentEmail,
+                  invite: booking.inviteEmail,
+                }
+              : null,
           studentName: booking.studentName,
           parentName: booking.parentName,
           detail: `${gradeCategory(booking.category).label}, ${gradeLabel(booking.studentGrade)}`,
@@ -329,7 +345,7 @@ export function MentorCalendars({
           statusLabel: TRIAL_STATUS_LABEL[booking.status],
           cancelled: booking.status === 'cancelled',
         })),
-    [data.bookings, mentorId],
+    [data.bookings, mentorId, now],
   )
 
   return (
@@ -350,7 +366,12 @@ export function MentorCalendars({
           </select>
         </label>
       )}
-      <MentorBookingsCalendar items={items} />
+      <MentorBookingsCalendar
+        items={items}
+        onSendInvite={(bookingId, resend) =>
+          data.sendInvite(bookingId, { resend })
+        }
+      />
     </div>
   )
 }

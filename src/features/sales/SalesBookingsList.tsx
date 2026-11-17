@@ -11,11 +11,13 @@ import { toast } from 'react-hot-toast'
 import { formatMoney } from '../../lib/money'
 import { restoreProblem } from './bookings'
 import { gradeCategory, gradeLabel } from './gradeCategories'
+import { pageOf } from './paging'
 import { RemoveBookingDialog } from './RemoveBookingDialog'
 import { problemText, useSalesData } from './salesDataContext'
+import { TrialInviteInline } from './TrialInvitePanel'
 import type { SalesPlan, SalesRep, TrialBooking, TrialOutcome } from './types'
 import { REMOVAL_REASON_LABEL, SOURCE_LABEL, TRIAL_STATUS_LABEL } from './types'
-import { EmptyState, Panel, StatusBadge } from './ui'
+import { EmptyState, Pager, Panel, StatusBadge } from './ui'
 import { inlineSelectClass, inputClass, selectClass } from './styles'
 import { trialTime, whatsappLink, whatsappMessage } from './whatsapp'
 
@@ -32,6 +34,8 @@ const removedAt = (booking: TrialBooking) =>
   new Date(booking.removal?.at ?? 0).getTime()
 
 const OUTCOMES: TrialOutcome[] = ['attended', 'no_show', 'lost', 'cancelled']
+
+const PAGE_SIZE = 10
 
 /**
  * Trial bookings with what happened next. `repId` limits it to one sales rep;
@@ -54,6 +58,7 @@ export function SalesBookingsList({
   const [mentorFilter, setMentorFilter] = useState('')
   const [openSale, setOpenSale] = useState<string | null>(null)
   const [removing, setRemoving] = useState<TrialBooking | null>(null)
+  const [page, setPage] = useState(0)
   const [now] = useState(() => Date.now())
 
   const rows = useMemo(() => {
@@ -83,6 +88,7 @@ export function SalesBookingsList({
     }
     return mine.toSorted((a, b) => time(b) - time(a))
   }, [data.bookings, data.removedBookings, repId, mentorFilter, filter, now])
+  const paged = pageOf(rows, page, PAGE_SIZE)
 
   const mentorName = (id: string) =>
     data.mentors.find((mentor) => mentor.id === id)?.name ?? '—'
@@ -119,7 +125,10 @@ export function SalesBookingsList({
                 key={option.id}
                 type="button"
                 aria-pressed={filter === option.id}
-                onClick={() => setFilter(option.id)}
+                onClick={() => {
+                  setFilter(option.id)
+                  setPage(0)
+                }}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap ${
                   filter === option.id
                     ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
@@ -133,7 +142,10 @@ export function SalesBookingsList({
           <select
             aria-label="Filter by mentor"
             value={mentorFilter}
-            onChange={(event) => setMentorFilter(event.target.value)}
+            onChange={(event) => {
+              setMentorFilter(event.target.value)
+              setPage(0)
+            }}
             className={`${inlineSelectClass} text-xs`}
           >
             <option value="">All mentors</option>
@@ -158,7 +170,7 @@ export function SalesBookingsList({
         </EmptyState>
       ) : filter === 'removed' ? (
         <ul className="divide-y divide-slate-100 dark:divide-white/10">
-          {rows.slice(0, 60).map((booking) => (
+          {paged.items.map((booking) => (
             <RemovedRow
               key={booking.id}
               booking={booking}
@@ -169,9 +181,13 @@ export function SalesBookingsList({
         </ul>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-white/10">
-          {rows.slice(0, 60).map((booking) => {
+          {paged.items.map((booking) => {
             const mentor = data.mentors.find((m) => m.id === booking.mentorId)
             const past = new Date(booking.start).getTime() < now
+            const classroomCode =
+              !past && booking.status === 'scheduled'
+                ? booking.classroomCode
+                : null
             return (
               <li key={booking.id} className="py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -192,6 +208,19 @@ export function SalesBookingsList({
                       {repId === null &&
                         ` · Rep: ${repName(booking.salesRepId)}`}
                     </p>
+                    {classroomCode && (
+                      <TrialInviteInline
+                        target={{
+                          roomCode: classroomCode,
+                          parentEmail: booking.parentEmail,
+                          invite: booking.inviteEmail,
+                        }}
+                        studentName={booking.studentName}
+                        onSend={(resend) =>
+                          data.sendInvite(booking.id, { resend })
+                        }
+                      />
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <a
@@ -312,6 +341,13 @@ export function SalesBookingsList({
           })}
         </ul>
       )}
+      <Pager
+        page={paged.page}
+        pageCount={paged.pageCount}
+        total={rows.length}
+        noun="bookings"
+        onPage={setPage}
+      />
       {removing && (
         <RemoveBookingDialog
           booking={removing}

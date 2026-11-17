@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react'
 import type {
   BookingRemoval,
   GradeCategoryId,
+  InviteResult,
   Lead,
   LeadStatus,
   NewLead,
@@ -47,6 +48,14 @@ export type SalesData = SalesSnapshot & {
   ) => Promise<void>
   /** Books a parent's child into a slot; the lead becomes "Trial booked". */
   bookTrial: (input: NewTrialBooking) => Promise<TrialBooking>
+  /**
+   * Emails the parent the classroom link. Without `resend`, an invite that
+   * already went out isn't sent again.
+   */
+  sendInvite: (
+    bookingId: string,
+    options?: { resend?: boolean },
+  ) => Promise<InviteResult>
   setTrialStatus: (bookingId: string, status: TrialOutcome) => Promise<void>
   /**
    * Marks the trial enrolled. `creditRepId` is who gets the sale: ignored for

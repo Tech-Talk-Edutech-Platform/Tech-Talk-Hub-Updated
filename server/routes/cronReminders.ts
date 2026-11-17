@@ -1,8 +1,10 @@
 import express, { type Request, type Response } from 'express'
 import { sendReminders } from '../services/smsService'
+import { sendPendingTrialInvites } from '../services/trialInvites'
 
 /**
- * /api/cron/reminders: texts parents about classes starting in 10 minutes.
+ * /api/cron/reminders: texts parents about classes starting in 10 minutes,
+ * and emails trial invites that haven't gone out yet.
  *
  * On Vercel there is no long-running process for node-cron, so a scheduler
  * calls this every minute instead (Vercel Cron on Pro, or Supabase pg_cron).
@@ -21,13 +23,26 @@ async function run(req: Request, res: Response): Promise<void> {
     res.status(401).json({ error: 'Unauthorized' })
     return
   }
-  try {
-    await sendReminders()
-    res.json({ ok: true })
-  } catch (error) {
-    console.error('Reminder run failed:', error)
-    res.status(500).json({ error: 'Reminder run failed.' })
+  // One failing job (e.g. SMS keys not set yet) doesn't stop the other.
+  const [reminders, invites] = await Promise.allSettled([
+    sendReminders(),
+    sendPendingTrialInvites(),
+  ])
+  if (reminders.status === 'rejected') {
+    console.error('Reminder run failed:', reminders.reason)
   }
+  if (invites.status === 'rejected') {
+    console.error('Trial invite run failed:', invites.reason)
+  }
+  if (reminders.status === 'rejected' && invites.status === 'rejected') {
+    res.status(500).json({ error: 'Scheduled jobs failed.' })
+    return
+  }
+  res.json({
+    ok: true,
+    reminders: reminders.status,
+    trialInvites: invites.status,
+  })
 }
 
 // Vercel Cron sends GET; other schedulers usually POST.

@@ -38,6 +38,11 @@ export const queryKeys = {
     tutorTrials: (tutorId: string) =>
       ['schedule', 'tutor-trials', tutorId] as const,
   },
+  training: {
+    course: ['training', 'course'] as const,
+    progress: (tutorId: string) => ['training', 'progress', tutorId] as const,
+    allProgress: ['training', 'progress', 'all'] as const,
+  },
   site: {
     program: (slug: string) => ['site', 'program', slug] as const,
     products: (program?: string) =>

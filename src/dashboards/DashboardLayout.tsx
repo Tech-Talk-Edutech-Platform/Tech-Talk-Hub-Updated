@@ -67,6 +67,7 @@ import LeadsPage from './views/admin/LeadsPage'
 import AdminShopPage from './views/admin/AdminShopPage'
 import AdminBlogPage from './views/admin/AdminBlogPage'
 import AdminTestimonialsPage from './views/admin/AdminTestimonialsPage'
+import AdminTrainingView from './views/admin/AdminTrainingView'
 
 interface DashboardLayoutProps {
   role: AppRole
@@ -112,7 +113,7 @@ export default function DashboardLayout({
 
     // Shared recordings manager
     if (activeView === 'recordings') {
-      return <ClassRecordingsManager />
+      return <ClassRecordingsManager userId={currentUser.id} role={role} />
     }
 
     // Student views
@@ -214,6 +215,8 @@ export default function DashboardLayout({
 
         case 'testimonials':
           return <AdminTestimonialsPage />
+        case 'training':
+          return <AdminTrainingView />
         case 'pricing':
           return <AdminPricingPage />
         case 'dashboard':
@@ -490,6 +493,15 @@ export default function DashboardLayout({
                 icon={Activity}
                 label="Live Class Monitor"
                 view="Live Class Monitor"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
+
+              <SidebarButton
+                icon={GraduationCap}
+                label="Tutor Training"
+                view="training"
                 activeView={activeView}
                 setActiveView={setActiveView}
                 isCollapsed={isCollapsed}

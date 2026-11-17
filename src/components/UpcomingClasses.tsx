@@ -4,6 +4,7 @@ import {
   Clock,
   Calendar,
   List,
+  ChevronLeft,
   ChevronRight,
   User,
   ExternalLink,
@@ -32,6 +33,8 @@ interface UpcomingClassesProps {
 
 const NO_CLASSES: UpcomingClass[] = []
 const NO_EVENTS: CalendarEvents = []
+/** "Next up" shows this many classes per page, so a busy tutor's list stays short. */
+const PAGE_SIZE = 5
 
 export default function UpcomingClasses({
   classes = NO_CLASSES,
@@ -40,6 +43,15 @@ export default function UpcomingClasses({
 }: UpcomingClassesProps) {
   const [view, setView] = useState('list')
   const [selectedClass, setSelectedClass] = useState<UpcomingClass | null>(null)
+  const [page, setPage] = useState(0)
+
+  const pageCount = Math.max(1, Math.ceil(classes.length / PAGE_SIZE))
+  // The list can shrink after a reload; never point past the last page.
+  const currentPage = Math.min(page, pageCount - 1)
+  const pageClasses = classes.slice(
+    currentPage * PAGE_SIZE,
+    (currentPage + 1) * PAGE_SIZE,
+  )
 
   if (loading)
     return <div className="h-48 animate-pulse rounded-2xl bg-white p-5" />
@@ -114,7 +126,10 @@ export default function UpcomingClasses({
                 rel="noreferrer"
                 className="flex items-center gap-2 pt-2 text-sm font-bold text-blue-600 underline"
               >
-                Join Meeting <ExternalLink size={14} />
+                {selectedClass.meet_link.startsWith('/classroom/')
+                  ? 'Open classroom'
+                  : 'Join Meeting'}{' '}
+                <ExternalLink size={14} />
               </a>
             )}
           </div>
@@ -128,7 +143,7 @@ export default function UpcomingClasses({
       ) : view === 'list' ? (
         <div className="space-y-3">
           {classes.length > 0 ? (
-            classes.map((item) => (
+            pageClasses.map((item) => (
               <button
                 type="button"
                 key={item.id}
@@ -154,6 +169,32 @@ export default function UpcomingClasses({
             <p className="py-6 text-center text-[10px] font-bold text-slate-400 uppercase">
               No upcoming classes
             </p>
+          )}
+          {pageCount > 1 && (
+            <nav
+              aria-label="Upcoming classes pages"
+              className="flex items-center justify-between pt-1 text-[10px] font-bold text-slate-500 uppercase"
+            >
+              <button
+                type="button"
+                onClick={() => setPage(currentPage - 1)}
+                disabled={currentPage === 0}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft size={12} /> Prev
+              </button>
+              <span aria-live="polite">
+                Page {currentPage + 1} of {pageCount} · {classes.length} classes
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage(currentPage + 1)}
+                disabled={currentPage >= pageCount - 1}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next <ChevronRight size={12} />
+              </button>
+            </nav>
           )}
           <Link
             to="/calendar"

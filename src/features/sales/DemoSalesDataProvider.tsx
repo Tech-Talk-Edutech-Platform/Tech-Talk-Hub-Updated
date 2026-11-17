@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { removeProblem, restoreProblem } from './bookings'
 import { buildDemoData, DEMO_PLANS, type SalesDemoData } from './demoData'
 import { SalesDataContext, type SalesData } from './salesDataContext'
+import { demoRoomCode, familyJoinUrl } from './trialInvites'
 import { whatsappMessage } from './whatsapp'
 import type {
   BookingRemoval,
@@ -30,6 +31,7 @@ type Action =
   | { type: 'sale'; sale: Sale }
   | { type: 'remove'; bookingId: string; removal: BookingRemoval }
   | { type: 'restore'; bookingId: string }
+  | { type: 'invite-sent'; bookingId: string; at: string }
   | { type: 'message-sent'; messageId: string; at: string }
   | { type: 'programs'; mentorId: string; programs: GradeCategoryId[] }
   | { type: 'target'; repId: string; target: number }
@@ -78,6 +80,19 @@ function reducer(state: SalesDemoData, action: Action): SalesDemoData {
         rep.id === action.repId
           ? { ...rep, monthlyTarget: action.target }
           : rep,
+      ),
+    }
+  }
+  if (action.type === 'invite-sent') {
+    return {
+      ...state,
+      bookings: state.bookings.map((booking) =>
+        booking.id === action.bookingId
+          ? {
+              ...booking,
+              inviteEmail: { status: 'sent', sentAt: action.at, error: null },
+            }
+          : booking,
       ),
     }
   }
@@ -277,6 +292,7 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
       }
       const mentor = state.mentors.find((m) => m.id === slot.mentorId)
       if (!mentor) throw new Error('The mentor for this slot was not found.')
+      const roomCode = demoRoomCode(state.bookings.length + 1)
 
       const booking: TrialBooking = {
         ...input,
@@ -284,7 +300,9 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
         mentorId: mentor.id,
         start: slot.start,
         end: slot.end,
-        meetLink: mentor.meetLink,
+        meetLink: familyJoinUrl(roomCode),
+        classroomCode: roomCode,
+        inviteEmail: { status: 'pending', sentAt: null, error: null },
         status: 'scheduled',
         createdAt: new Date().toISOString(),
         removal: null,
@@ -346,6 +364,27 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
           at: new Date().toISOString(),
         }),
       bookTrial,
+      // Nothing is really emailed in the preview.
+      sendInvite: async (bookingId) => {
+        const booking = latest.current.bookings.find((b) => b.id === bookingId)
+        if (!booking || booking.removal) {
+          throw new Error('That booking was not found.')
+        }
+        if (!booking.parentEmail.trim()) {
+          return {
+            status: 'skipped',
+            to: null,
+            error: 'No email address for this parent.',
+          }
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 700))
+        dispatch({
+          type: 'invite-sent',
+          bookingId,
+          at: new Date().toISOString(),
+        })
+        return { status: 'sent', to: booking.parentEmail, error: null }
+      },
       setTrialStatus: async (bookingId, status) =>
         dispatch({ type: 'status', bookingId, status }),
       recordSale: async (bookingId, plan, amount, creditRepId) => {

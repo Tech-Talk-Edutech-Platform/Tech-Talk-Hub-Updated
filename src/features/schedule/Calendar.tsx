@@ -334,7 +334,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../supabase'
 import { isAdminRole } from '../../types/roles'
 import type { Database, Tables } from '../../types/database'
+import { categoryForGrade } from '../sales/gradeCategories'
 import { queryKeys } from '../../lib/queryClient'
+import { sendWaitingInvites } from '../../lib/sendWaitingInvites'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, X } from 'lucide-react'
 import { toast, Toaster } from 'react-hot-toast'
@@ -349,7 +351,12 @@ type StudentOption = Pick<
 >
 type TrialLead = Pick<
   Tables<'leads'>,
-  'id' | 'student_name' | 'assigned_tutor_id' | 'class_date' | 'class_time'
+  | 'id'
+  | 'student_name'
+  | 'assigned_tutor_id'
+  | 'class_date'
+  | 'class_time'
+  | 'grade'
 >
 
 interface ScheduleEvent {
@@ -362,6 +369,7 @@ interface ScheduleEvent {
   borderColor?: string
   textColor?: string
   extendedProps: {
+    start?: string
     tutorId?: string | null
     assigned?: boolean
     type?: ClassType | null
@@ -421,17 +429,21 @@ async function loadSchedule(viewer: Viewer): Promise<ScheduleData> {
       .eq('role', 'student'),
     supabase
       .from('leads')
-      .select('id, student_name, assigned_tutor_id, class_date, class_time'),
+      .select(
+        'id, student_name, assigned_tutor_id, class_date, class_time, grade',
+      ),
     supabase
       .from('calendar_events')
       .select(
-        'id, start_time, end_time, tutor_id, meet_link, class_type, title, event_attendance(student_id)',
+        'id, start_time, end_time, tutor_id, meet_link, class_type, title, booking_status, event_attendance(student_id)',
       ),
   ])
 
   const tutors = tutorsData ?? []
 
   const events = (calendarData ?? []).flatMap((e): ScheduleEvent[] => {
+    // Deleted slots kept for old trial bookings' history.
+    if (e.booking_status === 'cancelled') return []
     // Admins see everything. Tutors only see their own slots; everyone else
     // only sees the classes they attend.
     if (!isAdminRole(viewer.role)) {
@@ -444,7 +456,9 @@ async function loadSchedule(viewer: Viewer): Promise<ScheduleData> {
       }
     }
 
-    const isBooked = e.event_attendance.length > 0
+    // Trial students are leads, not accounts, so a booked trial has no
+    // attendance row: anything that isn't a free slot is booked.
+    const isBooked = e.title !== 'Free Slot' || e.event_attendance.length > 0
     const tutorName =
       tutors.find((t) => t.id === e.tutor_id)?.full_name || 'Tutor'
     const tutorColor = getTutorColor(e.tutor_id)
@@ -458,6 +472,7 @@ async function loadSchedule(viewer: Viewer): Promise<ScheduleData> {
       borderColor: tutorColor,
       textColor: isBooked ? '#fff' : '#334155',
       extendedProps: {
+        start: e.start_time,
         tutorId: e.tutor_id,
         assigned: isBooked,
         type: e.class_type,
@@ -531,24 +546,80 @@ export default function FullCalendarView() {
   const handleSelect = async (info: DateSelectArg) => {
     if (userRole !== 'tutor' || !viewer) return
 
-    const start = info.startStr
-    const end = new Date(
-      new Date(info.startStr).getTime() + 3600000,
-    ).toISOString()
-
-    const { error } = await supabase.from('calendar_events').insert({
-      title: 'Free Slot',
-      start_time: start,
-      end_time: end,
-      tutor_id: viewer.id,
+    // The database function checks the time is in the future and keeps the
+    // 15-minute break around every other session.
+    const { error } = await supabase.rpc('create_tutor_availability', {
+      p_start: new Date(info.startStr).toISOString(),
     })
 
     if (error) {
-      toast.error('Failed to create slot')
+      toast.error(error.message || 'Failed to create slot')
     } else {
       toast.success('Slot created')
       refreshSchedule()
     }
+  }
+
+  /**
+   * Books a trial lead into the chosen tutor's free slot at the time the
+   * parent asked for, through book_trial(), which saves the booking, the
+   * student and the tutor's notification together. (Creating the trial
+   * session first and adding the student after used to leave empty
+   * "Trial: ..." sessions when the second step failed.)
+   */
+  const bookTrialLead = async (lead: TrialLead, tutorId: string) => {
+    const grade = (lead.grade ?? '')
+      .replace(/^grade\s*/i, '')
+      .trim()
+      .toUpperCase()
+    const category = categoryForGrade(grade)
+    if (!category) {
+      toast.error(
+        'Add the child’s grade to this lead first (Leads page), then assign the trial.',
+      )
+      return
+    }
+    if (!lead.class_date || !lead.class_time) {
+      toast.error(
+        'This lead has no requested time. Book it from Sales & Trials instead.',
+      )
+      return
+    }
+    const wantedDate = lead.class_date.slice(0, 10)
+    const wantedTime = lead.class_time.slice(0, 5)
+    const slot = events.find((e) => {
+      if (
+        e.extendedProps.tutorId !== tutorId ||
+        e.extendedProps.assigned ||
+        e.extendedProps.isTempBreak ||
+        !e.extendedProps.start
+      )
+        return false
+      const local = new Date(e.extendedProps.start)
+      const date = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`
+      const time = `${String(local.getHours()).padStart(2, '0')}:${String(local.getMinutes()).padStart(2, '0')}`
+      return date === wantedDate && time === wantedTime
+    })
+    if (!slot) {
+      toast.error(
+        `That tutor has no free slot on ${wantedDate} at ${wantedTime}. Ask them to open one, or pick another tutor.`,
+      )
+      return
+    }
+    const { error } = await supabase.rpc('book_trial', {
+      p_lead_id: lead.id,
+      p_slot_id: slot.id,
+      p_category: category.id,
+      p_student_name: lead.student_name || 'Trial student',
+      p_student_grade: grade,
+    })
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Trial booked into the tutor’s classroom.')
+    sendWaitingInvites()
+    refreshSchedule()
   }
 
   const handleAssign = async (
@@ -557,6 +628,11 @@ export default function FullCalendarView() {
     type: ClassType,
   ) => {
     if (!tutorId) return
+    if (type === 'trial') {
+      const lead = trialLeads.find((l) => l.id === studentId)
+      if (lead) await bookTrialLead(lead, tutorId)
+      return
+    }
     try {
       const { data: tutor } = await supabase
         .from('users')
@@ -568,60 +644,46 @@ export default function FullCalendarView() {
         return
       }
 
-      if (type === 'trial') {
-        const lead = trialLeads.find((l) => l.id === studentId)
-        if (!lead) return
-        const start = `${lead.class_date}T${lead.class_time}`
-        const { data: newEv, error } = await supabase
-          .from('calendar_events')
-          .insert({
-            tutor_id: tutorId,
-            start_time: start,
-            end_time: new Date(
-              new Date(start).getTime() + 3600000,
-            ).toISOString(),
-            meet_link: tutor.personal_meet_link,
-            class_type: 'trial',
-            title: `Trial: ${lead.student_name}`,
-          })
-          .select()
-          .single()
-        if (error) throw error
-        await supabase
-          .from('leads')
-          .update({ assigned_tutor_id: tutorId })
-          .eq('id', studentId)
-        await supabase
-          .from('event_attendance')
-          .insert({ student_id: studentId, event_id: newEv.id })
-      } else {
-        const slot = events.find(
-          (e) =>
-            e.extendedProps.tutorId === tutorId &&
-            !e.extendedProps.assigned &&
-            !e.extendedProps.isTempBreak,
-        )
-        if (!slot) {
-          toast.error('No free slot available.')
-          return
-        }
-        const sName = students.find((s) => s.id === studentId)?.full_name
-        await supabase
-          .from('calendar_events')
-          .update({
-            meet_link: tutor.personal_meet_link,
-            class_type: 'regular',
-            title: `Class: ${sName}`,
-          })
-          .eq('id', slot.id)
+      const slot = events.find(
+        (e) =>
+          e.extendedProps.tutorId === tutorId &&
+          !e.extendedProps.assigned &&
+          !e.extendedProps.isTempBreak,
+      )
+      if (!slot) {
+        toast.error('No free slot available.')
+        return
+      }
+      const sName = students.find((s) => s.id === studentId)?.full_name
+      // Student first: a session never shows as booked without them.
+      const { error: attendanceError } = await supabase
+        .from('event_attendance')
+        .insert({ student_id: studentId, event_id: slot.id })
+      if (attendanceError) throw new Error(attendanceError.message)
+      const { error: slotError } = await supabase
+        .from('calendar_events')
+        .update({
+          meet_link: tutor.personal_meet_link,
+          class_type: 'regular',
+          title: `Class: ${sName}`,
+        })
+        .eq('id', slot.id)
+      if (slotError) {
         await supabase
           .from('event_attendance')
-          .insert({ student_id: studentId, event_id: slot.id })
+          .delete()
+          .eq('event_id', slot.id)
+          .eq('student_id', studentId)
+        throw new Error(slotError.message)
       }
       toast.success('Assigned!')
       refreshSchedule()
-    } catch {
-      toast.error('Error')
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Could not assign the class. Please try again.',
+      )
     }
   }
 
@@ -632,8 +694,20 @@ export default function FullCalendarView() {
     const { assigned: isBooked, meet_link: meetLink } = scheduled.extendedProps
     if (isBooked && meetLink) {
       if (window.confirm('Join class?')) window.open(meetLink, '_blank')
-    } else if (userRole === 'tutor' && window.confirm('Delete slot?')) {
-      await supabase.from('calendar_events').delete().eq('id', event.id)
+    } else if (
+      userRole === 'tutor' &&
+      window.confirm(
+        isBooked
+          ? 'Delete this session? Only sessions nobody is booked into can be deleted.'
+          : 'Delete this free slot?',
+      )
+    ) {
+      // The database refuses when a student is booked in, and says why.
+      const { error } = await supabase.rpc('delete_calendar_event', {
+        p_event_id: event.id,
+      })
+      if (error) toast.error(error.message)
+      else toast.success('Session deleted.')
       refreshSchedule()
     } else if (isAdminRole(userRole) && isBooked) {
       setReassignEventId(event.id)

@@ -39,6 +39,7 @@ import {
 } from './shifts'
 import { StudentDetailsDialog } from './StudentDetailsDialog'
 import { draftFor, EMPTY_DRAFT, type StudentDraft } from './studentDraft'
+import { InviteRequestError } from './trialInvites'
 import type {
   GradeCategoryId,
   Lead,
@@ -96,6 +97,7 @@ export function BookTrialWizard({
   const [shiftId, setShiftId] = useState<ShiftId | null>(null)
   const [slotId, setSlotId] = useState<string | null>(null)
   const [booked, setBooked] = useState<TrialBooking | null>(null)
+  const [inviteSending, setInviteSending] = useState(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   // Left open past midnight, yesterday's pick moves on to today.
@@ -193,6 +195,29 @@ export function BookTrialWizard({
     setBooked(booking)
     setSlotId(null)
     toast.success(`Trial booked with ${mentorName(booking.mentorId)}.`)
+    if (booking.classroomCode && booking.parentEmail.trim()) {
+      void emailClassLink(booking)
+    }
+  }
+
+  // The parent gets the classroom link straight away. Failures show on the
+  // booking with a "Try again"; a 409 means it's already on its way.
+  const emailClassLink = async (booking: TrialBooking) => {
+    setInviteSending(true)
+    try {
+      const result = await data.sendInvite(booking.id)
+      if (result.status === 'failed') {
+        toast.error(
+          `The class link email didn’t send${result.error ? `: ${result.error}` : '.'}`,
+        )
+      }
+    } catch (error) {
+      if (!(error instanceof InviteRequestError && error.status === 409)) {
+        toast.error(problemText(error, 'The class link email didn’t send.'))
+      }
+    } finally {
+      setInviteSending(false)
+    }
   }
 
   const reset = () => {
@@ -207,7 +232,10 @@ export function BookTrialWizard({
   // Booked by mistake: take it straight back off the calendar (a soft delete,
   // kept under "Removed") and return to the same shift, keeping the details.
   const undo = async (booking: TrialBooking) => {
-    const messaged = parentAlreadyMessaged(booking, data.messages)
+    const emailed =
+      data.bookings.find((candidate) => candidate.id === booking.id)
+        ?.inviteEmail.status === 'sent'
+    const messaged = emailed || parentAlreadyMessaged(booking, data.messages)
     try {
       await data.removeBooking(booking.id, {
         reason: 'mistake',
@@ -223,7 +251,7 @@ export function BookTrialWizard({
     setShiftId(shiftOf(booking.start)?.id ?? null)
     toast(
       messaged
-        ? 'Booking undone. The parent already had the confirmation, so let them know on WhatsApp.'
+        ? `Booking undone. The parent already had the ${emailed ? 'class link email' : 'confirmation'}, so let them know on WhatsApp.`
         : 'Booking undone. The time is free again and the WhatsApp confirmation won’t be sent.',
       { duration: 6000 },
     )
@@ -261,6 +289,7 @@ export function BookTrialWizard({
           {booked ? (
             <BookingComplete
               booking={booked}
+              inviteSending={inviteSending}
               headingRef={headingRef}
               onBookAnother={reset}
               onUndo={() => void undo(booked)}

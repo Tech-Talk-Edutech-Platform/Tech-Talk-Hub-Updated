@@ -11,6 +11,11 @@ import {
   GRADE_CATEGORIES,
   gradeLabel,
 } from '../../../features/sales/gradeCategories'
+import {
+  classroomCodeOf,
+  requestTrialInvite,
+  toInviteEmail,
+} from '../../../features/sales/trialInvites'
 import { TRIAL_STATUS_LABEL } from '../../../features/sales/types'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -23,8 +28,10 @@ const programLabel = (id: string) =>
   GRADE_CATEGORIES.find((category) => category.id === id)?.label ?? null
 
 /**
- * Trials assigned to this tutor (from the schedule), with meeting links and,
- * when the sales team booked it, the student's grade, program and notes.
+ * Trials assigned to this tutor (from the schedule), with their classroom
+ * links and, when the sales team booked it, the student's grade, program and
+ * notes. For an upcoming classroom trial the tutor also sees the family's
+ * join link and can email it to the parent again.
  */
 async function loadTrials(tutorId: string): Promise<MentorCalendarItem[]> {
   const [events, bookings] = await Promise.all([
@@ -39,7 +46,7 @@ async function loadTrials(tutorId: string): Promise<MentorCalendarItem[]> {
     supabase
       .from('trial_bookings')
       .select(
-        'calendar_event_id, parent_name, student_name, student_grade, category_id, notes, status, created_at',
+        'id, calendar_event_id, parent_name, parent_email, student_name, student_grade, category_id, notes, status, created_at, uses_classroom, invite_email_status, invite_email_sent_at, invite_email_error',
       )
       .eq('mentor_id', tutorId)
       .is('removed_at', null)
@@ -55,9 +62,13 @@ async function loadTrials(tutorId: string): Promise<MentorCalendarItem[]> {
       .map((booking) => [booking.calendar_event_id, booking]),
   )
 
+  const now = Date.now()
   return events.data.map((event) => {
     const booking = bookingBySlot.get(event.id)
     const program = booking ? programLabel(booking.category_id) : null
+    const roomCode = booking?.uses_classroom
+      ? classroomCodeOf(event.meet_link)
+      : null
     const bookingStatus = Object.entries(TRIAL_STATUS_LABEL).find(
       ([status]) => status === booking?.status,
     )?.[1]
@@ -67,6 +78,18 @@ async function loadTrials(tutorId: string): Promise<MentorCalendarItem[]> {
       start: event.start_time,
       end: event.end_time,
       meetLink: event.meet_link,
+      invite:
+        booking &&
+        roomCode &&
+        booking.status === 'scheduled' &&
+        new Date(event.end_time).getTime() > now
+          ? {
+              bookingId: booking.id,
+              roomCode,
+              parentEmail: booking.parent_email ?? '',
+              invite: toInviteEmail(booking),
+            }
+          : null,
       studentName:
         booking?.student_name ||
         event.title.replace(/^Trial:\s*/i, '') ||
@@ -138,6 +161,11 @@ export default function TutorTrialBookingsView({ userId }: { userId: string }) {
         <MentorBookingsCalendar
           items={trials.data}
           emptyMessage="No trials booked with you yet. Keep your availability open in My Schedule so the team can book them."
+          onSendInvite={async (bookingId, resend) => {
+            const result = await requestTrialInvite(bookingId, resend)
+            await trials.refetch()
+            return result
+          }}
         />
       )}
     </div>

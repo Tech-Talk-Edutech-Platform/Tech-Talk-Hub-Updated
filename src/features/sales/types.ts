@@ -128,6 +128,23 @@ export type BookingRemoval = {
   note: string
 }
 
+export type InviteEmailStatus = 'pending' | 'sent' | 'failed' | 'skipped'
+
+/** The email with the classroom link, sent to the parent by the server. */
+export type TrialInviteEmail = {
+  status: InviteEmailStatus
+  sentAt: string | null
+  /** Why it failed or wasn't sent. */
+  error: string | null
+}
+
+/** What happened when an invite was sent (server/routes/trialInvites.ts). */
+export type InviteResult = {
+  status: Exclude<InviteEmailStatus, 'pending'>
+  to: string | null
+  error: string | null
+}
+
 export type TrialBooking = {
   id: string
   slotId: string
@@ -144,7 +161,14 @@ export type TrialBooking = {
   studentGrade: string
   start: string
   end: string
+  /**
+   * The link the family opens: the classroom's guest link for classroom
+   * trials, or the tutor's Meet link for trials booked before those.
+   */
   meetLink: string
+  /** The trial's own classroom (room code), or null for a Meet trial. */
+  classroomCode: string | null
+  inviteEmail: TrialInviteEmail
   status: TrialStatus
   source: BookingSource
   notes: string

@@ -26,6 +26,7 @@ import {
   UserPlus,
   AlertTriangle,
   ExternalLink,
+  Trash2,
   X,
 } from 'lucide-react'
 import { toast, Toaster } from 'react-hot-toast'
@@ -34,6 +35,7 @@ import type { ReactNode, MouseEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { isAdminRole } from '../../types/roles'
+import { sendWaitingInvites } from '../../lib/sendWaitingInvites'
 
 type AppUser = Tables<'users'>
 type Lead = Tables<'leads'>
@@ -100,6 +102,12 @@ const isFreeSlot = (event: CalendarEvent | null | undefined): boolean =>
   event?.booking_status !== 'cancelled'
 const isAdmin = isAdminRole
 const startTimeOf = (e: CalendarEvent) => new Date(e.start_time).getTime()
+/** Deleted slots that old trial bookings still point at are kept, cancelled. */
+const isArchived = (event: CalendarEvent) =>
+  event.booking_status === 'cancelled'
+/** Trials run in our own classroom; their link is a site path, not Google Meet. */
+const isClassroomLink = (link: string | null | undefined) =>
+  Boolean(link?.startsWith('/classroom/'))
 
 const ID_CHUNK = 100
 
@@ -414,6 +422,13 @@ export default function GlobalScheduleView() {
   const [selectedStudentToMerge, setSelectedStudentToMerge] = useState('')
   const [reassignTutorId, setReassignTutorId] = useState('')
   const [responseNote, setResponseNote] = useState('')
+  // Why the open session can't be deleted (null: it can), per event id, so a
+  // stale answer never shows for another session.
+  const [deleteCheck, setDeleteCheck] = useState<{
+    eventId: string
+    blocker: string | null
+  } | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const scheduleQuery = useQuery({
     queryKey: queryKeys.schedule.global,
@@ -538,7 +553,7 @@ export default function GlobalScheduleView() {
   )
 
   const visibleEvents = useMemo(
-    () => calendarEvents.filter(canSeeEvent),
+    () => calendarEvents.filter((e) => !isArchived(e) && canSeeEvent(e)),
     [calendarEvents, canSeeEvent],
   )
   const fullCalendarEvents = useMemo(
@@ -614,6 +629,47 @@ export default function GlobalScheduleView() {
       setSaving(false)
     }
   }
+
+  const selectedEventId = selectedEvent?.id ?? null
+  const canManageSelected =
+    selectedEvent !== null &&
+    (admin || (tutor && selectedEvent.tutor_id === authUser?.id))
+
+  // Ask the database whether the open session can be deleted, so the button
+  // explains itself instead of failing after a click.
+  useEffect(() => {
+    if (!selectedEventId || !canManageSelected) return undefined
+    let cancelled = false
+    void supabase
+      .rpc('calendar_event_delete_blocker', { p_event_id: selectedEventId })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setDeleteCheck({
+          eventId: selectedEventId,
+          blocker: error
+            ? `Couldn’t check this session: ${error.message}`
+            : (data ?? null),
+        })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedEventId, canManageSelected])
+
+  const deleteBlocker =
+    deleteCheck && deleteCheck.eventId === selectedEventId
+      ? deleteCheck.blocker
+      : undefined
+
+  const deleteEvent = (event: CalendarEvent) =>
+    runAction(async () => {
+      const { error } = await supabase.rpc('delete_calendar_event', {
+        p_event_id: event.id,
+      })
+      if (error) throw error
+      setConfirmDeleteId(null)
+      setSelectedEvent(null)
+    }, 'Session deleted from the calendar.')
 
   const createAvailability = () =>
     runAction(async () => {
@@ -742,6 +798,8 @@ export default function GlobalScheduleView() {
           )
         if (attendanceError) throw attendanceError
       }
+      // The booking gets its classroom; email the family the link.
+      sendWaitingInvites()
     }, 'Trial assigned to the earliest available tutor slot.')
 
   const reassignTutor = () =>
@@ -1390,7 +1448,11 @@ export default function GlobalScheduleView() {
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-teal-700"
               >
-                <Video size={16} /> Join Google Meet <ExternalLink size={14} />
+                <Video size={16} />{' '}
+                {isClassroomLink(selectedEvent.meet_link)
+                  ? 'Open classroom'
+                  : 'Join Google Meet'}{' '}
+                <ExternalLink size={14} />
               </a>
             )}
             {student && isFreeSlot(selectedEvent) && !myRequestForEvent && (
@@ -1615,6 +1677,58 @@ export default function GlobalScheduleView() {
                   <Link2 size={14} className="mr-1 inline" /> Set permanent
                   student Meet link
                 </button>
+              </div>
+            )}
+            {canManageSelected && (
+              <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-white/10">
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  Booked by mistake?
+                </h4>
+                {deleteBlocker === undefined ? (
+                  <p className="text-xs text-slate-500">
+                    Checking whether this session can be deleted…
+                  </p>
+                ) : deleteBlocker ? (
+                  <p className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-white/5 dark:text-slate-300">
+                    <AlertTriangle
+                      size={13}
+                      className="mr-1 inline text-amber-500"
+                    />
+                    This session can’t be deleted: {deleteBlocker}
+                  </p>
+                ) : confirmDeleteId === selectedEvent.id ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 dark:border-rose-500/30 dark:bg-rose-500/10">
+                    <p className="text-xs font-semibold text-rose-800 dark:text-rose-200">
+                      Delete this session from the calendar? Nobody is booked
+                      into it. This can’t be undone.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        Keep it
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void deleteEvent(selectedEvent)}
+                        className="flex-1 rounded-lg bg-rose-600 px-3 py-2 text-xs font-extrabold text-white hover:bg-rose-700 disabled:opacity-50"
+                      >
+                        Yes, delete
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteId(selectedEvent.id)}
+                    className="w-full rounded-xl border border-rose-200 px-3 py-2 text-sm font-extrabold text-rose-700 hover:bg-rose-50 dark:border-rose-500/30 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                  >
+                    <Trash2 size={14} className="mr-1 inline" /> Delete session
+                  </button>
+                )}
               </div>
             )}
           </div>

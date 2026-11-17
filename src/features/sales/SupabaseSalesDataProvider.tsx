@@ -9,6 +9,12 @@ import { GRADE_CATEGORIES } from './gradeCategories'
 import { SalesDataContext, type SalesData } from './salesDataContext'
 import { secondaryButton } from './styles'
 import {
+  classroomCodeOf,
+  familyJoinUrl,
+  requestTrialInvite,
+  toInviteEmail,
+} from './trialInvites'
+import {
   isBookingSource,
   REMOVAL_REASONS,
   type BookingSource,
@@ -172,6 +178,10 @@ function buildSnapshot(rows: {
   const allBookings: TrialBooking[] = rows.bookings.map((row) => {
     const event = row.calendar_events
     const mentor = mentorById.get(row.mentor_id)
+    // Classroom trials link to their room; earlier ones to the tutor's Meet.
+    const classroomCode = row.uses_classroom
+      ? classroomCodeOf(event?.meet_link)
+      : null
     return {
       id: row.id,
       slotId: row.calendar_event_id,
@@ -186,7 +196,13 @@ function buildSnapshot(rows: {
       studentGrade: row.student_grade,
       start: event?.start_time ?? row.created_at,
       end: event?.end_time ?? row.created_at,
-      meetLink: event?.meet_link?.trim() || mentor?.meetLink || '',
+      meetLink: classroomCode
+        ? familyJoinUrl(classroomCode)
+        : row.uses_classroom
+          ? ''
+          : event?.meet_link?.trim() || mentor?.meetLink || '',
+      classroomCode,
+      inviteEmail: toInviteEmail(row),
       status: oneOf(row.status, TRIAL_STATUSES, 'scheduled'),
       source: toSource(row.source),
       notes: row.notes ?? '',
@@ -630,9 +646,7 @@ export function SupabaseSalesDataProvider({
         )
         const booked = fresh?.bookings.find((booking) => booking.id === row.id)
         if (booked) return booked
-        const mentor = snapshot.mentors.find(
-          (candidate) => candidate.id === row.mentor_id,
-        )
+        // The reload failed; the classroom link shows on the next one.
         return {
           ...input,
           id: row.id,
@@ -640,12 +654,23 @@ export function SupabaseSalesDataProvider({
           salesRepId: row.marketer_id,
           start: slot?.start ?? row.created_at,
           end: slot?.end ?? row.created_at,
-          meetLink: mentor?.meetLink ?? '',
+          meetLink: '',
+          classroomCode: null,
+          inviteEmail: { status: 'pending', sentAt: null, error: null },
           status: 'scheduled',
           source: toSource(row.source),
           createdAt: row.created_at,
           removal: null,
         }
+      },
+
+      sendInvite: async (bookingId, options) => {
+        const result = await requestTrialInvite(
+          bookingId,
+          options?.resend ?? false,
+        )
+        await refresh()
+        return result
       },
 
       removeBooking: async (bookingId, removal) => {

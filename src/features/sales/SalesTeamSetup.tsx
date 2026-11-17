@@ -1,10 +1,5 @@
 import { useState } from 'react'
-import {
-  AlertTriangle,
-  CheckCircle2,
-  GraduationCap,
-  Target,
-} from 'lucide-react'
+import { GraduationCap, Target } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 import { useNow } from '../../hooks/useNow'
@@ -16,30 +11,16 @@ import { EmptyState, Initials, Panel } from './ui'
 
 /**
  * Admin settings behind the sales dashboard: which programs each tutor takes
- * trials for, whether they have a meeting link, and each rep's target.
+ * trials for, and each rep's target. (Trials run in the Tech Talk Hub
+ * classroom, so tutors don't need a meeting link for them.)
  */
 export function SalesTeamSetup() {
   const data = useSalesData()
   const now = useNow(60_000)
   const monthName = new Date(now).toLocaleDateString([], { month: 'long' })
-  const missingLinks = data.mentors.filter((mentor) => !mentor.meetLink)
 
   return (
     <div className="space-y-5">
-      {missingLinks.length > 0 && (
-        <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-          <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden />
-          <p>
-            <strong>
-              {missingLinks.map((mentor) => mentor.name).join(', ')}{' '}
-              {missingLinks.length === 1 ? 'has' : 'have'} no meeting link.
-            </strong>{' '}
-            Parents’ confirmations say the link will follow until one is added.
-            Add it in Users & Staff → Edit.
-          </p>
-        </div>
-      )}
-
       <Panel title="Tutors taking trials" icon={GraduationCap}>
         <p className="mb-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
           Reps only see a tutor’s open slots for the programs ticked here. A
@@ -107,28 +88,11 @@ function MentorRow({ mentor }: { mentor: Mentor }) {
           <p className="font-extrabold text-slate-900 dark:text-white">
             {mentor.name}
           </p>
-          <p className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-            {mentor.meetLink ? (
-              <>
-                <CheckCircle2
-                  size={12}
-                  className="text-emerald-600"
-                  aria-hidden
-                />
-                Meeting link set
-              </>
-            ) : (
-              <>
-                <AlertTriangle
-                  size={12}
-                  className="text-amber-600"
-                  aria-hidden
-                />
-                No meeting link
-              </>
-            )}
-            {mentor.programsChosen === false && ' · takes every program'}
-          </p>
+          {mentor.programsChosen === false && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Takes every program
+            </p>
+          )}
         </div>
       </div>
       <fieldset

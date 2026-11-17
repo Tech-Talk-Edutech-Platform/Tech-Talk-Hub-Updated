@@ -15,6 +15,7 @@ import type {
   TrialStatus,
   WhatsAppMessage,
 } from './types'
+import { demoRoomCode, familyJoinUrl } from './trialInvites'
 
 /**
  * Made-up people, slots and sales for the public preview (/preview/sales).
@@ -280,7 +281,9 @@ export function buildDemoData(now = new Date()): SalesDemoData {
           studentGrade: pick(grades),
           start: slot.start,
           end: slot.end,
-          meetLink: mentor.meetLink,
+          meetLink: familyJoinUrl(demoRoomCode(bookings.length + 1)),
+          classroomCode: demoRoomCode(bookings.length + 1),
+          inviteEmail: { status: 'sent', sentAt: null, error: null },
           status,
           source,
           notes: '',

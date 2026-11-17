@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import type { ChangeEvent, FormEvent } from 'react'
 import { staticPageMeta } from '../data/seo'
+import { sendWaitingInvites } from '../lib/sendWaitingInvites'
 import { usePageMeta } from '../hooks/usePageMeta'
 
 interface LeadForm {
@@ -109,6 +110,8 @@ export default function LandingPage() {
       setLoading(false)
 
       if (!error) {
+        // A trial booked into a tutor's slot gets its class link by email.
+        sendWaitingInvites()
         setSuccess(true)
         setForm({
           parent_name: '',

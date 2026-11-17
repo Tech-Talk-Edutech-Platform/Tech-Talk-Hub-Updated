@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import type { Tables } from '../../types/database'
+import { isAdminRole, type AppRole } from '../../types/roles'
 
 type UserName = Pick<Tables<'users'>, 'full_name'>
 
@@ -31,8 +32,15 @@ interface RecordingLibrary {
   tutors: UserOption[]
 }
 
-async function loadRecordingLibrary(): Promise<RecordingLibrary> {
-  const { data: recs } = await supabase
+/**
+ * Admins get every recording; a tutor gets only the classes they taught (the
+ * database enforces the same rule) and only their own students to share with.
+ */
+async function loadRecordingLibrary(
+  userId: string,
+  admin: boolean,
+): Promise<RecordingLibrary> {
+  let recordingsQuery = supabase
     .from('class_recordings')
     .select(
       `
@@ -42,25 +50,43 @@ async function loadRecordingLibrary(): Promise<RecordingLibrary> {
       `,
     )
     .order('created_at', { ascending: false })
+  if (!admin) recordingsQuery = recordingsQuery.eq('tutor_id', userId)
 
-  const { data: studentList } = await supabase
+  let studentsQuery = supabase
     .from('users')
     .select('id, full_name')
     .eq('role', 'student')
+  if (!admin) studentsQuery = studentsQuery.eq('assigned_tutor_id', userId)
 
-  const { data: tutorList } = await supabase
-    .from('users')
-    .select('id, full_name')
-    .in('role', ['tutor', 'owner', 'operations_admin', 'tech_admin'])
+  const [{ data: recs }, { data: studentList }, tutorsResult] =
+    await Promise.all([
+      recordingsQuery,
+      studentsQuery,
+      admin
+        ? supabase
+            .from('users')
+            .select('id, full_name')
+            .in('role', ['tutor', 'owner', 'operations_admin', 'tech_admin'])
+        : null,
+    ])
 
   return {
     recordings: recs || [],
     students: studentList || [],
-    tutors: tutorList || [],
+    tutors: tutorsResult?.data || [],
   }
 }
 
-export default function ClassRecordingsManager() {
+interface ClassRecordingsManagerProps {
+  userId: string
+  role: AppRole
+}
+
+export default function ClassRecordingsManager({
+  userId,
+  role,
+}: ClassRecordingsManagerProps) {
+  const admin = isAdminRole(role)
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [students, setStudents] = useState<UserOption[]>([])
   const [tutors, setTutors] = useState<UserOption[]>([])
@@ -83,23 +109,23 @@ export default function ClassRecordingsManager() {
 
   const fetchData = async () => {
     setLoading(true)
-    applyLibrary(await loadRecordingLibrary())
+    applyLibrary(await loadRecordingLibrary(userId, admin))
     setLoading(false)
   }
 
   useEffect(() => {
-    let cancelled = false
-    void loadRecordingLibrary().then((library) => {
-      if (cancelled) return
+    const request = { cancelled: false }
+    void loadRecordingLibrary(userId, isAdminRole(role)).then((library) => {
+      if (request.cancelled) return
       setRecordings(library.recordings)
       setStudents(library.students)
       setTutors(library.tutors)
       setLoading(false)
     })
     return () => {
-      cancelled = true
+      request.cancelled = true
     }
-  }, [])
+  }, [userId, role])
 
   const handleUpload = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -114,7 +140,8 @@ export default function ClassRecordingsManager() {
         recording_url: recordingUrl,
         thumbnail_url: thumbnailUrl || null,
         student_id: studentId || null,
-        tutor_id: tutorId || null,
+        // A tutor's uploads are always their own.
+        tutor_id: admin ? tutorId || null : userId,
       },
     ])
 
@@ -163,11 +190,12 @@ export default function ClassRecordingsManager() {
             <Sparkles size={13} /> Session Library
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl dark:text-white">
-            Class Recordings
+            {admin ? 'Class Recordings' : 'My Class Recordings'}
           </h2>
           <p className="max-w-xl text-sm text-slate-600 dark:text-slate-400">
-            Upload, browse, and organize video session recordings for individual
-            students or global access.
+            {admin
+              ? 'Every tutor’s session recordings, for individual students or global access.'
+              : 'Recordings of the classes you taught. Only you and the admins can see them.'}
           </p>
         </div>
         <button
@@ -406,28 +434,32 @@ export default function ClassRecordingsManager() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="recording-tutor"
-                    className="text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300"
-                  >
-                    Assign Tutor
-                  </label>
-                  <select
-                    id="recording-tutor"
-                    value={tutorId}
-                    onChange={(e) => setTutorId(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
-                  >
-                    <option value="">Auto-detect / Me</option>
-                    {tutors.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.full_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div
+                className={`grid grid-cols-1 gap-4 ${admin ? 'sm:grid-cols-2' : ''}`}
+              >
+                {admin && (
+                  <div>
+                    <label
+                      htmlFor="recording-tutor"
+                      className="text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300"
+                    >
+                      Assign Tutor
+                    </label>
+                    <select
+                      id="recording-tutor"
+                      value={tutorId}
+                      onChange={(e) => setTutorId(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                    >
+                      <option value="">Auto-detect / Me</option>
+                      {tutors.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label
@@ -442,7 +474,9 @@ export default function ClassRecordingsManager() {
                     onChange={(e) => setStudentId(e.target.value)}
                     className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 transition-colors focus:border-purple-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
                   >
-                    <option value="">Global (All Students)</option>
+                    <option value="">
+                      {admin ? 'Global (All Students)' : 'All my students'}
+                    </option>
                     {students.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.full_name}

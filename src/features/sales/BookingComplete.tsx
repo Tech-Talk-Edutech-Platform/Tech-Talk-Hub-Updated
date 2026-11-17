@@ -22,6 +22,8 @@ import { gradeCategory, gradeLabel } from './gradeCategories'
 import { formatPhone } from './phone'
 import { useSalesData } from './salesDataContext'
 import { secondaryButton, whatsappButton } from './styles'
+import { classroomHostPath } from './trialInvites'
+import { TrialInvitePanel } from './TrialInvitePanel'
 import type { TrialBooking } from './types'
 import { StatusBadge, TutorAvatar } from './ui'
 import { whatsappLink, whatsappMessage } from './whatsapp'
@@ -31,22 +33,31 @@ const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 /**
- * "You're all booked": the booking ticket with its reference, the meeting
- * link, and the parent's WhatsApp confirmation to send by hand until WhatsApp
- * Business is connected.
+ * "You're all booked": the booking ticket with its reference, the trial's
+ * classroom link (emailed to the parent), and the parent's WhatsApp
+ * confirmation to send by hand until WhatsApp Business is connected.
  */
 export function BookingComplete({
-  booking,
+  booking: bookedNow,
   headingRef,
+  inviteSending,
   onBookAnother,
   onUndo,
 }: {
   booking: TrialBooking
   headingRef: RefObject<HTMLHeadingElement>
+  /** The class link is being emailed to the parent. */
+  inviteSending: boolean
   onBookAnother: () => void
   onUndo: () => void
 }) {
   const data = useSalesData()
+  // The latest copy, so the email status updates as it goes out.
+  const booking =
+    data.bookings.find((candidate) => candidate.id === bookedNow.id) ??
+    bookedNow
+  const classroomCode = booking.classroomCode
+  const emailed = classroomCode !== null && booking.parentEmail.trim() !== ''
   const mentor = data.mentors.find((m) => m.id === booking.mentorId)
   const tutorName = mentor?.name ?? 'the tutor'
   const message = whatsappMessage('trial_confirmation', booking, mentor)
@@ -105,8 +116,10 @@ export function BookingComplete({
           You’re all booked! 🎉
         </h3>
         <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
-          {firstName(booking.studentName)} is on {tutorName}’s trial calendar,
-          and {firstName(booking.parentName)}’s WhatsApp confirmation is queued.
+          {firstName(booking.studentName)} is on {tutorName}’s trial calendar.{' '}
+          {emailed
+            ? `${firstName(booking.parentName)} gets the class link by email, and their WhatsApp confirmation is queued.`
+            : `${firstName(booking.parentName)}’s WhatsApp confirmation is queued.`}
         </p>
       </div>
 
@@ -156,25 +169,41 @@ export function BookingComplete({
               </div>
             ))}
           </dl>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {booking.meetLink ? (
-              <a
-                href={booking.meetLink}
-                target="_blank"
-                rel="noreferrer"
-                className={secondaryButton}
-              >
-                <Video size={16} aria-hidden /> Join meeting
-              </a>
-            ) : (
-              // The tutor has no standing meeting link yet (Users & Staff).
-              <span
-                className={`${secondaryButton} cursor-default opacity-60`}
-                title="Add the tutor’s meeting link in Users & Staff"
-              >
-                <Video size={16} aria-hidden /> No meeting link yet
-              </span>
-            )}
+          {classroomCode && (
+            <div className="mt-4">
+              <TrialInvitePanel
+                target={{
+                  roomCode: classroomCode,
+                  parentEmail: booking.parentEmail,
+                  invite: booking.inviteEmail,
+                }}
+                onSend={(resend) => data.sendInvite(booking.id, { resend })}
+                sending={inviteSending}
+                hostPath={classroomHostPath(classroomCode)}
+              />
+            </div>
+          )}
+          <div
+            className={`mt-4 grid gap-2 ${classroomCode ? '' : 'sm:grid-cols-2'}`}
+          >
+            {!classroomCode &&
+              (booking.meetLink ? (
+                <a
+                  href={booking.meetLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={secondaryButton}
+                >
+                  <Video size={16} aria-hidden /> Join meeting
+                </a>
+              ) : (
+                <span
+                  className={`${secondaryButton} cursor-default opacity-60`}
+                  title="The classroom link appears once the booking finishes saving"
+                >
+                  <Video size={16} aria-hidden /> Link to follow
+                </span>
+              ))}
             <a
               href={googleCalendarLink(booking, tutorName)}
               target="_blank"

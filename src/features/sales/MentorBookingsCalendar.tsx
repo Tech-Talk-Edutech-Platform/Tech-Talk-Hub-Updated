@@ -7,12 +7,16 @@ import {
   CalendarDays,
   Clock3,
   ExternalLink,
+  MonitorPlay,
   UserRound,
   Video,
 } from 'lucide-react'
 
 import { Modal } from '../../components/ui/Modal'
 import { useNow } from '../../hooks/useNow'
+import { classroomCodeOf } from './trialInvites'
+import { TrialInvitePanel, type InviteTarget } from './TrialInvitePanel'
+import type { InviteResult } from './types'
 import { EmptyState, Panel } from './ui'
 
 /** One trial on a mentor's calendar, from demo data or `calendar_events`. */
@@ -21,7 +25,10 @@ export type MentorCalendarItem = {
   title: string
   start: string
   end: string
+  /** Where staff join: the classroom ('/classroom/<code>') or a Meet link. */
   meetLink: string | null
+  /** An upcoming classroom trial: the family's link and email status. */
+  invite?: (InviteTarget & { bookingId: string }) | null
   studentName: string
   parentName?: string | null
   detail?: string | null
@@ -44,14 +51,17 @@ const fullTime = (iso: string) =>
 
 /**
  * A mentor's trial bookings: a week calendar plus the next trials with their
- * meeting links, so joining on time is one click.
+ * classroom (or meeting) links, so joining on time is one click.
  */
 export function MentorBookingsCalendar({
   items,
   emptyMessage = 'No trials are booked with you yet.',
+  onSendInvite,
 }: {
   items: readonly MentorCalendarItem[]
   emptyMessage?: string
+  /** Emails the family their class link; without it, no email controls. */
+  onSendInvite?: (bookingId: string, resend: boolean) => Promise<InviteResult>
 }) {
   const now = useNow(60_000)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -125,6 +135,8 @@ export function MentorBookingsCalendar({
             {upcoming.map((item) => {
               const startsIn = new Date(item.start).getTime() - now
               const joinable = startsIn <= JOIN_WINDOW_MS
+              const classroom = classroomCodeOf(item.meetLink) !== null
+              const LinkIcon = classroom ? MonitorPlay : Video
               return (
                 <li
                   key={item.id}
@@ -154,8 +166,12 @@ export function MentorBookingsCalendar({
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200'
                       }`}
                     >
-                      <Video size={13} aria-hidden />
-                      {joinable ? 'Join now' : 'Meeting link'}
+                      <LinkIcon size={13} aria-hidden />
+                      {joinable
+                        ? 'Join now'
+                        : classroom
+                          ? 'Open classroom'
+                          : 'Meeting link'}
                     </a>
                   ) : (
                     <p className="mt-2 text-xs font-semibold text-amber-600">
@@ -204,6 +220,16 @@ export function MentorBookingsCalendar({
               </>
             )}
           </dl>
+          {selected.invite && onSendInvite && (
+            <div className="mt-5">
+              <TrialInvitePanel
+                target={selected.invite}
+                onSend={(resend) =>
+                  onSendInvite(selected.invite?.bookingId ?? '', resend)
+                }
+              />
+            </div>
+          )}
           {selected.meetLink ? (
             <a
               href={selected.meetLink}
@@ -211,7 +237,15 @@ export function MentorBookingsCalendar({
               rel="noreferrer"
               className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-700"
             >
-              <Video size={16} aria-hidden /> Join meeting{' '}
+              {classroomCodeOf(selected.meetLink) ? (
+                <>
+                  <MonitorPlay size={16} aria-hidden /> Open classroom
+                </>
+              ) : (
+                <>
+                  <Video size={16} aria-hidden /> Join meeting
+                </>
+              )}{' '}
               <ExternalLink size={14} aria-hidden />
             </a>
           ) : (

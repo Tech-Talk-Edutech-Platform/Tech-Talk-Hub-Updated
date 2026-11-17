@@ -784,6 +784,7 @@ export type Database = {
           started_at: string | null
           status: string
           title: string
+          trial_booking_id: string | null
           tutor_id: string | null
           updated_at: string
         }
@@ -805,6 +806,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           title: string
+          trial_booking_id?: string | null
           tutor_id?: string | null
           updated_at?: string
         }
@@ -826,6 +828,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           title?: string
+          trial_booking_id?: string | null
           tutor_id?: string | null
           updated_at?: string
         }
@@ -856,6 +859,13 @@ export type Database = {
             columns: ['material_id']
             isOneToOne: false
             referencedRelation: 'classroom_materials'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'classroom_sessions_trial_booking_id_fkey'
+            columns: ['trial_booking_id']
+            isOneToOne: false
+            referencedRelation: 'trial_bookings'
             referencedColumns: ['id']
           },
           {
@@ -2062,6 +2072,10 @@ export type Database = {
           category_id: string
           created_at: string
           id: string
+          invite_email_attempts: number
+          invite_email_error: string | null
+          invite_email_sent_at: string | null
+          invite_email_status: string
           lead_id: string | null
           marketer_id: string | null
           mentor_id: string
@@ -2079,6 +2093,7 @@ export type Database = {
           student_grade: string
           student_name: string
           updated_at: string
+          uses_classroom: boolean
         }
         Insert: {
           booked_by?: string | null
@@ -2086,6 +2101,10 @@ export type Database = {
           category_id: string
           created_at?: string
           id?: string
+          invite_email_attempts?: number
+          invite_email_error?: string | null
+          invite_email_sent_at?: string | null
+          invite_email_status?: string
           lead_id?: string | null
           marketer_id?: string | null
           mentor_id: string
@@ -2103,6 +2122,7 @@ export type Database = {
           student_grade: string
           student_name: string
           updated_at?: string
+          uses_classroom?: boolean
         }
         Update: {
           booked_by?: string | null
@@ -2110,6 +2130,10 @@ export type Database = {
           category_id?: string
           created_at?: string
           id?: string
+          invite_email_attempts?: number
+          invite_email_error?: string | null
+          invite_email_sent_at?: string | null
+          invite_email_status?: string
           lead_id?: string | null
           marketer_id?: string | null
           mentor_id?: string
@@ -2127,6 +2151,7 @@ export type Database = {
           student_grade?: string
           student_name?: string
           updated_at?: string
+          uses_classroom?: boolean
         }
         Relationships: [
           {
@@ -2181,6 +2206,119 @@ export type Database = {
           {
             foreignKeyName: 'trial_bookings_removed_by_fkey'
             columns: ['removed_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tutor_training_lessons: {
+        Row: {
+          created_at: string
+          id: string
+          links: Json
+          minutes: number
+          module_id: string
+          points: string[]
+          position: number
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          links?: Json
+          minutes?: number
+          module_id: string
+          points?: string[]
+          position?: number
+          summary?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          links?: Json
+          minutes?: number
+          module_id?: string
+          points?: string[]
+          position?: number
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tutor_training_lessons_module_id_fkey'
+            columns: ['module_id']
+            isOneToOne: false
+            referencedRelation: 'tutor_training_modules'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tutor_training_modules: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_published: boolean
+          position: number
+          required: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_published?: boolean
+          position?: number
+          required?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_published?: boolean
+          position?: number
+          required?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tutor_training_progress: {
+        Row: {
+          completed_at: string
+          lesson_id: string
+          tutor_id: string
+        }
+        Insert: {
+          completed_at?: string
+          lesson_id: string
+          tutor_id: string
+        }
+        Update: {
+          completed_at?: string
+          lesson_id?: string
+          tutor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tutor_training_progress_lesson_id_fkey'
+            columns: ['lesson_id']
+            isOneToOne: false
+            referencedRelation: 'tutor_training_lessons'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tutor_training_progress_tutor_id_fkey'
+            columns: ['tutor_id']
             isOneToOne: false
             referencedRelation: 'users'
             referencedColumns: ['id']
@@ -2389,6 +2527,10 @@ export type Database = {
           category_id: string
           created_at: string
           id: string
+          invite_email_attempts: number
+          invite_email_error: string | null
+          invite_email_sent_at: string | null
+          invite_email_status: string
           lead_id: string | null
           marketer_id: string | null
           mentor_id: string
@@ -2406,6 +2548,7 @@ export type Database = {
           student_grade: string
           student_name: string
           updated_at: string
+          uses_classroom: boolean
         }
         SetofOptions: {
           from: '*'
@@ -2413,6 +2556,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      calendar_event_delete_blocker: {
+        Args: { p_event_id: string }
+        Returns: string
+      }
+      calendar_event_student_reason: {
+        Args: { p_event_id: string }
+        Returns: string
       }
       classroom_badge_entry: { Args: { p_award_id: string }; Returns: Json }
       classroom_can_read_recording: {
@@ -2445,6 +2596,7 @@ export type Database = {
           tutor_name: string
         }[]
       }
+      classroom_new_room_code: { Args: never; Returns: string }
       classroom_public_info: {
         Args: { p_room_code: string }
         Returns: {
@@ -2483,6 +2635,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_calendar_event: { Args: { p_event_id: string }; Returns: string }
       get_available_tutors: {
         Args: { desired_time: string }
         Returns: {
@@ -2491,6 +2644,11 @@ export type Database = {
         }[]
       }
       is_marketer: { Args: never; Returns: boolean }
+      is_my_recording: {
+        Args: { p_classroom_session_id: string; p_tutor_id: string }
+        Returns: boolean
+      }
+      is_student: { Args: never; Returns: boolean }
       mark_whatsapp_sent: {
         Args: { p_message_id: string }
         Returns: {
@@ -2556,6 +2714,10 @@ export type Database = {
           category_id: string
           created_at: string
           id: string
+          invite_email_attempts: number
+          invite_email_error: string | null
+          invite_email_sent_at: string | null
+          invite_email_status: string
           lead_id: string | null
           marketer_id: string | null
           mentor_id: string
@@ -2573,6 +2735,7 @@ export type Database = {
           student_grade: string
           student_name: string
           updated_at: string
+          uses_classroom: boolean
         }
         SetofOptions: {
           from: '*'
@@ -2610,6 +2773,10 @@ export type Database = {
           category_id: string
           created_at: string
           id: string
+          invite_email_attempts: number
+          invite_email_error: string | null
+          invite_email_sent_at: string | null
+          invite_email_status: string
           lead_id: string | null
           marketer_id: string | null
           mentor_id: string
@@ -2627,6 +2794,7 @@ export type Database = {
           student_grade: string
           student_name: string
           updated_at: string
+          uses_classroom: boolean
         }
         SetofOptions: {
           from: '*'
@@ -2720,6 +2888,10 @@ export type Database = {
           category_id: string
           created_at: string
           id: string
+          invite_email_attempts: number
+          invite_email_error: string | null
+          invite_email_sent_at: string | null
+          invite_email_status: string
           lead_id: string | null
           marketer_id: string | null
           mentor_id: string
@@ -2737,6 +2909,7 @@ export type Database = {
           student_grade: string
           student_name: string
           updated_at: string
+          uses_classroom: boolean
         }
         SetofOptions: {
           from: '*'
@@ -2744,6 +2917,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      trial_booking_sync_classroom: {
+        Args: { p_booking_id: string }
+        Returns: undefined
       }
     }
     Enums: {

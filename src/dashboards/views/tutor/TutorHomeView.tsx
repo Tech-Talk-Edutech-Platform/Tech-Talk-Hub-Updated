@@ -39,11 +39,16 @@ async function loadTutorDashboard(
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  // 1. Fetch calendar events
+  // 1. Booked sessions from today on. Open (free) slots and deleted ones
+  // aren't classes, so they stay out of "Next up" and the counts.
   const calendarPromise = supabase
     .from('calendar_events')
-    .select('*, classes (student_id)')
+    .select(
+      '*, classes (student_id), trial_bookings (student_name, removed_at, status)',
+    )
     .eq('tutor_id', userId)
+    .neq('title', 'Free Slot')
+    .neq('booking_status', 'cancelled')
     .gte('start_time', todayStart.toISOString())
     .order('start_time', { ascending: true })
 
@@ -117,6 +122,10 @@ async function loadTutorDashboard(
       meet_link: e.meet_link,
       student_name:
         (e.classes?.student_id && studentNames.get(e.classes.student_id)) ||
+        // Trial students are leads, named on their booking.
+        e.trial_bookings.find(
+          (b) => b.removed_at === null && b.status !== 'cancelled',
+        )?.student_name ||
         'N/A',
     })),
   }

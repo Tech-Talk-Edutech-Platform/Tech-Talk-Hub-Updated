@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CheckCircle2,
   ChevronDown,
@@ -7,77 +8,132 @@ import {
   Clock3,
   ExternalLink,
   GraduationCap,
+  RefreshCw,
 } from 'lucide-react'
 
 import {
-  TUTOR_TRAINING,
+  importBrowserProgress,
+  loadTrainingCourse,
+  loadTutorProgress,
+  setLessonDone,
   type TrainingLesson,
   type TrainingModule,
-} from '../../../data/tutorTraining'
+} from '../../../features/training/trainingApi'
+import { getErrorMessage } from '../../../lib/getErrorMessage'
+import { queryKeys } from '../../../lib/queryClient'
 
-/**
- * Progress lives in this browser for now (one key per tutor). It moves to a
- * `tutor_training_progress` table so admins can follow it; see
- * supabase/drafts/tutor_training_progress.sql.
- */
-const storageKey = (userId: string) => `tth:tutor-training:${userId}`
+type TutorTraining = { course: TrainingModule[]; done: Set<string> }
 
-function readProgress(userId: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(storageKey(userId))
-    const parsed: unknown = raw ? JSON.parse(raw) : []
-    return new Set(
-      Array.isArray(parsed)
-        ? parsed.filter((id): id is string => typeof id === 'string')
-        : [],
-    )
-  } catch {
-    return new Set()
-  }
-}
-
-function writeProgress(userId: string, done: Set<string>) {
-  try {
-    localStorage.setItem(storageKey(userId), JSON.stringify([...done]))
-  } catch {
-    // Storage blocked: progress just won't be remembered on this device.
-  }
+/** The course (edited by admins) and what this tutor has finished. */
+async function loadTutorTraining(tutorId: string): Promise<TutorTraining> {
+  const course = await loadTrainingCourse()
+  const lessonIds = new Set(
+    course.flatMap((module) => module.lessons.map((lesson) => lesson.id)),
+  )
+  // Progress used to be saved in the browser; bring it across once.
+  await importBrowserProgress(tutorId, lessonIds)
+  const done = await loadTutorProgress(tutorId)
+  return { course, done }
 }
 
 export default function TutorTrainingView({ userId }: { userId: string }) {
-  const [done, setDone] = useState(() => readProgress(userId))
-  const [openModule, setOpenModule] = useState<string | null>(
-    () =>
-      TUTOR_TRAINING.find((module) =>
-        module.lessons.some((lesson) => !readProgress(userId).has(lesson.id)),
-      )?.id ?? null,
+  const queryClient = useQueryClient()
+  const queryKey = queryKeys.training.progress(userId)
+  const trainingQuery = useQuery({
+    queryKey,
+    queryFn: () => loadTutorTraining(userId),
+  })
+  // null: all closed; undefined: not chosen yet (open the first unfinished).
+  const [openChoice, setOpenChoice] = useState<string | null | undefined>(
+    undefined,
   )
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  const course = trainingQuery.data?.course
+  const done = trainingQuery.data?.done
 
   const toggleLesson = (lessonId: string) => {
-    setDone((current) => {
+    if (!done) return
+    const nowDone = !done.has(lessonId)
+    const update = (current: Set<string>) => {
       const next = new Set(current)
-      if (next.has(lessonId)) next.delete(lessonId)
-      else next.add(lessonId)
-      writeProgress(userId, next)
+      if (nowDone) next.add(lessonId)
+      else next.delete(lessonId)
       return next
+    }
+    const revert = (current: Set<string>) => {
+      const next = new Set(current)
+      if (nowDone) next.delete(lessonId)
+      else next.add(lessonId)
+      return next
+    }
+    setSaveError(null)
+    queryClient.setQueryData<TutorTraining>(queryKey, (old) =>
+      old ? { ...old, done: update(old.done) } : old,
+    )
+    setLessonDone(userId, lessonId, nowDone).catch((error: unknown) => {
+      queryClient.setQueryData<TutorTraining>(queryKey, (old) =>
+        old ? { ...old, done: revert(old.done) } : old,
+      )
+      setSaveError(
+        `Couldn’t save that: ${getErrorMessage(error, 'please try again.')}`,
+      )
     })
   }
 
   const totals = useMemo(() => {
-    const lessons = TUTOR_TRAINING.flatMap((module) => module.lessons)
-    const required = TUTOR_TRAINING.filter((module) => module.required)
-    const requiredLessons = required.flatMap((module) => module.lessons)
+    const modules = course ?? []
+    const finished = done ?? new Set<string>()
+    const lessons = modules.flatMap((module) => module.lessons)
+    const requiredLessons = modules
+      .filter((module) => module.required)
+      .flatMap((module) => module.lessons)
     return {
       lessons: lessons.length,
-      completed: lessons.filter((lesson) => done.has(lesson.id)).length,
-      requiredLeft: requiredLessons.filter((lesson) => !done.has(lesson.id))
+      completed: lessons.filter((lesson) => finished.has(lesson.id)).length,
+      requiredLeft: requiredLessons.filter((lesson) => !finished.has(lesson.id))
         .length,
       minutesLeft: lessons
-        .filter((lesson) => !done.has(lesson.id))
+        .filter((lesson) => !finished.has(lesson.id))
         .reduce((sum, lesson) => sum + lesson.minutes, 0),
     }
-  }, [done])
+  }, [course, done])
 
+  if (trainingQuery.isPending) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-sm font-semibold text-slate-500">
+        <RefreshCw className="mr-2 animate-spin" size={18} aria-hidden />{' '}
+        Loading your training…
+      </div>
+    )
+  }
+
+  if (trainingQuery.isError || !course || !done) {
+    return (
+      <div className="mx-auto max-w-xl p-8 text-center">
+        <p className="font-bold text-slate-900 dark:text-white">
+          Training couldn’t load.
+        </p>
+        <p className="mt-1 text-sm text-slate-500">
+          {getErrorMessage(trainingQuery.error, 'Please try again.')}
+        </p>
+        <button
+          type="button"
+          onClick={() => void trainingQuery.refetch()}
+          className="mt-4 rounded-xl bg-purple-600 px-4 py-2 text-sm font-bold text-white hover:bg-purple-700"
+        >
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  const openModule =
+    openChoice === undefined
+      ? (course.find((module) =>
+          module.lessons.some((lesson) => !done.has(lesson.id)),
+        )?.id ?? null)
+      : openChoice
   const share = totals.lessons ? totals.completed / totals.lessons : 0
 
   return (
@@ -126,27 +182,39 @@ export default function TutorTrainingView({ userId }: { userId: string }) {
           />
         </div>
         <p className="mt-3 text-xs text-slate-400">
-          Progress is saved on this device.
+          Your progress is saved to your account, and the admins can see it.
         </p>
+        {saveError && (
+          <p
+            role="alert"
+            className="mt-2 text-xs font-semibold text-rose-600 dark:text-rose-300"
+          >
+            {saveError}
+          </p>
+        )}
       </header>
 
-      <ol className="space-y-4">
-        {TUTOR_TRAINING.map((module, index) => (
-          <ModuleCard
-            key={module.id}
-            number={index + 1}
-            module={module}
-            done={done}
-            open={openModule === module.id}
-            onToggleOpen={() =>
-              setOpenModule((current) =>
-                current === module.id ? null : module.id,
-              )
-            }
-            onToggleLesson={toggleLesson}
-          />
-        ))}
-      </ol>
+      {course.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500 dark:border-white/10">
+          No training has been published yet. Check back soon.
+        </p>
+      ) : (
+        <ol className="space-y-4">
+          {course.map((module, index) => (
+            <ModuleCard
+              key={module.id}
+              number={index + 1}
+              module={module}
+              done={done}
+              open={openModule === module.id}
+              onToggleOpen={() =>
+                setOpenChoice(openModule === module.id ? null : module.id)
+              }
+              onToggleLesson={toggleLesson}
+            />
+          ))}
+        </ol>
+      )}
     </div>
   )
 }
@@ -167,7 +235,8 @@ function ModuleCard({
   onToggleLesson: (lessonId: string) => void
 }) {
   const completed = module.lessons.filter((lesson) => done.has(lesson.id))
-  const finished = completed.length === module.lessons.length
+  const finished =
+    module.lessons.length > 0 && completed.length === module.lessons.length
   const panelId = `training-module-${module.id}`
 
   return (
@@ -219,6 +288,11 @@ function ModuleCard({
           id={panelId}
           className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-white/10 dark:border-white/10"
         >
+          {module.lessons.length === 0 && (
+            <li className="p-5 text-sm text-slate-500">
+              Lessons for this module are on their way.
+            </li>
+          )}
           {module.lessons.map((lesson) => (
             <LessonRow
               key={lesson.id}
@@ -272,31 +346,47 @@ function LessonRow({
             <Clock3 size={12} aria-hidden /> {lesson.minutes} min
           </span>
         </p>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-          {lesson.summary}
-        </p>
-        <ul className="mt-3 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
-          {lesson.points.map((point) => (
-            <li key={point} className="flex gap-2">
-              <span aria-hidden className="text-purple-500">
-                •
-              </span>
-              {point}
-            </li>
-          ))}
-        </ul>
-        {lesson.links && lesson.links.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {lesson.links.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                target="_blank"
-                className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-200"
-              >
-                {link.label} <ExternalLink size={12} aria-hidden />
-              </Link>
+        {lesson.summary && (
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            {lesson.summary}
+          </p>
+        )}
+        {lesson.points.length > 0 && (
+          <ul className="mt-3 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+            {lesson.points.map((point) => (
+              <li key={point} className="flex gap-2">
+                <span aria-hidden className="text-purple-500">
+                  •
+                </span>
+                {point}
+              </li>
             ))}
+          </ul>
+        )}
+        {lesson.links.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {lesson.links.map((link) =>
+              /^https?:\/\//i.test(link.href) ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-200"
+                >
+                  {link.label} <ExternalLink size={12} aria-hidden />
+                </a>
+              ) : (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-200"
+                >
+                  {link.label} <ExternalLink size={12} aria-hidden />
+                </Link>
+              ),
+            )}
           </div>
         )}
       </div>
