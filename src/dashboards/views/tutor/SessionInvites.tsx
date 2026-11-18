@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search, UserPlus, X } from 'lucide-react'
+import { useNow } from '../../../hooks/useNow'
 import {
   classroomKeys,
   inviteStudents,
@@ -155,8 +156,13 @@ export function SessionInvites({
     ),
   )
   // Withdrawing deletes the roster row along with anything given in class,
-  // so it's only offered (and only allowed) before the class starts.
-  const canWithdraw = session.status === 'scheduled'
+  // so it's only offered (and only allowed) before the start time and before
+  // anyone joins. After that the invite stays, so the class can't be deleted.
+  const now = useNow(60_000)
+  const canWithdraw =
+    session.status === 'scheduled' &&
+    !session.started_at &&
+    (!session.scheduled_at || Date.parse(session.scheduled_at) > now)
 
   return (
     <div className="mt-4 border-t border-slate-100 pt-4 dark:border-white/10">

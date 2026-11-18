@@ -51,6 +51,7 @@ import {
   clockTime,
   formatClassTime,
   joinWindow,
+  linkExpiry,
   scheduledEnd,
 } from '../../lib/classroom/schedule'
 import { copyText } from '../../lib/classroom/clipboard'
@@ -153,8 +154,9 @@ export function ClassroomPage() {
 /**
  * The class's time slot: people wait here until it opens (15 minutes before
  * the start), and are turned away once the link has expired (nobody joined
- * during the class time). Once someone is in, they stay in: a class may run
- * past its end time and is never cut off. The API server enforces the same.
+ * within an hour of the start, or by the end of a longer class). Once someone
+ * is in, they stay in: a call is never cut off. Past the link expiry, the API
+ * server lets people join only while others are still in the call.
  */
 function ScheduleGate({
   data,
@@ -167,11 +169,11 @@ function ScheduleGate({
   const [openedAt] = useState(() => Date.now())
   const { schedule } = data.classroom
   const slot = joinWindow(schedule, now)
-  const end = scheduledEnd(schedule)
-  // Anyone who had this page open before the end time got in (the gate
+  const expiry = linkExpiry(schedule)
+  // Anyone who had this page open before the link expired got in (the gate
   // opens by itself), so they stay in even if the class data loaded before
   // the first join still says "nobody came".
-  const alreadyIn = end !== null && openedAt < end
+  const alreadyIn = expiry !== null && openedAt < expiry
 
   if (slot.state === 'open' || slot.state === 'overtime') return children
   if (slot.state === 'expired' && alreadyIn) return children
@@ -184,7 +186,7 @@ function ScheduleGate({
   }
   return (
     <RoomMessage title="This class link has expired">
-      {`Nobody joined during the class time (${formatClassTime(schedule)}). ${
+      {`Nobody joined the class (${formatClassTime(schedule)}) by ${clockTime(slot.expiresAt)}, so the link no longer works. ${
         data.viewer.isStaff
           ? 'Start a new call from My Classrooms, or an admin can give this class a new start time.'
           : 'Ask your tutor for a new invite.'

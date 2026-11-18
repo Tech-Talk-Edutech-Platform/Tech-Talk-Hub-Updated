@@ -35,17 +35,21 @@ export type ClassroomAccess = {
  * When a class can be joined. Same rules as the app
  * (src/lib/classroom/schedule.ts); keep them in step.
  *
- *   start - 15 min ....... start ....... end (start + length)
- *   |  early: refused  |  open  |  after the end:
+ *   start - 15 min ....... start ....... link expiry (start + 1 hour, or the
+ *   |  early: refused  |  open  |        end if the class is longer)
+ *                                  after the link expiry:
  *                                  - nobody ever joined: expired (refused)
  *                                  - someone joined: overtime. The call isn't
- *                                    cut off; joining works while the room is
- *                                    still running (LiveKit closes it 5 minutes
- *                                    after the last person leaves).
+ *                                    cut off, and people can join while
+ *                                    others are still in it. Once it's empty,
+ *                                    the link is revoked for everyone, hosts
+ *                                    included (see the token route).
  *
- * No start time: always open. No length: never expires.
+ * No start time: always open.
  */
 export const EARLY_JOIN_MINUTES = 15
+/** The link works this long after the start (or until a longer class ends). */
+export const LINK_ACTIVE_MINUTES = 60
 
 export type JoinWindow =
   | { state: 'open' }
@@ -66,9 +70,9 @@ export function joinWindow(session: Schedule, now = Date.now()): JoinWindow {
   if (now < opensAt) {
     return { state: 'early', opensAt: new Date(opensAt).toISOString() }
   }
-  if (!session.duration_minutes) return { state: 'open' }
-  const end = start + session.duration_minutes * 60_000
-  if (now <= end) return { state: 'open' }
+  const end = start + (session.duration_minutes ?? 0) * 60_000
+  const expiresAt = Math.max(start + LINK_ACTIVE_MINUTES * 60_000, end)
+  if (now <= expiresAt) return { state: 'open' }
   return session.started_at ? { state: 'overtime' } : { state: 'expired' }
 }
 
@@ -196,10 +200,27 @@ export function closedRoomReason(
     return {
       status: 410,
       error:
-        'This class link has expired: nobody joined during the class time. Ask your tutor for a new invite.',
+        'This class link has expired: nobody joined in time. Ask your tutor for a new invite.',
     }
   }
   return null
+}
+
+/**
+ * Whether anyone is in the room right now. LiveKit keeps an empty room for 5
+ * minutes after the last person leaves, so the room existing isn't enough.
+ */
+export async function roomHasPeople(
+  service: RoomServiceClient,
+  roomId: string,
+): Promise<boolean> {
+  try {
+    const participants = await service.listParticipants(roomId)
+    return participants.length > 0
+  } catch {
+    // The room closed between listing it and asking who's in it.
+    return false
+  }
 }
 
 export type LiveKitConfig = {

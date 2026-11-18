@@ -158,6 +158,8 @@ Children's contact details (phone, email, city) are only readable by admins and 
    - **Open classroom** or **Teacher link**: `/classroom/<room code>`. Staff who are signed in get the teacher view: badges, projects, alerts, End class and recording.
    - **Student link**: `/classroom/<room code>?join=1`. This always opens the attendee view (chat, reactions, raise hand, Leave). Guests type their name first.
 5. Tutors find their assigned classes under **Dashboard › My Classrooms**. There they can start a call and **Invite students** (when creating it, or on any upcoming class). Tutors only see, and can only invite, the students assigned to them in **Users & Staff**. An invite is a roster row with `student_id` set, so invited students can be given badges and projects in the room. Open rooms pick up new invites within 30 seconds.
+   - A tutor can withdraw an invite only before the start time and before anyone joins.
+   - A tutor can **Delete** a class nobody was invited to (made by mistake, or never used), through `delete_classroom_session()` (migration `20261118120000_classroom_tutor_delete.sql`). A class students were invited to stays on record, whether or not they joined. So do trial bookings' classes, classes with an End class report, and classes alerts were sent from. Admins can still delete any class under **Dashboard › Classroom**.
 6. Invited students see the class under **Dashboard › My Classroom** (and on their home dashboard while it's open) and press **Join class**.
 7. After class, the session's **Class activity** card shows the End class report, badges, projects, alerts (with **Mark resolved**) and recordings. Classes that didn't happen show their reason in the class lists.
 
@@ -165,14 +167,15 @@ Children's contact details (phone, email, city) are only readable by admins and 
 
 Every call has a start time (`scheduled_at`) and a length (`duration_minutes`). Tutors set both when they start a call in **My Classrooms**.
 
-| When                                  | What happens                                                                                                                                                                                                                                                        |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| More than 15 minutes before the start | Nobody can join. The room page says when it opens and lets people in by itself at that time. Students see **Opens at …** instead of Join.                                                                                                                           |
-| From 15 minutes before until the end  | Anyone with access can join. The first join sets `started_at`.                                                                                                                                                                                                      |
-| After the end, and nobody ever joined | **Expired.** The link is revoked for everyone, hosts included, and the class shows **Expired** in the lists. Start a new call, or an admin gives the class a new start time.                                                                                        |
-| After the end, and someone joined     | **Overtime.** Nobody is cut off. People can still join while the call is running, and everyone gets a one-time "past its end time" notice. Once everyone has left (LiveKit closes an empty room after 5 minutes), only the host can get back in, to file End class. |
+| When                                              | What happens                                                                                                                                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| More than 15 minutes before the start             | Nobody can join. The room page says when it opens and lets people in by itself at that time. Students see **Opens at …** instead of Join.                                                                     |
+| From 15 minutes before until the link expiry      | Anyone with access can join. The first join sets `started_at`. The link expiry is **one hour after the start**, or the scheduled end if the class is longer than an hour (`LINK_ACTIVE_MINUTES`).             |
+| After the link expiry, and nobody ever joined     | **Expired.** The link is revoked for everyone, hosts included, and the class shows **Expired** in the lists. Start a new call, or an admin gives the class a new start time.                                  |
+| After the link expiry, and people are in the call | **Overtime.** Nobody is cut off, and people can still join while anyone is in the call (the server asks LiveKit who's in the room). Everyone gets a one-time "past its end time" notice at the scheduled end. |
+| After the link expiry, and the call is empty      | **Expired.** Once everyone has left, the link is revoked for everyone, hosts included.                                                                                                                        |
 
-A class with no start time is always open; one with no length never expires.
+A class with no start time is always open.
 
 The API server enforces these rules before it issues a video token (`server/services/classroomAccess.ts`). The browser uses the same rules (`src/lib/classroom/schedule.ts`) for its messages; keep the two in step. Migration `20261112140000_classroom_schedule.sql` adds the times to `classroom_public_info()` and `classroom_my_invites()`.
 

@@ -185,6 +185,31 @@ export async function deleteSession(id: string) {
   if (error) raise(error, 'Couldn’t delete the class.')
 }
 
+/**
+ * Whether to offer Delete to the class's tutor: nobody was ever invited or
+ * booked, it isn't a trial booking's class and it has no end-of-class report.
+ * The database has the final say (delete_classroom_session also refuses a
+ * class alerts were sent from).
+ */
+export const tutorCanDelete = (session: SessionSummary) =>
+  session.students.length === 0 &&
+  !session.trial_booking_id &&
+  session.status !== 'completed' &&
+  session.status !== 'not_completed'
+
+/** Tutors: delete one of their classes nobody was invited to. */
+export async function deleteOwnSession(id: string) {
+  const { error } = await plannedDb.rpc('delete_classroom_session', {
+    p_session_id: id,
+  })
+  if (error?.code === 'PGRST202') {
+    throw new Error(
+      'Deleting classes isn’t set up yet. Ask an admin to apply the latest classroom database migration.',
+    )
+  }
+  if (error) raise(error, 'Couldn’t delete the class.')
+}
+
 /** A session's start, length and first join, for the join-window rules. */
 export const sessionSchedule = (session: SessionRow): ClassSchedule => ({
   scheduledAt: session.scheduled_at,

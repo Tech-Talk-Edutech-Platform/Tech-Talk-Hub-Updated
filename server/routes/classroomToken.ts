@@ -12,6 +12,7 @@ import {
   liveKitConfig,
   LiveKitConfigError,
   recordFirstJoin,
+  roomHasPeople,
   type ClassroomAccess,
   type ClassroomRole,
 } from '../services/classroomAccess'
@@ -100,13 +101,16 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
     (candidate) => candidate.name === roomId,
   )
 
-  // Past the end time, a class that ran over stays open while it's running,
-  // but once everyone has left (LiveKit closes the room after 5 empty
-  // minutes) nobody can start it again. The host still can, to finish up
-  // with End class.
-  if (!room && access.window.state === 'overtime' && role !== 'host') {
+  // Past the link expiry (an hour after the start, or the end of a longer
+  // class), a call stays joinable only while people are in it. Once it's
+  // empty the link is revoked for everyone, hosts included.
+  if (
+    access.window.state === 'overtime' &&
+    !(room && (await roomHasPeople(service, roomId)))
+  ) {
     res.status(410).json({
-      error: 'This class has finished. Everyone left after the class time.',
+      error:
+        'This class link has expired: the class time is over and nobody is in the call any more.',
     })
     return
   }

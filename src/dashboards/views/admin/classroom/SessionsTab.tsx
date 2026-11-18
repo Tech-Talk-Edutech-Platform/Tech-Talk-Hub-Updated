@@ -147,6 +147,8 @@ export function SessionListItem({
   onManage,
   onReopen,
   reopening = false,
+  onDelete,
+  deleting = false,
   children,
 }: {
   session: SessionSummary
@@ -155,6 +157,9 @@ export function SessionListItem({
   /** Admins only: shown for ended or cancelled classes, which nobody can join. */
   onReopen?: () => void
   reopening?: boolean
+  /** Tutors: shown for their classes nobody was invited to. */
+  onDelete?: () => void
+  deleting?: boolean
   /** Shown under the class, full width (e.g. the tutor's invites). */
   children?: ReactNode
 }) {
@@ -162,7 +167,8 @@ export function SessionListItem({
   const missedNote = notCompletedNote(session)
   const schedule = sessionSchedule(session)
   const now = useNow(60_000)
-  // Nobody joined during the class time, so the link no longer opens.
+  // Nobody joined in time (see lib/classroom/schedule), so the link no
+  // longer opens.
   const expired =
     (session.status === 'scheduled' || session.status === 'live') &&
     isExpired(schedule, now)
@@ -221,6 +227,18 @@ export function SessionListItem({
           {onManage && (
             <Button size="sm" onClick={onManage}>
               Manage
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onDelete}
+              busy={deleting}
+              aria-label={`Delete “${session.title}”`}
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              Delete
             </Button>
           )}
         </div>

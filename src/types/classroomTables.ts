@@ -83,6 +83,8 @@ export type ClassroomTables = {
       end_reason: string | null
       end_details: string | null
       elapsed_seconds: number | null
+      /** The trial booking this classroom was made for (20261117150000). */
+      trial_booking_id: string | null
       created_by: string | null
       created_at: string
       updated_at: string
@@ -193,6 +195,14 @@ export type ClassroomFunctions = {
       invited_at: string
       attended: boolean | null
     } & ScheduleColumns)[]
+  }
+  /**
+   * Tutors delete a class nobody was invited to; refused with a reason
+   * otherwise (migration 20261118120000).
+   */
+  delete_classroom_session: {
+    Args: { p_session_id: string }
+    Returns: undefined
   }
 }
 

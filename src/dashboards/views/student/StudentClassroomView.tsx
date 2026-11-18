@@ -17,18 +17,12 @@ import {
 import {
   clockTime,
   formatClassTime,
+  isStillJoinable,
   joinWindow,
 } from '../../../lib/classroom/schedule'
 import { useNow } from '../../../hooks/useNow'
 import type { ClassInvite } from '../../../types/classroom'
 import { STATUS_LABEL } from '../admin/classroom/format'
-
-/**
- * A class that runs over stays listed (with Join) this long after its end,
- * so a student who dropped out can get back in. The server still refuses
- * once everyone has left.
- */
-const OVERTIME_LISTED_MS = 2 * 60 * 60_000
 
 /** What the student can do with an invite right now. */
 type InviteState = { kind: 'join' } | { kind: 'early'; opensAt: number }
@@ -37,10 +31,9 @@ function inviteState(invite: ClassInvite, now: number): InviteState | null {
   if (invite.status !== 'scheduled' && invite.status !== 'live') return null
   const slot = joinWindow(invite.schedule, now)
   if (slot.state === 'early') return { kind: 'early', opensAt: slot.opensAt }
-  if (slot.state === 'open') return { kind: 'join' }
-  if (slot.state === 'overtime' && now - slot.endsAt < OVERTIME_LISTED_MS) {
-    return { kind: 'join' }
-  }
+  // A class that ran past its link time stays listed a while, so a student
+  // who dropped out can get back in; the server refuses once it's empty.
+  if (isStillJoinable(invite.schedule, now)) return { kind: 'join' }
   return null // expired, or long past its time
 }
 

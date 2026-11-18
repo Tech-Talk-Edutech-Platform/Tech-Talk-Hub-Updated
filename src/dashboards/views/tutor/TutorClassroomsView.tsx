@@ -2,16 +2,22 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Presentation, Video } from 'lucide-react'
 import { useNow } from '../../../hooks/useNow'
-import { EARLY_JOIN_MINUTES, isExpired } from '../../../lib/classroom/schedule'
+import {
+  EARLY_JOIN_MINUTES,
+  LINK_ACTIVE_MINUTES,
+  isStillJoinable,
+} from '../../../lib/classroom/schedule'
 import { SessionListItem } from '../admin/classroom/SessionsTab'
 import {
   ClassroomSchemaMissing,
   classroomKeys,
   createSession,
+  deleteOwnSession,
   inviteStudents,
   listTutorSessions,
   newRoomCode,
   sessionSchedule,
+  tutorCanDelete,
   type InvitableStudent,
   type SessionSummary,
 } from '../admin/classroom/classroomAdminApi'
@@ -44,11 +50,22 @@ type StartedCall = {
   inviteError: string | null
 }
 
+/** The Delete button's props for a class, when the tutor may delete it. */
+type DeleteProps = { onDelete?: () => void; deleting?: boolean }
+
 /**
  * A new call the tutor hosts. Invited students join from their dashboard;
  * anyone else with the student link joins as a participant.
  */
-function StartCallCard({ userId }: { userId: string }) {
+function StartCallCard({
+  userId,
+  deleteProps,
+  isDeleted,
+}: {
+  userId: string
+  deleteProps: (session: SessionSummary) => DeleteProps
+  isDeleted: (sessionId: string) => boolean
+}) {
   const queryClient = useQueryClient()
   const [title, setTitle] = useState('')
   const [startsAt, setStartsAt] = useState(nowInput)
@@ -164,8 +181,9 @@ function StartCallCard({ userId }: { userId: string }) {
         </div>
         <p className="-mt-1 text-xs text-slate-500 dark:text-slate-400">
           Students can join from {EARLY_JOIN_MINUTES} minutes before the start.
-          If nobody joins by the end, the link expires. Once the class is going
-          it isn’t cut off at the end; you end it when you’re done.
+          The link stops working {LINK_ACTIVE_MINUTES} minutes after the start
+          (or at the end, for longer classes) unless people are in the call. A
+          call that’s going is never cut off; you end it when you’re done.
         </p>
         {timeError && <ErrorNote>{timeError}</ErrorNote>}
         <fieldset>
@@ -193,7 +211,7 @@ function StartCallCard({ userId }: { userId: string }) {
           <ErrorNote>{start.error.message}</ErrorNote>
         </div>
       )}
-      {started && (
+      {started && !isDeleted(started.session.id) && (
         <div className="mt-4 space-y-3">
           {started.inviteError && (
             <ErrorNote>
@@ -202,7 +220,11 @@ function StartCallCard({ userId }: { userId: string }) {
             </ErrorNote>
           )}
           <ul>
-            <SessionListItem session={started.session} tutorName="You" />
+            <SessionListItem
+              session={started.session}
+              tutorName="You"
+              {...deleteProps(started.session)}
+            />
           </ul>
         </div>
       )}
@@ -212,18 +234,54 @@ function StartCallCard({ userId }: { userId: string }) {
 
 /** The tutor's own live classes, with their room links and invites. */
 export default function TutorClassroomsView({ userId }: { userId: string }) {
+  const queryClient = useQueryClient()
   const sessions = useQuery({
     queryKey: classroomKeys.tutorSessions(userId),
     queryFn: () => listTutorSessions(userId),
   })
 
-  // Expired links (nobody joined in time) can't be opened, so they're past.
+  // A class nobody was invited to can be deleted (made by mistake, or never
+  // used). Deleted classes leave the lists at once, before the refetch lands.
+  const [deleted, setDeleted] = useState<ReadonlySet<string>>(NOBODY)
+  const remove = useMutation({
+    mutationFn: deleteOwnSession,
+    onSuccess: (_, sessionId) => {
+      setDeleted((current) => new Set(current).add(sessionId))
+      void queryClient.invalidateQueries({
+        queryKey: classroomKeys.tutorSessions(userId),
+      })
+    },
+  })
+  // Judged on the latest list: the new-call preview keeps the class as it was
+  // created, before any invites sent from Upcoming.
+  const deleteProps = (session: SessionSummary): DeleteProps =>
+    tutorCanDelete(
+      sessions.data?.find((latest) => latest.id === session.id) ?? session,
+    )
+      ? {
+          onDelete: () => {
+            if (
+              window.confirm(
+                `Delete “${session.title}”? Its link stops working. This can’t be undone.`,
+              )
+            ) {
+              remove.mutate(session.id)
+            }
+          },
+          deleting: remove.isPending && remove.variables === session.id,
+        }
+      : {}
+  const isDeleted = (sessionId: string) => deleted.has(sessionId)
+
+  // Classes whose link expired can't be opened, so they're past. One that
+  // ran over stays upcoming for a while, as the call may still be going.
   const now = useNow(60_000)
   const isUpcoming = (session: SessionSummary) =>
     (session.status === 'scheduled' || session.status === 'live') &&
-    !isExpired(sessionSchedule(session), now)
-  const upcoming = (sessions.data ?? []).filter(isUpcoming)
-  const past = (sessions.data ?? []).filter((session) => !isUpcoming(session))
+    isStillJoinable(sessionSchedule(session), now)
+  const mine = (sessions.data ?? []).filter((session) => !isDeleted(session.id))
+  const upcoming = mine.filter(isUpcoming)
+  const past = mine.filter((session) => !isUpcoming(session))
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
@@ -251,7 +309,16 @@ export default function TutorClassroomsView({ userId }: { userId: string }) {
         )
       ) : (
         <>
-          <StartCallCard userId={userId} />
+          <StartCallCard
+            userId={userId}
+            deleteProps={deleteProps}
+            isDeleted={isDeleted}
+          />
+          {remove.isError && (
+            <ErrorNote>
+              Couldn’t delete the class: {remove.error.message}
+            </ErrorNote>
+          )}
           <Card>
             <h3 className="mb-4 text-lg font-black text-slate-900 dark:text-white">
               Upcoming
@@ -263,6 +330,7 @@ export default function TutorClassroomsView({ userId }: { userId: string }) {
                     key={session.id}
                     session={session}
                     tutorName="You"
+                    {...deleteProps(session)}
                   >
                     <SessionInvites session={session} tutorId={userId} />
                   </SessionListItem>
@@ -286,6 +354,7 @@ export default function TutorClassroomsView({ userId }: { userId: string }) {
                     key={session.id}
                     session={session}
                     tutorName="You"
+                    {...deleteProps(session)}
                   />
                 ))}
               </ul>
