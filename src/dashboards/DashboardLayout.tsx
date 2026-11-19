@@ -100,6 +100,7 @@ export default function DashboardLayout({
 
   // `renderMainContent` is hoisted, so it can't see the null check above.
   const currentUser = user
+  const openRecordings = () => setActiveView('recordings')
 
   function renderMainContent() {
     // Role-specific settings
@@ -130,7 +131,12 @@ export default function DashboardLayout({
 
         case 'dashboard':
         default:
-          return <StudentHomeView userId={currentUser.id} />
+          return (
+            <StudentHomeView
+              userId={currentUser.id}
+              onOpenRecordings={openRecordings}
+            />
+          )
       }
     }
 
@@ -157,7 +163,13 @@ export default function DashboardLayout({
 
         case 'dashboard':
         default:
-          return <TutorHomeView userId={currentUser.id} user={currentUser} />
+          return (
+            <TutorHomeView
+              userId={currentUser.id}
+              user={currentUser}
+              onOpenRecordings={openRecordings}
+            />
+          )
       }
     }
 
@@ -221,7 +233,12 @@ export default function DashboardLayout({
           return <AdminPricingPage />
         case 'dashboard':
         default:
-          return <AdminHomeView userId={currentUser.id} />
+          return (
+            <AdminHomeView
+              userId={currentUser.id}
+              onOpenRecordings={openRecordings}
+            />
+          )
       }
     }
 
@@ -296,6 +313,14 @@ export default function DashboardLayout({
                 icon={Calendar}
                 label="Schedule"
                 view="schedule"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarButton
+                icon={Video}
+                label="My Recordings"
+                view="recordings"
                 activeView={activeView}
                 setActiveView={setActiveView}
                 isCollapsed={isCollapsed}

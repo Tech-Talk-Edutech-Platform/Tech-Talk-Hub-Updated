@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { RecordingLink } from '../../../lib/classroom/recordingLink'
+import { CopyRecordingLinkButton } from '../../../components/recordings/CopyRecordingLinkButton'
 import type { Tables } from '../../../types/database'
 import { ClassInvitesCard, StudentBadgesCard } from './StudentClassroomView'
 
@@ -22,7 +23,13 @@ type RecordingWithTutor = Tables<'class_recordings'> & {
   tutor: Pick<Tables<'users'>, 'full_name'> | null
 }
 
-export default function StudentHomeView({ userId }: { userId: string }) {
+export default function StudentHomeView({
+  userId,
+  onOpenRecordings,
+}: {
+  userId: string
+  onOpenRecordings: () => void
+}) {
   const [student, setStudent] = useState<Tables<'users'> | null>(null)
   const [latestResult, setLatestResult] =
     useState<Tables<'student_results'> | null>(null)
@@ -205,6 +212,13 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                 Class Recordings
               </h3>
             </div>
+            <button
+              type="button"
+              onClick={onOpenRecordings}
+              className="cursor-pointer text-xs font-bold text-purple-600 hover:underline dark:text-purple-400"
+            >
+              View all
+            </button>
           </div>
 
           {latestRecordings.length > 0 ? (
@@ -297,6 +311,11 @@ export default function StudentHomeView({ userId }: { userId: string }) {
                         </div>
                       </div>
                     </div>
+
+                    <CopyRecordingLinkButton
+                      recordingId={recording.id}
+                      className="self-start"
+                    />
                   </div>
                 )
               })}

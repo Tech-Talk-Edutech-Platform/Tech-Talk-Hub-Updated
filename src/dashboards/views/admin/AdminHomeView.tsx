@@ -13,6 +13,7 @@ import { notifyTutor } from '../../../Utils/adminActions'
 import { StatCard } from '../../../components/dashboard/ui/StatCard'
 import Messages from '../../../Utils/fetchMessage'
 import { toast } from 'react-hot-toast'
+import { RecentRecordingsCard } from '../../../components/recordings/RecentRecordingsCard'
 
 interface TodayClass {
   id: string
@@ -96,7 +97,13 @@ async function loadAdminDashboard(): Promise<{
   }
 }
 
-export default function AdminHomeView({ userId }: { userId: string }) {
+export default function AdminHomeView({
+  userId,
+  onOpenRecordings,
+}: {
+  userId: string
+  onOpenRecordings: () => void
+}) {
   const [stats, setStats] = useState<AdminStats>({
     tutors: 0,
     students: 0,
@@ -166,6 +173,8 @@ export default function AdminHomeView({ userId }: { userId: string }) {
           <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-xs md:p-8 dark:border-white/10 dark:bg-white/5">
             <Messages receiverId={userId} />
           </div>
+
+          <RecentRecordingsCard onViewAll={onOpenRecordings} />
         </div>
 
         {/* SIDEBAR COMMAND CENTER */}

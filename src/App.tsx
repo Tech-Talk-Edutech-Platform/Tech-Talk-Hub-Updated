@@ -76,6 +76,7 @@ const ClassroomRoutes = lazy(() =>
 )
 
 const SalesPreviewPage = lazy(() => import('./features/sales/SalesPreviewPage'))
+const RecordingSharePage = lazy(() => import('./pages/RecordingSharePage'))
 
 /** Scrolls to `/#section` targets on the landing page; must render inside the router. */
 function ScrollToHash() {
@@ -278,6 +279,15 @@ function DashboardApp() {
           element={
             <Suspense fallback={<SessionSpinner />}>
               <SalesPreviewPage />
+            </Suspense>
+          }
+        />
+        {/* Copied recording links; the page asks visitors to sign in. */}
+        <Route
+          path="/recordings/:id"
+          element={
+            <Suspense fallback={<SessionSpinner />}>
+              <RecordingSharePage />
             </Suspense>
           }
         />

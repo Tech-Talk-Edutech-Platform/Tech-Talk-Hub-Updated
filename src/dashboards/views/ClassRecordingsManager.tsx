@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../../supabase'
 import { RecordingLink } from '../../lib/classroom/recordingLink'
+import { CopyRecordingLinkButton } from '../../components/recordings/CopyRecordingLinkButton'
 import {
   Video,
   Plus,
@@ -34,12 +35,29 @@ interface RecordingLibrary {
 
 /**
  * Admins get every recording; a tutor gets only the classes they taught (the
- * database enforces the same rule) and only their own students to share with.
+ * database enforces the same rule) and only their own students to share with;
+ * a student gets their own recordings plus the "all students" ones.
  */
 async function loadRecordingLibrary(
   userId: string,
-  admin: boolean,
+  role: AppRole,
 ): Promise<RecordingLibrary> {
+  const admin = isAdminRole(role)
+  if (role === 'student') {
+    const { data } = await supabase
+      .from('class_recordings')
+      .select(
+        `
+          *,
+          tutor:users!tutor_id(full_name),
+          student:users!student_id(full_name)
+        `,
+      )
+      .or(`student_id.eq.${userId},student_id.is.null`)
+      .order('created_at', { ascending: false })
+    return { recordings: data || [], students: [], tutors: [] }
+  }
+
   let recordingsQuery = supabase
     .from('class_recordings')
     .select(
@@ -87,6 +105,8 @@ export default function ClassRecordingsManager({
   role,
 }: ClassRecordingsManagerProps) {
   const admin = isAdminRole(role)
+  // Students can watch and share links, but not upload or delete.
+  const canManage = role !== 'student'
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [students, setStudents] = useState<UserOption[]>([])
   const [tutors, setTutors] = useState<UserOption[]>([])
@@ -109,13 +129,13 @@ export default function ClassRecordingsManager({
 
   const fetchData = async () => {
     setLoading(true)
-    applyLibrary(await loadRecordingLibrary(userId, admin))
+    applyLibrary(await loadRecordingLibrary(userId, role))
     setLoading(false)
   }
 
   useEffect(() => {
     const request = { cancelled: false }
-    void loadRecordingLibrary(userId, isAdminRole(role)).then((library) => {
+    void loadRecordingLibrary(userId, role).then((library) => {
       if (request.cancelled) return
       setRecordings(library.recordings)
       setStudents(library.students)
@@ -195,15 +215,19 @@ export default function ClassRecordingsManager({
           <p className="max-w-xl text-sm text-slate-600 dark:text-slate-400">
             {admin
               ? 'Every tutor’s session recordings, for individual students or global access.'
-              : 'Recordings of the classes you taught. Only you and the admins can see them.'}
+              : canManage
+                ? 'Recordings of the classes you taught. Use “Copy link” to share one with a student or parent.'
+                : 'Watch your past classes again. Use “Copy link” to share one with a parent who has an account.'}
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-xs transition-all hover:bg-purple-700 dark:hover:bg-purple-500"
-        >
-          <Plus size={18} /> Upload Recording
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-xs transition-all hover:bg-purple-700 dark:hover:bg-purple-500"
+          >
+            <Plus size={18} /> Upload Recording
+          </button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
@@ -324,15 +348,20 @@ export default function ClassRecordingsManager({
                       })
                     : ''}
                 </span>
-                <button
-                  type="button"
-                  aria-label={`Delete ${rec.title}`}
-                  onClick={() => void handleDelete(rec.id)}
-                  className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                  title="Delete Recording"
-                >
-                  <Trash2 size={15} />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <CopyRecordingLinkButton recordingId={rec.id} />
+                  {canManage && (
+                    <button
+                      type="button"
+                      aria-label={`Delete ${rec.title}`}
+                      onClick={() => void handleDelete(rec.id)}
+                      className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                      title="Delete Recording"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -343,19 +372,23 @@ export default function ClassRecordingsManager({
             <Video size={20} />
           </div>
           <p className="font-medium text-slate-700 dark:text-slate-300">
-            No recordings found matching your search.
+            {searchQuery
+              ? 'No recordings found matching your search.'
+              : 'No recordings yet.'}
           </p>
-          <button
-            onClick={() => setSearchQuery('')}
-            className="cursor-pointer text-xs font-semibold text-purple-600 hover:underline dark:text-purple-400"
-          >
-            Clear search filters
-          </button>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="cursor-pointer text-xs font-semibold text-purple-600 hover:underline dark:text-purple-400"
+            >
+              Clear search filters
+            </button>
+          )}
         </div>
       )}
 
       {/* Upload Modal */}
-      {isModalOpen && (
+      {canManage && isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs dark:bg-slate-950/80">
           <div className="w-full max-w-lg space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8 dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">

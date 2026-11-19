@@ -10,12 +10,14 @@ import {
 import { supabase } from '../../../supabase'
 import UpcomingClasses from '../../../components/UpcomingClasses'
 import type { DashboardIdentity } from '../../../types/dashboardIdentity'
+import { RecentRecordingsCard } from '../../../components/recordings/RecentRecordingsCard'
 
 const DAY_MS = 86_400_000
 
 interface TutorHomeViewProps {
   userId: string
   user: DashboardIdentity
+  onOpenRecordings: () => void
 }
 
 interface TutorClass {
@@ -131,7 +133,11 @@ async function loadTutorDashboard(
   }
 }
 
-export default function TutorHomeView({ userId, user }: TutorHomeViewProps) {
+export default function TutorHomeView({
+  userId,
+  user,
+  onOpenRecordings,
+}: TutorHomeViewProps) {
   const [loading, setLoading] = useState(true)
   const [upcomingClasses, setUpcomingClasses] = useState<TutorClass[]>([])
   const [stats, setStats] = useState<TutorStats>({
@@ -247,6 +253,8 @@ export default function TutorHomeView({ userId, user }: TutorHomeViewProps) {
       <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60">
         <UpcomingClasses classes={upcomingClasses} loading={loading} />
       </div>
+
+      <RecentRecordingsCard onViewAll={onOpenRecordings} showTutor={false} />
     </div>
   )
 }
