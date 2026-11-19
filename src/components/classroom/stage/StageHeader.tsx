@@ -24,13 +24,15 @@ type StageHeaderProps = {
   audioPlaybackBlocked: boolean
   onReconnect: () => void
   onEnableAudio: () => void
-  onShareCall: () => void
+  /** Left out for the parent link: watchers don't invite people. */
+  onShareCall?: () => void
   recording: boolean
   announcing: boolean
   pip: boolean
   onTogglePip: () => void
   stats: RoomStats
-  onOpenSettings: () => void
+  /** Camera and mic settings; left out for the parent link. */
+  onOpenSettings?: () => void
   moreActions: MenuAction[]
 }
 
@@ -72,16 +74,18 @@ export function StageHeader({
       </div>
 
       <div className="pointer-events-auto flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onShareCall}
-          aria-label="Share call invite"
-          aria-haspopup="dialog"
-          className="press flex h-10 items-center gap-2 rounded-[10px] bg-stage-control px-2.5 text-[14px] font-medium text-white hover:bg-stage-control-hover"
-        >
-          <Share2 size={18} strokeWidth={1.9} aria-hidden="true" />
-          <span className="max-md:sr-only">Invite</span>
-        </button>
+        {onShareCall && (
+          <button
+            type="button"
+            onClick={onShareCall}
+            aria-label="Share call invite"
+            aria-haspopup="dialog"
+            className="press flex h-10 items-center gap-2 rounded-[10px] bg-stage-control px-2.5 text-[14px] font-medium text-white hover:bg-stage-control-hover"
+          >
+            <Share2 size={18} strokeWidth={1.9} aria-hidden="true" />
+            <span className="max-md:sr-only">Invite</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={onTogglePip}
@@ -104,12 +108,14 @@ export function StageHeader({
           aria-expanded={open === 'stats'}
           onClick={() => toggle('stats')}
         />
-        <StageIconButton
-          icon={Settings}
-          label="Settings"
-          onClick={onOpenSettings}
-          aria-haspopup="dialog"
-        />
+        {onOpenSettings && (
+          <StageIconButton
+            icon={Settings}
+            label="Settings"
+            onClick={onOpenSettings}
+            aria-haspopup="dialog"
+          />
+        )}
         <StageIconButton
           ref={moreRef}
           icon={Ellipsis}

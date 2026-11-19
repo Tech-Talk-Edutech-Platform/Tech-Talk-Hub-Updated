@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   CircleDot,
+  Eye,
   Hand,
   Mic,
   MicOff,
@@ -16,6 +17,8 @@ import { StageButton } from './StageButton'
 
 type ControlBarProps = {
   media: LocalMedia
+  /** Parent link: no Cam, Mic, Share or React, only People. */
+  watchOnly: boolean
   /** Only the teacher records; students and guests don't get the button. */
   canRecord: boolean
   recording: boolean
@@ -31,6 +34,7 @@ type ControlBarProps = {
 /** Cam · Mic · Share · Record/Stop · React · People (docs/breakdown/03-video-room.md) */
 export function ControlBar({
   media,
+  watchOnly,
   canRecord,
   recording,
   onToggleRecording,
@@ -43,6 +47,29 @@ export function ControlBar({
 }: ControlBarProps) {
   const [reactOpen, setReactOpen] = useState(false)
   const reactRef = useRef<HTMLButtonElement>(null)
+
+  const people = (
+    <StageButton
+      icon={Users}
+      label="People"
+      tone={peopleOpen ? 'active' : 'dark'}
+      aria-label={`People (${peopleCount})`}
+      aria-pressed={peopleOpen}
+      onClick={onTogglePeople}
+    />
+  )
+
+  if (watchOnly) {
+    return (
+      <div className="absolute inset-x-0 bottom-[6px] z-10 flex items-center justify-center gap-3">
+        <span className="flex h-10 items-center gap-2 rounded-[10px] bg-black/40 px-3 text-[13px] text-white backdrop-blur-sm">
+          <Eye size={16} aria-hidden="true" />
+          Watching · cam and mic off
+        </span>
+        {people}
+      </div>
+    )
+  }
 
   return (
     <div className="absolute inset-x-0 bottom-[6px] z-10 flex justify-center gap-3 max-sm:gap-2">
@@ -95,14 +122,7 @@ export function ControlBar({
         aria-expanded={reactOpen}
         onClick={() => setReactOpen((o) => !o)}
       />
-      <StageButton
-        icon={Users}
-        label="People"
-        tone={peopleOpen ? 'active' : 'dark'}
-        aria-label={`People (${peopleCount})`}
-        aria-pressed={peopleOpen}
-        onClick={onTogglePeople}
-      />
+      {people}
 
       <Popover
         anchorRef={reactRef}

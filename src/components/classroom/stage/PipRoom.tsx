@@ -47,6 +47,8 @@ type PipRoomProps = {
   speaking: boolean
   hand: boolean
   onToggleHand: () => void
+  /** Parent link: no mic, camera or hand controls. */
+  watchOnly: boolean
 }
 
 /**
@@ -61,6 +63,7 @@ export function PipRoom({
   speaking,
   hand,
   onToggleHand,
+  watchOnly,
 }: PipRoomProps) {
   const others = participants.filter((person) => !person.isSelf)
   const self = participants.find((person) => person.isSelf)
@@ -132,31 +135,33 @@ export function PipRoom({
         })}
       </ul>
 
-      <div className="flex shrink-0 items-center justify-center gap-2">
-        <PipButton
-          icon={media.mic ? Mic : MicOff}
-          label={media.mic ? 'Turn microphone off' : 'Turn microphone on'}
-          tone={media.mic ? 'dark' : 'muted'}
-          aria-pressed={!!media.mic}
-          disabled={media.pending.mic}
-          onClick={media.toggleMic}
-        />
-        <PipButton
-          icon={media.cam ? Video : VideoOff}
-          label={media.cam ? 'Turn camera off' : 'Turn camera on'}
-          tone={media.cam ? 'dark' : 'muted'}
-          aria-pressed={!!media.cam}
-          disabled={media.pending.cam}
-          onClick={media.toggleCam}
-        />
-        <PipButton
-          icon={Hand}
-          label={hand ? 'Lower hand' : 'Raise hand'}
-          tone={hand ? 'on' : 'dark'}
-          aria-pressed={hand}
-          onClick={onToggleHand}
-        />
-      </div>
+      {!watchOnly && (
+        <div className="flex shrink-0 items-center justify-center gap-2">
+          <PipButton
+            icon={media.mic ? Mic : MicOff}
+            label={media.mic ? 'Turn microphone off' : 'Turn microphone on'}
+            tone={media.mic ? 'dark' : 'muted'}
+            aria-pressed={!!media.mic}
+            disabled={media.pending.mic}
+            onClick={media.toggleMic}
+          />
+          <PipButton
+            icon={media.cam ? Video : VideoOff}
+            label={media.cam ? 'Turn camera off' : 'Turn camera on'}
+            tone={media.cam ? 'dark' : 'muted'}
+            aria-pressed={!!media.cam}
+            disabled={media.pending.cam}
+            onClick={media.toggleCam}
+          />
+          <PipButton
+            icon={Hand}
+            label={hand ? 'Lower hand' : 'Raise hand'}
+            tone={hand ? 'on' : 'dark'}
+            aria-pressed={hand}
+            onClick={onToggleHand}
+          />
+        </div>
+      )}
     </div>
   )
 }

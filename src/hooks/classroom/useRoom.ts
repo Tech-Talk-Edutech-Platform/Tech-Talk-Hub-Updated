@@ -32,6 +32,8 @@ type RoomOptions = {
   enabled?: boolean
   connected?: boolean
   sendMessage?: (message: RoomMessage) => Promise<void>
+  /** Parent link: receive only. The server doesn't let viewers send data. */
+  listenOnly?: boolean
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -129,6 +131,7 @@ export function useRoom({
   enabled = true,
   connected = false,
   sendMessage,
+  listenOnly = false,
 }: RoomOptions) {
   const [peers, setPeers] = useState<Record<string, Participant>>({})
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -137,18 +140,19 @@ export function useRoom({
   const selfRef = useRef(self)
   const endRef = useRef(onRemoteEnd)
   const badgeRef = useRef(onBadge)
-  const transportRef = useRef({ connected, sendMessage })
+  const transportRef = useRef({ connected, sendMessage, listenOnly })
   useEffect(() => {
     selfRef.current = self
     endRef.current = onRemoteEnd
     badgeRef.current = onBadge
   })
   useEffect(() => {
-    transportRef.current = { connected, sendMessage }
-  }, [connected, sendMessage])
+    transportRef.current = { connected, sendMessage, listenOnly }
+  }, [connected, sendMessage, listenOnly])
 
   const post = useCallback((message: RoomMessage): Promise<void> => {
     const transport = transportRef.current
+    if (transport.listenOnly) return Promise.resolve()
     if (transport.connected && transport.sendMessage) {
       return transport.sendMessage(message).catch(() => {
         toast('Couldn’t send this update. Check your connection and try again.')

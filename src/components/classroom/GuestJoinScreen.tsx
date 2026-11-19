@@ -1,14 +1,20 @@
 import { useState, type FormEvent } from 'react'
-import { ArrowRight, Video } from 'lucide-react'
+import { ArrowRight, Eye, Video } from 'lucide-react'
 import { CLASSROOM_BRAND } from '../../data/classroomBrand'
 import { BrandMark } from './brand/BrandMark'
 
 type GuestJoinScreenProps = {
   roomTitle: string
+  /** Opened from the parent link: they watch and listen only. */
+  watchOnly?: boolean
   onJoin: (name: string) => void
 }
 
-export function GuestJoinScreen({ roomTitle, onJoin }: GuestJoinScreenProps) {
+export function GuestJoinScreen({
+  roomTitle,
+  watchOnly = false,
+  onJoin,
+}: GuestJoinScreenProps) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -16,7 +22,11 @@ export function GuestJoinScreen({ roomTitle, onJoin }: GuestJoinScreenProps) {
     event.preventDefault()
     const displayName = name.trim()
     if (!displayName) {
-      setError('Enter your name to join the call.')
+      setError(
+        watchOnly
+          ? 'Enter your name so the tutor knows who is watching.'
+          : 'Enter your name to join the call.',
+      )
       return
     }
     if (displayName.length > 80) {
@@ -44,7 +54,10 @@ export function GuestJoinScreen({ roomTitle, onJoin }: GuestJoinScreenProps) {
           </div>
         </div>
         <h1 className="mt-7 text-[26px] leading-8 font-extrabold tracking-[-0.02em] text-ink">
-          Join the <span className="text-accent-pink-strong">classroom</span>
+          {watchOnly ? 'Watch the' : 'Join the'}{' '}
+          <span className="text-accent-pink-strong">
+            {watchOnly ? 'class' : 'classroom'}
+          </span>
         </h1>
         <p className="mt-2 text-[14px] leading-5 text-muted">{roomTitle}</p>
 
@@ -77,13 +90,18 @@ export function GuestJoinScreen({ roomTitle, onJoin }: GuestJoinScreenProps) {
           type="submit"
           className="press mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-[12px] bg-accent-pink-strong px-4 text-[15px] font-bold text-white shadow-lg shadow-accent-pink/20 hover:bg-accent-pink-hover"
         >
-          <Video size={18} aria-hidden="true" />
-          Join call
+          {watchOnly ? (
+            <Eye size={18} aria-hidden="true" />
+          ) : (
+            <Video size={18} aria-hidden="true" />
+          )}
+          {watchOnly ? 'Watch class' : 'Join call'}
           <ArrowRight size={17} aria-hidden="true" />
         </button>
         <p className="mt-4 text-center text-[12.5px] leading-[18px] text-muted">
-          Your camera and microphone start off. You can turn them on after you
-          join.
+          {watchOnly
+            ? 'You’ll see and hear the class in this browser, nothing to install. Your camera and microphone stay off, and the tutor sees that you’re watching.'
+            : 'Your camera and microphone start off. You can turn them on after you join.'}
         </p>
       </form>
     </main>

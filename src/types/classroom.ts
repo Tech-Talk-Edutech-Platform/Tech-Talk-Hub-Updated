@@ -183,6 +183,8 @@ export type Participant = {
   speaking?: boolean
   /** When a remote tab was last heard from (heartbeat). */
   lastSeen?: number
+  /** Joined from the parent link: watches and listens, never on camera. */
+  watching?: boolean
 }
 
 export type ChatMessage = {

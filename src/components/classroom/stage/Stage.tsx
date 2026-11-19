@@ -34,7 +34,10 @@ type StageProps = {
   audioPlaybackBlocked: boolean
   onReconnect: () => void
   onEnableAudio: () => void
-  onShareCall: () => void
+  /** Left out for the parent link: watchers don't invite people. */
+  onShareCall?: () => void
+  /** Parent link: watch and listen only, no camera, mic or reactions. */
+  watchOnly: boolean
   reactions: Reaction[]
   /** The badge just given in class, shown to everyone for a few seconds. */
   celebration: BadgeAnnouncement | null
@@ -47,7 +50,7 @@ type StageProps = {
   onTogglePanel: (name: PanelName) => void
   platform: VideoPlatform
   onSwitchBack: () => void
-  onOpenSettings: () => void
+  onOpenSettings?: () => void
   moreActions: MenuAction[]
 }
 
@@ -63,6 +66,7 @@ export function Stage({
   onReconnect,
   onEnableAudio,
   onShareCall,
+  watchOnly,
   reactions,
   celebration,
   recording,
@@ -89,6 +93,9 @@ export function Stage({
     initial: self.initial,
   })
   const external = !platform.builtIn
+  // Parents watching (the parent link) are listed under People, not given a
+  // tile: they're never on camera. They have no audio to play either.
+  const onCamera = participants.filter((person) => !person.watching)
 
   return (
     <section
@@ -124,10 +131,17 @@ export function Stage({
           platform={platform}
           onSwitchBack={onSwitchBack}
         />
+      ) : onCamera.length === 0 ? (
+        <div className="absolute inset-x-3 top-[100px] bottom-[92px] grid place-items-center">
+          <p className="max-w-[320px] rounded-[12px] bg-black/40 px-4 py-3 text-center text-[14px] leading-5 text-white backdrop-blur-sm">
+            Waiting for the class to start. You’ll see and hear the tutor here
+            as soon as they join.
+          </p>
+        </div>
       ) : (
         <div className="absolute inset-x-3 top-[100px] bottom-[92px]">
           <ParticipantGrid
-            participants={participants}
+            participants={onCamera}
             remoteMedia={remoteMedia}
             self={{
               cam: media.cam,
@@ -144,6 +158,7 @@ export function Stage({
 
       <ControlBar
         media={media}
+        watchOnly={watchOnly}
         canRecord={canRecord}
         recording={recording.active}
         onToggleRecording={onToggleRecording}
@@ -168,12 +183,13 @@ export function Stage({
       {pipWindow &&
         createPortal(
           <PipRoom
-            participants={participants}
+            participants={onCamera}
             remoteMedia={remoteMedia}
             media={media}
             speaking={self.speaking}
             hand={self.hand}
             onToggleHand={onToggleHand}
+            watchOnly={watchOnly}
           />,
           pipWindow.document.body,
         )}
