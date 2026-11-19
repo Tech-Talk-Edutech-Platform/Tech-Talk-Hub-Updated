@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import DashboardLayout from './DashboardLayout'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import { isAppRole, type AppRole } from '../types/roles'
 
-export default function UnifiedDashboard() {
+export default function UnifiedDashboard({
+  loadingView,
+}: {
+  loadingView?: ReactNode
+}) {
   const { role: urlRole } = useParams()
   const navigate = useNavigate()
   const [user, setUser] = useState<DashboardIdentity | null>(null)
@@ -60,6 +64,7 @@ export default function UnifiedDashboard() {
   }, [urlRole, navigate])
 
   if (loading) {
+    if (loadingView) return loadingView
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-dashboard-canvas text-xl font-black text-gray-900 dark:bg-dashboard-night dark:text-white">
         LOADING... 🚀

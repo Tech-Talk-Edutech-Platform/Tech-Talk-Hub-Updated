@@ -230,7 +230,9 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
       toast.success(`Notification sent to ${getTutorName(item.tutor_id)}.`)
     } catch (err) {
       console.error('Failed to notify tutor:', err)
-      toast.error('Could not notify the tutor.')
+      toast.error(
+        err instanceof Error ? err.message : 'Could not notify the tutor.',
+      )
     } finally {
       setPingingTutorId(null)
     }

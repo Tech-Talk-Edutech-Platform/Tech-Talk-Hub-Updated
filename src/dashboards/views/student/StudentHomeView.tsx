@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { RecordingLink } from '../../../lib/classroom/recordingLink'
+import { EmptyState } from '../../../components/ui/EmptyState'
+import { StudentInsights } from '../../insights/StudentInsights'
 import type { Tables } from '../../../types/database'
 import { ClassInvitesCard, StudentBadgesCard } from './StudentClassroomView'
 
@@ -22,7 +24,13 @@ type RecordingWithTutor = Tables<'class_recordings'> & {
   tutor: Pick<Tables<'users'>, 'full_name'> | null
 }
 
-export default function StudentHomeView({ userId }: { userId: string }) {
+export default function StudentHomeView({
+  userId,
+  onNavigate,
+}: {
+  userId: string
+  onNavigate?: (view: string) => void
+}) {
   const [student, setStudent] = useState<Tables<'users'> | null>(null)
   const [latestResult, setLatestResult] =
     useState<Tables<'student_results'> | null>(null)
@@ -188,6 +196,8 @@ export default function StudentHomeView({ userId }: { userId: string }) {
           </div>
         </div>
 
+        <StudentInsights studentId={userId} onNavigate={onNavigate} />
+
         {/* Classes the student was invited to; only shown while one is open */}
         <ClassInvitesCard userId={userId} compact />
 
@@ -302,12 +312,13 @@ export default function StudentHomeView({ userId }: { userId: string }) {
               })}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 py-8 text-center dark:border-purple-500/20 dark:bg-purple-950/20">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                No class recordings available yet. Check back soon after your
-                next live session!
-              </p>
-            </div>
+            <EmptyState
+              size="sm"
+              tone="brand"
+              icon={Video}
+              title="No recordings yet"
+              description="Recordings appear here after your next live session."
+            />
           )}
         </div>
 

@@ -1,16 +1,10 @@
 import { useEffect, useState } from 'react'
-import {
-  Globe,
-  Users2,
-  Plus,
-  CheckCircle2,
-  Activity,
-  Settings,
-} from 'lucide-react'
+import { Plus, CheckCircle2, Activity, Settings, CalendarX } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../../supabase'
 import { notifyTutor } from '../../../Utils/adminActions'
-import { StatCard } from '../../../components/dashboard/ui/StatCard'
+import { AdminInsights } from '../../insights/AdminInsights'
+import { EmptyState } from '../../../components/ui/EmptyState'
 import Messages from '../../../Utils/fetchMessage'
 import { toast } from 'react-hot-toast'
 
@@ -59,6 +53,9 @@ async function loadAdminDashboard(): Promise<{
     supabase
       .from('calendar_events')
       .select('id, title, tutor_id')
+      // Open availability and cancelled bookings are not classes.
+      .neq('title', 'Free Slot')
+      .neq('booking_status', 'cancelled')
       .or(
         `and(start_time.gte.${startOfToday.toISOString()},start_time.lte.${endOfToday.toISOString()}),and(end_time.gte.${startOfToday.toISOString()},end_time.lte.${endOfToday.toISOString()})`,
       )
@@ -96,12 +93,13 @@ async function loadAdminDashboard(): Promise<{
   }
 }
 
-export default function AdminHomeView({ userId }: { userId: string }) {
-  const [stats, setStats] = useState<AdminStats>({
-    tutors: 0,
-    students: 0,
-    conversion: '0',
-  })
+export default function AdminHomeView({
+  userId,
+  onNavigate,
+}: {
+  userId: string
+  onNavigate?: (view: string) => void
+}) {
   const [upcoming, setUpcoming] = useState<TodayClass[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -111,7 +109,6 @@ export default function AdminHomeView({ userId }: { userId: string }) {
     void loadAdminDashboard()
       .then((result) => {
         if (cancelled) return
-        setStats(result.stats)
         setUpcoming(result.classes)
       })
       .catch((error: unknown) => {
@@ -140,24 +137,7 @@ export default function AdminHomeView({ userId }: { userId: string }) {
 
   return (
     <div className="animate-fade-in mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
-      {/* STATS GRID BAR */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <StatCard
-          title="Active Tutors"
-          value={stats.tutors}
-          accent="blue"
-          icon={Users2}
-        />
-        <StatCard
-          title="Active Students"
-          value={stats.students}
-          accent="blue"
-          icon={Globe}
-        />
-        {/*  {(role === "owner" || role === "tech_admin") && (
-          <StatCard title="Lead Conv %" value={`${stats.conversion}%`} accent="amber" icon={TrendingUp} />
-        )}*/}
-      </div>
+      <AdminInsights onNavigate={onNavigate} />
 
       <div className="grid grid-cols-12 gap-6 lg:gap-8">
         {/* MAIN COLUMN */}
@@ -202,11 +182,12 @@ export default function AdminHomeView({ userId }: { userId: string }) {
 
             <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
               {upcoming.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 px-4 py-8 text-center dark:border-white/10 dark:bg-white/5">
-                  <p className="text-xs font-bold text-gray-400">
-                    No classes scheduled for today.
-                  </p>
-                </div>
+                <EmptyState
+                  size="sm"
+                  icon={CalendarX}
+                  title="No classes scheduled for today"
+                  description="Classes booked in Global Schedule appear here."
+                />
               ) : (
                 upcoming.map((c) => (
                   <div
@@ -224,12 +205,21 @@ export default function AdminHomeView({ userId }: { userId: string }) {
                     <button
                       type="button"
                       onClick={() => {
-                        if (c.tutorId) {
-                          void notifyTutor(c.tutorId, `Confirmed: ${c.title}`)
-                        }
-                        toast.success('Pinged tutor successfully!')
+                        if (!c.tutorId) return
+                        void toast.promise(
+                          notifyTutor(c.tutorId, `Confirmed: ${c.title}`),
+                          {
+                            loading: 'Notifying tutor…',
+                            success: 'Tutor notified.',
+                            error: (error: unknown) =>
+                              error instanceof Error
+                                ? error.message
+                                : 'Could not notify the tutor.',
+                          },
+                        )
                       }}
                       className="shrink-0 rounded-xl border border-gray-100 bg-white p-2.5 text-emerald-600 shadow-2xs transition-all hover:bg-emerald-50 dark:border-white/10 dark:bg-white/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                      disabled={!c.tutorId}
                       title="Ping Tutor"
                     >
                       <CheckCircle2 size={14} />

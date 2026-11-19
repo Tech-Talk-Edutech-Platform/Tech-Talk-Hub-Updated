@@ -8,7 +8,16 @@
       "outputDirectory": "dist",
       "cleanUrls": true,
       "trailingSlash": false,
+      "functions": {
+        "api/render.mjs": {
+          "includeFiles": "{dist/app.html,dist-ssr/**}"
+        }
+      },
       "rewrites": [
+        {
+          "source": "/:dashboard(tutor|owner|operations_admin|tech_admin|student|marketer|assign-homework|receive-homework|calendar|receipt|upload-results|users|_dashboard-session)",
+          "destination": "/api/render?__dashboard_path=/:dashboard"
+        },
         {
           "source": "/:page(about|blog|book|booking-failed|booking-success|careers|cart|checkout|child-safety|contact|curriculum|donate|faculty|favorites|future-developers|junior-coders|login|pricing|privacy|shop|tech-professionals|terms)",
           "destination": "/:page.html"
