@@ -15,6 +15,7 @@
   },
   "ignorePatterns": [
     "dist/**",
+    "dist-ssr/**",
     "coverage/**",
     "public/skulpt/**",
     "src/types/database.ts"
@@ -61,7 +62,7 @@
       "rules": { "unicorn/no-empty-file": "off" }
     },
     {
-      "files": ["*.config.ts", "*.config.js", "scripts/**"],
+      "files": ["*.config.ts", "*.config.js", "scripts/**", "api/**"],
       "env": { "node": true }
     }
   ]

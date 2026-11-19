@@ -1,12 +1,14 @@
 import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import { createRoot, hydrateRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 
 import './index.css'
 import './fullcalendar.css'
 import App from './App'
 import { CartProvider } from './context/CartProvider'
-import { queryClient } from './lib/queryClient'
+import { createQueryClient } from './lib/queryClient'
+import { isAppRole } from './types/roles'
+import { isDashboardPath } from './auth/dashboardPaths'
 
 const rootElement = document.getElementById('root')
 
@@ -14,12 +16,26 @@ if (!rootElement) {
   throw new Error('Missing #root element in index.html')
 }
 
-createRoot(rootElement).render(
+const dashboardSsr =
+  rootElement.dataset.dashboardSsr === 'true' &&
+  isDashboardPath(window.location.pathname)
+const dashboardRole = dashboardSsr
+  ? rootElement.dataset.dashboardRole
+  : undefined
+const tree = (
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={createQueryClient()}>
       <CartProvider>
-        <App />
+        <App
+          dashboardRole={isAppRole(dashboardRole) ? dashboardRole : undefined}
+        />
       </CartProvider>
     </QueryClientProvider>
-  </StrictMode>,
+  </StrictMode>
 )
+
+if (dashboardSsr) {
+  hydrateRoot(rootElement, tree)
+} else {
+  createRoot(rootElement).render(tree)
+}

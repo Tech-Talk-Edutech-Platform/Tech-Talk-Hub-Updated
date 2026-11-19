@@ -24,6 +24,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -50,5 +55,13 @@ jobs:
         run: bun run typecheck
 
       - name: Build
+        id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54481
+          VITE_SUPABASE_ANON_KEY: local-test-key
         run: bun run build
+
+      - name: Dashboard SSR smoke tests
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: bun run test:dashboard-ssr
