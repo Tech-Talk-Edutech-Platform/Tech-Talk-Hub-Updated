@@ -1,43 +1,16 @@
 /**
  * Shareable recording links.
  *
- * A copied link always points at our own `/recordings/<id>` page instead of
- * the file itself: classroom recordings live in a private bucket whose signed
- * URLs expire after an hour, and the page checks the viewer's access (the
- * same rules as the dashboards) every time it is opened.
+ * A copied link points at our own public `/recordings/<id>` page, never at
+ * the video file: classroom recordings live in a private bucket whose signed
+ * URLs expire, so the page asks the server for a fresh one each visit.
+ * Anyone with the link can watch; deleting the recording turns it off.
  */
 
 export const recordingSharePath = (id: string) => `/recordings/${id}`
 
 export const recordingShareUrl = (id: string) =>
   `${window.location.origin}${recordingSharePath(id)}`
-
-const RETURN_PATH_KEY = 'tth:return-path'
-
-/** Only same-site paths, so a crafted link can't send anyone elsewhere. */
-const isSafePath = (path: string) =>
-  path.startsWith('/') && !path.startsWith('//') && !path.includes('\\')
-
-/** Remembers where to go back to once a signed-out visitor has logged in. */
-export function rememberReturnPath(path: string) {
-  if (!isSafePath(path)) return
-  try {
-    sessionStorage.setItem(RETURN_PATH_KEY, path)
-  } catch {
-    // Storage blocked: they land on their dashboard instead.
-  }
-}
-
-/** The remembered path, if any; it is forgotten once read. */
-export function takeReturnPath(): string | null {
-  try {
-    const path = sessionStorage.getItem(RETURN_PATH_KEY)
-    sessionStorage.removeItem(RETURN_PATH_KEY)
-    return path && isSafePath(path) ? path : null
-  } catch {
-    return null
-  }
-}
 
 /** Copies text, falling back to a hidden textarea where the API is blocked. */
 export async function copyText(text: string) {

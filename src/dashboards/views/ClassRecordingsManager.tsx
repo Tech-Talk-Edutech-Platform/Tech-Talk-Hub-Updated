@@ -217,7 +217,7 @@ export default function ClassRecordingsManager({
               ? 'Every tutor’s session recordings, for individual students or global access.'
               : canManage
                 ? 'Recordings of the classes you taught. Use “Copy link” to share one with a student or parent.'
-                : 'Watch your past classes again. Use “Copy link” to share one with a parent who has an account.'}
+                : 'Watch your past classes again. Use “Copy link” to share one with family or friends.'}
           </p>
         </div>
         {canManage && (

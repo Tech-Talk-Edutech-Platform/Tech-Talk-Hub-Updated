@@ -1,143 +1,162 @@
-import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
-import { ArrowLeft, Calendar, ExternalLink, User, Video } from 'lucide-react'
-import { supabase } from '../supabase'
-import { useAuthUser } from '../hooks/useAuthUser'
-import {
-  isExternalRecording,
-  useRecordingUrl,
-} from '../lib/classroom/recordingUrl'
-import { rememberReturnPath } from '../lib/classroom/recordingShare'
+import { useRef } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { Calendar, ExternalLink, User, Video } from 'lucide-react'
+import { apiUrl } from '../lib/apiUrl'
 import { CopyRecordingLinkButton } from '../components/recordings/CopyRecordingLinkButton'
-import type { Tables } from '../types/database'
 
-type SharedRecording = Tables<'class_recordings'> & {
-  tutor: Pick<Tables<'users'>, 'full_name'> | null
+/** What `GET /api/recordings/:id` returns (see server/routes/recordings.ts). */
+type SharedRecording = {
+  id: string
+  title: string
+  createdAt: string | null
+  tutorName: string | null
+  url: string
+  external: boolean
 }
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'missing' }
-  | { status: 'ready'; recording: SharedRecording }
+class RecordingRequestError extends Error {
+  constructor(
+    message: string,
+    readonly notFound: boolean,
+  ) {
+    super(message)
+  }
+}
+
+async function fetchSharedRecording(id: string): Promise<SharedRecording> {
+  const response = await fetch(
+    apiUrl(`/api/recordings/${encodeURIComponent(id)}`),
+  )
+  if (!response.ok) {
+    throw new RecordingRequestError(
+      `Recording request failed (${response.status})`,
+      response.status === 404,
+    )
+  }
+  const body: unknown = await response.json()
+  if (!isSharedRecording(body)) {
+    throw new RecordingRequestError('Unexpected recording response', false)
+  }
+  return body
+}
+
+function isSharedRecording(value: unknown): value is SharedRecording {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'title' in value &&
+    typeof value.title === 'string' &&
+    'url' in value &&
+    typeof value.url === 'string' &&
+    'external' in value &&
+    typeof value.external === 'boolean'
+  )
+}
 
 /**
- * `/recordings/<id>`: the page a copied recording link opens. Visitors sign
- * in first; the database then only returns the recording to people allowed
- * to see it (admins, the tutor who taught it, and the student(s) it's for).
+ * `/recordings/<id>`: the public page a copied recording link opens. Anyone
+ * with the link can watch, signed in or not. The server hands out the video
+ * (a signed link that expires, for classroom recordings).
  */
 export default function RecordingSharePage() {
   const { id = '' } = useParams()
-  const location = useLocation()
-  const { user, loading } = useAuthUser()
-
-  if (loading)
-    return (
-      <Shell>
-        <Spinner />
-      </Shell>
-    )
-
-  if (!user) {
-    rememberReturnPath(location.pathname)
-    return <Navigate to="/login" replace />
-  }
+  const recording = useQuery({
+    queryKey: ['shared-recording', id],
+    queryFn: () => fetchSharedRecording(id),
+    // A new URL would restart the video, so only fetch again when asked to.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: (failures, error) =>
+      !(error instanceof RecordingRequestError && error.notFound) &&
+      failures < 2,
+  })
 
   return (
-    <Shell>
-      <RecordingLoader id={id} userId={user.id} />
-    </Shell>
-  )
-}
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 sm:py-10 dark:bg-slate-950 dark:text-slate-100">
+      <div className="mx-auto max-w-4xl space-y-5">
+        <Link
+          to="/"
+          className="inline-block bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-lg font-black tracking-tight text-transparent"
+        >
+          Tech Talk Hub
+        </Link>
 
-function RecordingLoader({ id, userId }: { id: string; userId: string }) {
-  const [state, setState] = useState<LoadState>({ status: 'loading' })
-  const [dashboardPath, setDashboardPath] = useState('/login')
-
-  useEffect(() => {
-    let active = true
-    void Promise.all([
-      supabase
-        .from('class_recordings')
-        .select('*, tutor:users!tutor_id(full_name)')
-        .eq('id', id)
-        .maybeSingle(),
-      supabase.from('users').select('role').eq('id', userId).maybeSingle(),
-    ]).then(([recording, profile]) => {
-      if (!active) return
-      if (profile.data?.role) setDashboardPath(`/${profile.data.role}`)
-      setState(
-        recording.data
-          ? { status: 'ready', recording: recording.data }
-          : { status: 'missing' },
-      )
-    })
-    return () => {
-      active = false
-    }
-  }, [id, userId])
-
-  const backLink = (
-    <Link
-      to={dashboardPath}
-      className="inline-flex items-center gap-1.5 text-sm font-semibold text-purple-600 hover:underline dark:text-purple-400"
-    >
-      <ArrowLeft size={16} /> Back to my dashboard
-    </Link>
-  )
-
-  if (state.status === 'loading') return <Spinner />
-
-  if (state.status === 'missing') {
-    return (
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-800">
-          <Video size={22} />
-        </div>
-        <h1 className="text-lg font-bold">Recording not available</h1>
-        <p className="mx-auto max-w-sm text-sm text-slate-600 dark:text-slate-400">
-          This recording was removed, or it isn’t shared with the account you’re
-          signed in with.
-        </p>
-        {backLink}
+        {recording.isPending ? (
+          <Spinner />
+        ) : recording.isError ? (
+          <Unavailable
+            notFound={
+              recording.error instanceof RecordingRequestError &&
+              recording.error.notFound
+            }
+            onRetry={() => void recording.refetch()}
+          />
+        ) : (
+          <RecordingPlayer
+            recording={recording.data}
+            onExpired={() => recording.refetch()}
+          />
+        )}
       </div>
-    )
-  }
-
-  return (
-    <div className="space-y-5">
-      {backLink}
-      <RecordingPlayer recording={state.recording} />
-    </div>
+    </main>
   )
 }
 
-function RecordingPlayer({ recording }: { recording: SharedRecording }) {
-  const external = isExternalRecording(recording.recording_url)
-  const { url, isError } = useRecordingUrl(recording.recording_url)
+function RecordingPlayer({
+  recording,
+  onExpired,
+}: {
+  recording: SharedRecording
+  onExpired: () => Promise<unknown>
+}) {
+  const video = useRef<HTMLVideoElement>(null)
+  // Where to pick up again after swapping in a fresh link.
+  const resumeAt = useRef<number | null>(null)
+
+  // A classroom video's link expires after a few hours. If it stops working
+  // mid-watch, get a new one and carry on from the same spot.
+  const handleError = () => {
+    if (resumeAt.current !== null) return
+    resumeAt.current = video.current?.currentTime ?? 0
+    void onExpired()
+  }
+
+  const handleLoaded = () => {
+    if (video.current && resumeAt.current) {
+      video.current.currentTime = resumeAt.current
+      void video.current.play().catch(() => undefined)
+    }
+    resumeAt.current = null
+  }
 
   return (
     <article className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-6 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-slate-950">
-        {isError ? (
-          <p className="px-6 text-center text-sm text-slate-300">
-            You don’t have access to this recording’s video.
-          </p>
-        ) : external ? (
+        {recording.external ? (
           <a
-            href={url}
+            href={recording.url}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white hover:bg-purple-500"
           >
             <ExternalLink size={16} /> Open recording
           </a>
-        ) : url ? (
+        ) : (
           // Class recordings have no caption track to offer.
           // eslint-disable-next-line jsx-a11y/media-has-caption
-          <video src={url} controls className="h-full w-full" />
-        ) : (
-          <Spinner />
+          <video
+            ref={video}
+            src={recording.url}
+            controls
+            playsInline
+            preload="metadata"
+            onError={handleError}
+            onLoadedMetadata={handleLoaded}
+            className="h-full w-full"
+          />
         )}
       </div>
 
@@ -145,15 +164,15 @@ function RecordingPlayer({ recording }: { recording: SharedRecording }) {
         <div className="min-w-0 space-y-1.5">
           <h1 className="text-xl font-bold break-words">{recording.title}</h1>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-            {recording.tutor?.full_name && (
+            {recording.tutorName && (
               <span className="inline-flex items-center gap-1">
-                <User size={13} /> {recording.tutor.full_name}
+                <User size={13} /> {recording.tutorName}
               </span>
             )}
-            {recording.created_at && (
+            {recording.createdAt && (
               <span className="inline-flex items-center gap-1">
                 <Calendar size={13} />
-                {new Date(recording.created_at).toLocaleDateString(undefined, {
+                {new Date(recording.createdAt).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',
@@ -168,11 +187,36 @@ function RecordingPlayer({ recording }: { recording: SharedRecording }) {
   )
 }
 
-function Shell({ children }: { children: ReactNode }) {
+function Unavailable({
+  notFound,
+  onRetry,
+}: {
+  notFound: boolean
+  onRetry: () => void
+}) {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:py-12 dark:bg-slate-950 dark:text-slate-100">
-      <div className="mx-auto max-w-4xl">{children}</div>
-    </main>
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+        <Video size={22} />
+      </div>
+      <h1 className="text-lg font-bold">
+        {notFound ? 'Recording not available' : 'Couldn’t load this recording'}
+      </h1>
+      <p className="mx-auto max-w-sm text-sm text-slate-600 dark:text-slate-400">
+        {notFound
+          ? 'This link is wrong, or the recording has been removed.'
+          : 'Something went wrong on our side. Please try again in a moment.'}
+      </p>
+      {!notFound && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="cursor-pointer rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500"
+        >
+          Try again
+        </button>
+      )}
+    </div>
   )
 }
 

@@ -141,6 +141,51 @@ export const openApiDocument: OpenApiDocument = {
         },
       },
     },
+    '/api/recordings/{id}': {
+      get: {
+        operationId: 'sharedRecording',
+        tags: ['Classroom'],
+        summary: 'Open a shared class recording',
+        description:
+          'Public: anyone with a recording’s link can watch it. Classroom recordings come back as a signed video URL that expires after `expiresInSeconds`; pasted links (YouTube, Drive, Loom) come back unchanged. Student details are never returned.\n\nRate limit: 60 requests per minute per IP.',
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'The recording’s ID (a UUID).',
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': json(
+            {
+              type: 'object',
+              required: ['id', 'title', 'url', 'external'],
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                title: { type: 'string', example: 'Intro to Loops' },
+                createdAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                },
+                tutorName: { type: 'string', nullable: true },
+                url: { type: 'string', format: 'uri' },
+                external: {
+                  type: 'boolean',
+                  description: 'True for a pasted YouTube/Drive/Loom link.',
+                },
+                expiresInSeconds: { type: 'integer', nullable: true },
+              },
+            },
+            'The recording and a link to play it.',
+          ),
+          '404': error('The ID is invalid or the recording was removed.'),
+          '429': response('TooManyRequests'),
+        },
+      },
+    },
     '/api/admin/users': {
       post: {
         operationId: 'createUser',

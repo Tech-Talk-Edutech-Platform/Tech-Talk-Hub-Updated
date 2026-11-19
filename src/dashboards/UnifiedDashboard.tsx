@@ -4,7 +4,6 @@ import { supabase } from '../supabase'
 import DashboardLayout from './DashboardLayout'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import { isAppRole, type AppRole } from '../types/roles'
-import { takeReturnPath } from '../lib/classroom/recordingShare'
 
 export default function UnifiedDashboard() {
   const { role: urlRole } = useParams()
@@ -44,13 +43,6 @@ export default function UnifiedDashboard() {
           role: dbRole,
         }
         setUser(dashboardIdentity)
-
-        // Signed in from a shared link (e.g. a recording): go back to it.
-        const returnPath = takeReturnPath()
-        if (returnPath) {
-          void navigate(returnPath, { replace: true })
-          return
-        }
 
         // Enforce correct URL matching actual DB role
         if (urlRole && urlRole !== dbRole) {

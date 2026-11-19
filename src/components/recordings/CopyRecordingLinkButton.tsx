@@ -11,8 +11,8 @@ const LABELS: Record<CopyState, string> = {
 }
 
 /**
- * Copies a recording's share link (`/recordings/<id>`). Anyone who opens it
- * signs in first and only sees the recording if their account may.
+ * Copies a recording's public share link (`/recordings/<id>`): anyone who
+ * opens it can watch, no account needed.
  */
 export function CopyRecordingLinkButton({
   recordingId,
@@ -44,7 +44,7 @@ export function CopyRecordingLinkButton({
     <button
       type="button"
       onClick={copy}
-      title="Copy a link to this recording to share it"
+      title="Copy a public link: anyone with it can watch this recording"
       className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
         state === 'copied'
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
