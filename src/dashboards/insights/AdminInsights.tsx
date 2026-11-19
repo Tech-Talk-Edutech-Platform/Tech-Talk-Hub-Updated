@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Banknote,
+  CheckCircle2,
   Download,
   Megaphone,
   MailWarning,
@@ -78,6 +79,12 @@ export function AdminInsights({
   })
   const data = query.data
   const loading = query.isPending
+  const cta = (label: string, view: string) =>
+    onNavigate ? (
+      <Button size="sm" variant="outline" onClick={() => onNavigate(view)}>
+        {label}
+      </Button>
+    ) : undefined
   const periodLabel =
     PERIODS.find((option) => option.id === period)?.label ?? ''
 
@@ -226,8 +233,9 @@ export function AdminInsights({
               title="Revenue"
               subtitle={`${data?.kpis.revenue.sales ?? 0} sales closed · ${periodLabel.toLowerCase()}`}
               className="lg:col-span-2"
+              loading={loading}
             >
-              {loading ? null : data && data.kpis.revenue.current > 0 ? (
+              {data && data.kpis.revenue.current > 0 ? (
                 <BarTrendChart
                   data={data.revenueTrend}
                   series={REVENUE_SERIES}
@@ -237,24 +245,29 @@ export function AdminInsights({
               ) : (
                 <EmptyState
                   size="sm"
+                  className="flex-1"
                   icon={Banknote}
                   title="No sales recorded in this period"
-                  description="Sales recorded by the sales team appear here."
+                  description="Sales the team records appear here. Try a longer period."
+                  action={cta('Open Sales & Trials', 'sales')}
                 />
               )}
             </ChartCard>
             <ChartCard
               title="Where leads come from"
               subtitle="New leads by source"
+              loading={loading}
             >
-              {loading ? null : data && data.leadSources.length > 0 ? (
+              {data && data.leadSources.length > 0 ? (
                 <DonutChart data={data.leadSources} centerLabel="Leads" />
               ) : (
                 <EmptyState
                   size="sm"
+                  className="flex-1"
                   icon={Megaphone}
                   title="No new leads"
                   description="Leads captured in this period appear here."
+                  action={cta('Open Leads', 'Leads')}
                 />
               )}
             </ChartCard>
@@ -263,24 +276,25 @@ export function AdminInsights({
           <ChartCard
             title="Needs attention"
             subtitle="Trials without a tutor and invite emails that did not send"
+            size="auto"
+            loading={loading}
           >
-            {loading ? null : (
-              <DataTable
-                rows={data?.actions ?? []}
-                columns={actionColumns}
-                rowKey={(row) => row.id}
-                caption="Items that need attention"
-                initialSort={{ key: 'age', direction: 'asc' }}
-                empty={
-                  <EmptyState
-                    size="sm"
-                    tone="brand"
-                    title="Nothing needs attention"
-                    description="Every trial has a tutor and every invite email was sent."
-                  />
-                }
-              />
-            )}
+            <DataTable
+              rows={data?.actions ?? []}
+              columns={actionColumns}
+              rowKey={(row) => row.id}
+              caption="Items that need attention"
+              initialSort={{ key: 'age', direction: 'asc' }}
+              empty={
+                <EmptyState
+                  size="sm"
+                  tone="brand"
+                  icon={CheckCircle2}
+                  title="Nothing needs attention"
+                  description="Every trial has a tutor and every invite email was sent."
+                />
+              }
+            />
           </ChartCard>
         </>
       )}

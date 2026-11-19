@@ -46,7 +46,7 @@ export function KpiCard({
       : change > 0 !== lowerIsBetter
 
   return (
-    <article className="flex min-w-0 flex-col rounded-2xl border border-slate-100 bg-white shadow-xs dark:border-white/10 dark:bg-white/5">
+    <article className="flex h-full min-w-0 flex-col rounded-2xl border border-slate-100 bg-white shadow-xs dark:border-white/10 dark:bg-white/5">
       <h3 className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5 text-sm font-semibold text-slate-600 dark:border-white/10 dark:text-slate-300">
         {Icon && (
           <span
@@ -69,7 +69,7 @@ export function KpiCard({
             <p className="text-3xl font-black tracking-tight text-slate-900 tabular-nums dark:text-white">
               {value}
             </p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-1 min-h-4 text-xs leading-4 text-slate-500 dark:text-slate-400">
               {hint ??
                 (change === undefined ? null : change === null ? (
                   'No earlier data to compare'

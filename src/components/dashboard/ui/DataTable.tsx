@@ -71,7 +71,8 @@ export function DataTable<T>({
     )
   }, [rows, columns, query, searchText, sort])
 
-  if (rows.length === 0) return <div>{empty}</div>
+  if (rows.length === 0)
+    return <div className="flex flex-1 flex-col">{empty}</div>
 
   return (
     <div className="min-w-0">

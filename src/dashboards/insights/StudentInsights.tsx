@@ -34,6 +34,12 @@ export function StudentInsights({
   })
   const data = query.data
   const loading = query.isPending
+  const cta = (label: string, view: string) =>
+    onNavigate ? (
+      <Button size="sm" variant="outline" onClick={() => onNavigate(view)}>
+        {label}
+      </Button>
+    ) : undefined
 
   if (query.isError) {
     return <InsightsError onRetry={() => void query.refetch()} />
@@ -85,14 +91,18 @@ export function StudentInsights({
           title="Continue learning"
           subtitle={data?.course?.title}
           className="lg:col-span-2"
+          size="list"
+          loading={loading}
         >
-          {loading ? null : !data?.course ? (
+          {!data?.course ? (
             <EmptyState
               size="sm"
               tone="brand"
+              className="flex-1"
               icon={BookOpen}
               title="No course yet"
-              description="Your tutor will assign your first course soon."
+              description="Your tutor will assign your first course soon. Meanwhile, check when your next class is."
+              action={cta('See my schedule', 'schedule')}
             />
           ) : data.nextLesson ? (
             <div className="space-y-5">
@@ -117,15 +127,22 @@ export function StudentInsights({
             <EmptyState
               size="sm"
               tone="brand"
+              className="flex-1"
               icon={CheckCircle2}
               title="Course complete"
               description="You have finished every lesson. Great work!"
+              action={cta('Review my course', 'courses')}
             />
           )}
         </ChartCard>
 
-        <ChartCard title="Homework due" subtitle="Oldest first">
-          {loading ? null : data && data.homework.length > 0 ? (
+        <ChartCard
+          title="Homework due"
+          subtitle="Oldest first"
+          size="list"
+          loading={loading}
+        >
+          {data && data.homework.length > 0 ? (
             <ul className="space-y-3">
               {data.homework.map((item) => (
                 <li
@@ -151,9 +168,11 @@ export function StudentInsights({
           ) : (
             <EmptyState
               size="sm"
+              className="flex-1"
               icon={ClipboardList}
               title="All caught up"
               description="New homework from your tutor will appear here."
+              action={cta('Open my courses', 'courses')}
             />
           )}
         </ChartCard>

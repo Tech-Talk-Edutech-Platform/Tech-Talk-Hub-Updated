@@ -91,7 +91,7 @@ export function BarTrendChart({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={[...data]}
-            margin={{ top: 8, right: 4, bottom: 0, left: -16 }}
+            margin={{ top: 8, right: 4, bottom: 0, left: 0 }}
           >
             <CartesianGrid
               vertical={false}
@@ -107,6 +107,7 @@ export function BarTrendChart({
               allowDecimals={false}
               tickLine={false}
               axisLine={false}
+              width={format === String ? 32 : 64}
               tick={{ fontSize: 11, fill: '#94a3b8' }}
               tickFormatter={(value: number) => format(value)}
             />
@@ -121,6 +122,7 @@ export function BarTrendChart({
                 fill={item.color}
                 radius={[4, 4, 0, 0]}
                 maxBarSize={28}
+                isAnimationActive={false}
               />
             ))}
           </BarChart>

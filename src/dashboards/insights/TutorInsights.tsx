@@ -66,6 +66,7 @@ const studentColumns: DataColumn<TutorStudentRow>[] = [
   {
     key: 'lastClass',
     header: 'Last class',
+    className: 'whitespace-nowrap',
     sortValue: (row) => (row.lastClassAt ? Date.parse(row.lastClassAt) : null),
     render: (row) => formatRelative(row.lastClassAt),
   },
@@ -78,6 +79,7 @@ const studentColumns: DataColumn<TutorStudentRow>[] = [
   {
     key: 'quiz',
     header: 'Quiz average',
+    className: 'whitespace-nowrap',
     sortValue: (row) => row.quizAverage,
     render: (row) => <ScorePill score={row.quizAverage} />,
   },
@@ -87,7 +89,7 @@ const studentColumns: DataColumn<TutorStudentRow>[] = [
     sortValue: (row) => (row.needsHelp ? 0 : 1),
     render: (row) =>
       row.needsHelp ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold whitespace-nowrap text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
           <AlertTriangle size={12} aria-hidden="true" />
           {row.failedQuizzes > 0
             ? `${row.failedQuizzes} quiz${row.failedQuizzes === 1 ? '' : 'zes'} to retake`
@@ -131,6 +133,12 @@ export function TutorInsights({
   const data = query.data
   const loading = query.isPending
   const needHelp = data?.students.filter((row) => row.needsHelp).length ?? 0
+  const cta = (label: string, view: string) =>
+    onNavigate ? (
+      <Button size="sm" variant="outline" onClick={() => onNavigate(view)}>
+        {label}
+      </Button>
+    ) : undefined
 
   return (
     <section aria-labelledby="tutor-insights" className="space-y-6">
@@ -208,8 +216,9 @@ export function TutorInsights({
               title="Classes"
               subtitle="Scheduled versus completed in the selected period"
               className="lg:col-span-2"
+              loading={loading}
             >
-              {loading ? null : data && data.kpis.classes.current > 0 ? (
+              {data && data.kpis.classes.current > 0 ? (
                 <BarTrendChart
                   data={data.classTrend}
                   series={CLASS_SERIES}
@@ -218,84 +227,95 @@ export function TutorInsights({
               ) : (
                 <EmptyState
                   size="sm"
+                  className="flex-1"
                   icon={CalendarCheck}
                   title="No classes in this period"
-                  description="Classes you teach appear here once they have taken place."
+                  description="Classes you teach appear here once they have taken place. Try a longer period, or check your schedule."
+                  action={cta('Open my schedule', 'schedule')}
                 />
               )}
             </ChartCard>
-            <ChartCard title="Homework status" subtitle="All homework you set">
-              {loading ? null : data && data.homework.length > 0 ? (
+            <ChartCard
+              title="Homework status"
+              subtitle="All homework you set"
+              loading={loading}
+            >
+              {data && data.homework.length > 0 ? (
                 <DonutChart data={data.homework} centerLabel="Assignments" />
               ) : (
                 <EmptyState
                   size="sm"
+                  className="flex-1"
                   icon={ClipboardCheck}
                   title="No homework yet"
-                  description="Assign homework from Course Assignment."
+                  description="Homework you set will be tracked here."
+                  action={cta('Assign homework', 'course-assignment')}
                 />
               )}
             </ChartCard>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <ChartCard
-              title="My students"
-              subtitle="Students needing help are listed first"
-              className="xl:col-span-2"
-            >
-              {loading ? null : (
-                <DataTable
-                  rows={data?.students ?? []}
-                  columns={studentColumns}
-                  rowKey={(row) => row.id}
-                  caption="My students"
-                  searchText={(row) =>
-                    `${row.name} ${row.email} ${row.course ?? ''}`
-                  }
-                  searchPlaceholder="Search students"
-                  initialSort={{ key: 'status', direction: 'asc' }}
-                  empty={
-                    <EmptyState
-                      icon={Users}
-                      title="No students assigned yet"
-                      description="An admin assigns students to you in Users & Staff."
-                    />
-                  }
-                />
-              )}
-            </ChartCard>
-
-            <ChartCard
-              title="Where students get stuck"
-              subtitle="Quizzes with the lowest pass rate"
-            >
-              {loading ? null : data && data.stuckQuizzes.length > 0 ? (
-                <ol className="space-y-4">
-                  {data.stuckQuizzes.map((quiz) => (
-                    <li key={quiz.quizId}>
-                      <div className="flex items-baseline justify-between gap-3 text-sm">
-                        <span className="min-w-0 truncate font-semibold text-slate-800 dark:text-white">
-                          {quiz.title}
-                        </span>
-                        <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                          {quiz.passRate}% passed · {quiz.attempted} tried
-                        </span>
-                      </div>
-                      <ProgressBar value={quiz.passRate} showLabel={false} />
-                    </li>
-                  ))}
-                </ol>
-              ) : (
+          <ChartCard
+            title="My students"
+            subtitle="Students needing help are listed first"
+            size="list"
+            loading={loading}
+          >
+            <DataTable
+              rows={data?.students ?? []}
+              columns={studentColumns}
+              rowKey={(row) => row.id}
+              caption="My students"
+              searchText={(row) =>
+                `${row.name} ${row.email} ${row.course ?? ''}`
+              }
+              searchPlaceholder="Search students"
+              initialSort={{ key: 'status', direction: 'asc' }}
+              empty={
                 <EmptyState
-                  size="sm"
-                  icon={BookOpenCheck}
-                  title="No sticking points"
-                  description="Quizzes your students struggle with will appear here."
+                  className="flex-1"
+                  icon={Users}
+                  title="No students assigned yet"
+                  description="An admin assigns students to you in Users & Staff. Keep your availability up to date so classes can be booked."
+                  action={cta('Update availability', 'schedule')}
                 />
-              )}
-            </ChartCard>
-          </div>
+              }
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Where students get stuck"
+            subtitle="Quizzes with the lowest pass rate"
+            size="auto"
+            loading={loading}
+          >
+            {data && data.stuckQuizzes.length > 0 ? (
+              <ol className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                {data.stuckQuizzes.map((quiz) => (
+                  <li key={quiz.quizId}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="min-w-0 truncate font-semibold text-slate-800 dark:text-white">
+                        {quiz.title}
+                      </span>
+                      <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                        {quiz.passRate}% passed · {quiz.attempted} tried
+                      </span>
+                    </div>
+                    <ProgressBar value={quiz.passRate} showLabel={false} />
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <EmptyState
+                size="sm"
+                className="flex-1"
+                icon={BookOpenCheck}
+                title="No sticking points"
+                description="Quizzes your students struggle with will appear here."
+                action={cta('View student results', 'students')}
+              />
+            )}
+          </ChartCard>
         </>
       )}
     </section>

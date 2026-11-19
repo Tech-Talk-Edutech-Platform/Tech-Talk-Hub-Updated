@@ -53,6 +53,9 @@ async function loadAdminDashboard(): Promise<{
     supabase
       .from('calendar_events')
       .select('id, title, tutor_id')
+      // Open availability and cancelled bookings are not classes.
+      .neq('title', 'Free Slot')
+      .neq('booking_status', 'cancelled')
       .or(
         `and(start_time.gte.${startOfToday.toISOString()},start_time.lte.${endOfToday.toISOString()}),and(end_time.gte.${startOfToday.toISOString()},end_time.lte.${endOfToday.toISOString()})`,
       )
