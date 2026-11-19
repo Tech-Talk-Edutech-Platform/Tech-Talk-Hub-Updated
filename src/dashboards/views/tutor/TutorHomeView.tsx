@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
-import {
-  Calendar,
-  Clock,
-  Users,
-  AlertCircle,
-  User as UserIcon,
-} from 'lucide-react'
+import { Users, User as UserIcon } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import UpcomingClasses from '../../../components/UpcomingClasses'
+import { TutorInsights } from '../../insights/TutorInsights'
 import type { DashboardIdentity } from '../../../types/dashboardIdentity'
 
 const DAY_MS = 86_400_000
@@ -16,6 +10,7 @@ const DAY_MS = 86_400_000
 interface TutorHomeViewProps {
   userId: string
   user: DashboardIdentity
+  onNavigate?: (view: string) => void
 }
 
 interface TutorClass {
@@ -131,15 +126,13 @@ async function loadTutorDashboard(
   }
 }
 
-export default function TutorHomeView({ userId, user }: TutorHomeViewProps) {
+export default function TutorHomeView({
+  userId,
+  user,
+  onNavigate,
+}: TutorHomeViewProps) {
   const [loading, setLoading] = useState(true)
   const [upcomingClasses, setUpcomingClasses] = useState<TutorClass[]>([])
-  const [stats, setStats] = useState<TutorStats>({
-    classesToday: 0,
-    upcoming: 0,
-    activeStudents: 0,
-    pendingReviews: 0,
-  })
 
   useEffect(() => {
     let cancelled = false
@@ -147,7 +140,6 @@ export default function TutorHomeView({ userId, user }: TutorHomeViewProps) {
     void loadTutorDashboard(userId)
       .then((result) => {
         if (cancelled) return
-        setStats(result.stats)
         setUpcomingClasses(result.classes)
       })
       .catch((err: unknown) => {
@@ -217,66 +209,11 @@ export default function TutorHomeView({ userId, user }: TutorHomeViewProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-4">
-        <StatCard
-          title="Today's Classes"
-          value={stats.classesToday}
-          color="blue"
-          icon={<Calendar size={20} />}
-        />
-        <StatCard
-          title="Upcoming Classes"
-          value={stats.upcoming}
-          color="purple"
-          icon={<Clock size={20} />}
-        />
-        <StatCard
-          title="My Students"
-          value={stats.activeStudents}
-          color="amber"
-          icon={<Users size={20} />}
-        />
-        <StatCard
-          title="Pending Reviews"
-          value={stats.pendingReviews}
-          color="green"
-          icon={<AlertCircle size={20} />}
-        />
-      </div>
+      <TutorInsights tutorId={userId} onNavigate={onNavigate} />
 
       <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60">
         <UpcomingClasses classes={upcomingClasses} loading={loading} />
       </div>
-    </div>
-  )
-}
-
-const STAT_COLORS = {
-  blue: 'bg-blue-600 shadow-blue-500/20',
-  purple: 'bg-purple-600 shadow-purple-500/20',
-  amber: 'bg-amber-600 shadow-amber-500/20',
-  green: 'bg-emerald-600 shadow-emerald-500/20',
-} as const
-
-interface StatCardProps {
-  icon: ReactNode
-  title: string
-  value: number
-  color: keyof typeof STAT_COLORS
-}
-
-function StatCard({ icon, title, value, color }: StatCardProps) {
-  return (
-    <div
-      className={`${STAT_COLORS[color]} flex items-center justify-between rounded-[24px] p-5 text-white shadow-lg`}
-    >
-      <div>
-        <p className="text-[10px] font-bold tracking-wider text-white/80 uppercase">
-          {title}
-        </p>
-        <h3 className="mt-1 text-2xl font-black">{value}</h3>
-      </div>
-      <div className="rounded-2xl bg-white/10 p-3 opacity-80">{icon}</div>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { EmptyState as SharedEmptyState } from '../../components/ui/EmptyState'
 import type { LucideIcon } from 'lucide-react'
 import {
   ChevronLeft,
@@ -271,11 +272,7 @@ export function TutorAvatar({ name, tone }: { name: string; tone: TutorTone }) {
 }
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return (
-    <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
-      {children}
-    </p>
-  )
+  return <SharedEmptyState size="sm" icon={null} description={children} />
 }
 
 const pagerButton =
