@@ -101,14 +101,20 @@ export function BarTrendChart({
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{
+                fontSize: 11,
+                className: 'fill-slate-600 dark:fill-slate-300',
+              }}
             />
             <YAxis
               allowDecimals={false}
               tickLine={false}
               axisLine={false}
               width={format === String ? 32 : 64}
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{
+                fontSize: 11,
+                className: 'fill-slate-600 dark:fill-slate-300',
+              }}
               tickFormatter={(value: number) => format(value)}
             />
             <Tooltip

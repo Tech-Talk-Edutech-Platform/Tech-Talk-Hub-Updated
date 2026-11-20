@@ -1,4 +1,5 @@
-const PASS_MARK = 70
+import { Initials } from '../../components/ui/Initials'
+import { DEFAULT_PASS_MARK } from './constants'
 
 /** Score badge coloured against the pass mark. */
 export function ScorePill({ score }: { score: number | null }) {
@@ -6,7 +7,7 @@ export function ScorePill({ score }: { score: number | null }) {
   const tone =
     score >= 85
       ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-      : score >= PASS_MARK
+      : score >= DEFAULT_PASS_MARK
         ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
         : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
   return (
@@ -56,17 +57,5 @@ export function Avatar({ name, url }: { name: string; url: string | null }) {
       />
     )
   }
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-700 dark:bg-purple-500/20 dark:text-purple-200"
-    >
-      {initials || '?'}
-    </span>
-  )
+  return <Initials name={name} size={36} />
 }

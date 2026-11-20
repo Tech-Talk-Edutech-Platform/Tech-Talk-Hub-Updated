@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import { EmptyState as SharedEmptyState } from '../../components/ui/EmptyState'
+import { Initials } from '../../components/ui/Initials'
+
+export { Initials }
 import type { LucideIcon } from 'lucide-react'
 import {
   ChevronLeft,
@@ -230,23 +233,6 @@ export function DemoBanner({ children }: { children?: ReactNode }) {
           'Names, bookings and sales are made up. Changes you make last until you reload, and no WhatsApp messages are sent.'}
       </span>
     </div>
-  )
-}
-
-export function Initials({ name, size = 32 }: { name: string; size?: number }) {
-  const letters = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('')
-  return (
-    <span
-      aria-hidden
-      style={{ width: size, height: size }}
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-black text-purple-700 dark:bg-purple-500/20 dark:text-purple-200"
-    >
-      {letters}
-    </span>
   )
 }
 

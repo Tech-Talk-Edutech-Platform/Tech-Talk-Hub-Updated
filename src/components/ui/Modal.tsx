@@ -7,10 +7,17 @@ type ModalProps = {
   closeLabel: string
   onClose: () => void
   children: ReactNode
+  size?: 'default' | 'wide' | 'compact'
 }
 
 /** Centred dialog over a blurred backdrop. Closes on backdrop click, × or Escape. */
-export function Modal({ title, closeLabel, onClose, children }: ModalProps) {
+export function Modal({
+  title,
+  closeLabel,
+  onClose,
+  children,
+  size = 'default',
+}: ModalProps) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -22,20 +29,25 @@ export function Modal({ title, closeLabel, onClose, children }: ModalProps) {
     }
   }, [])
 
+  const dismiss = () => {
+    dialogRef.current?.close()
+    onClose()
+  }
+
   return (
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- backdrop click to close; Escape (onCancel) is the keyboard equivalent
     <dialog
       ref={dialogRef}
       aria-modal="true"
       aria-labelledby={titleId}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-3xl border-0 bg-white p-8 text-slate-900 shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+      className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-3xl border-0 bg-white text-slate-900 shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm ${size === 'default' ? 'max-w-md p-8' : `p-5 sm:p-8 dark:bg-slate-900 dark:text-white ${size === 'wide' ? 'max-w-xl' : 'max-w-md'}`}`}
       onCancel={(event) => {
         event.preventDefault()
-        onClose()
+        dismiss()
       }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
-          onClose()
+          dismiss()
         }
       }}
     >
@@ -47,7 +59,7 @@ export function Modal({ title, closeLabel, onClose, children }: ModalProps) {
           type="button"
           variant="ghost"
           size="icon"
-          onClick={onClose}
+          onClick={dismiss}
           aria-label={closeLabel}
           className="-mt-2 -mr-2 shrink-0 rounded-full text-slate-400"
         >
