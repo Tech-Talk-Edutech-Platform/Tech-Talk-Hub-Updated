@@ -798,6 +798,20 @@ export function SupabaseSalesDataProvider({
 
   return (
     <SalesDataContext.Provider value={value}>
+      {loadError && (
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 pt-4 md:px-8">
+          <output className="text-sm font-semibold">
+            Sales refresh failed. Showing the last available results.
+          </output>
+          <button
+            type="button"
+            className={secondaryButton}
+            onClick={() => void refresh()}
+          >
+            Retry refresh
+          </button>
+        </div>
+      )}
       {children}
     </SalesDataContext.Provider>
   )

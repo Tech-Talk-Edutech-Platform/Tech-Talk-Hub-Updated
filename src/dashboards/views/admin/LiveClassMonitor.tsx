@@ -227,7 +227,9 @@ const LiveClassMonitor = ({ notifyTutor }: LiveClassMonitorProps) => {
         item.tutor_id,
         `Reminder: ${getClassTitle(item)} at ${getClassTime(item)}`,
       )
-      toast.success(`Notification sent to ${getTutorName(item.tutor_id)}.`)
+      toast.success(
+        `Notification requested for ${getTutorName(item.tutor_id)}.`,
+      )
     } catch (err) {
       console.error('Failed to notify tutor:', err)
       toast.error(
