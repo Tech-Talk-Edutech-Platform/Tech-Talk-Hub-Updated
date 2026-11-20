@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
@@ -22,15 +22,13 @@ import {
   DonutChart,
 } from '../../components/dashboard/ui/LazyCharts'
 import { SERIES_COLORS } from '../../components/dashboard/ui/chartColors'
-import {
-  formatRelative,
-  type PeriodId,
-} from '../../components/dashboard/period'
+import { formatRelative, isPeriodId } from '../../components/dashboard/period'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { queryKeys } from '../../lib/queryClient'
 import { loadTutorInsights, type TutorStudentRow } from './tutorInsights'
-import { InsightsError } from './InsightsError'
+import { InsightsError, InsightsStale } from './InsightsError'
+import { NavButton } from './NavButton'
 import { ScorePill, ProgressBar, Avatar } from './bits'
 
 const CLASS_SERIES = [
@@ -124,7 +122,9 @@ export function TutorInsights({
   tutorId: string
   onNavigate?: (view: string) => void
 }) {
-  const [period, setPeriod] = useState<PeriodId>('30d')
+  const [params, setParams] = useSearchParams()
+  const requestedPeriod = params.get('period') ?? ''
+  const period = isPeriodId(requestedPeriod) ? requestedPeriod : '30d'
   const query = useQuery({
     queryKey: queryKeys.dashboard.tutor(tutorId, period),
     queryFn: () => loadTutorInsights(tutorId, period),
@@ -133,12 +133,6 @@ export function TutorInsights({
   const data = query.data
   const loading = query.isPending
   const needHelp = data?.students.filter((row) => row.needsHelp).length ?? 0
-  const cta = (label: string, view: string) =>
-    onNavigate ? (
-      <Button size="sm" variant="outline" onClick={() => onNavigate(view)}>
-        {label}
-      </Button>
-    ) : undefined
 
   return (
     <section aria-labelledby="tutor-insights" className="space-y-6">
@@ -146,7 +140,13 @@ export function TutorInsights({
         title={<span id="tutor-insights">Teaching overview</span>}
         subtitle="How your students are doing and what needs your attention."
         period={period}
-        onPeriodChange={setPeriod}
+        onPeriodChange={(value) =>
+          setParams((previous) => {
+            const next = new URLSearchParams(previous)
+            next.set('period', value)
+            return next
+          })
+        }
         actions={
           onNavigate && (
             <Button size="md" onClick={() => onNavigate('course-assignment')}>
@@ -156,10 +156,13 @@ export function TutorInsights({
         }
       />
 
-      {query.isError ? (
+      {query.isError && !data ? (
         <InsightsError onRetry={() => void query.refetch()} />
       ) : (
         <>
+          {query.isError && (
+            <InsightsStale onRetry={() => void query.refetch()} />
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
               title="My students"
@@ -231,7 +234,13 @@ export function TutorInsights({
                   icon={CalendarCheck}
                   title="No classes in this period"
                   description="Classes you teach appear here once they have taken place. Try a longer period, or check your schedule."
-                  action={cta('Open my schedule', 'schedule')}
+                  action={
+                    <NavButton
+                      label="Open my schedule"
+                      view="schedule"
+                      onNavigate={onNavigate}
+                    />
+                  }
                 />
               )}
             </ChartCard>
@@ -249,7 +258,13 @@ export function TutorInsights({
                   icon={ClipboardCheck}
                   title="No homework yet"
                   description="Homework you set will be tracked here."
-                  action={cta('Assign homework', 'course-assignment')}
+                  action={
+                    <NavButton
+                      label="Assign homework"
+                      view="course-assignment"
+                      onNavigate={onNavigate}
+                    />
+                  }
                 />
               )}
             </ChartCard>
@@ -277,7 +292,13 @@ export function TutorInsights({
                   icon={Users}
                   title="No students assigned yet"
                   description="An admin assigns students to you in Users & Staff. Keep your availability up to date so classes can be booked."
-                  action={cta('Update availability', 'schedule')}
+                  action={
+                    <NavButton
+                      label="Update availability"
+                      view="schedule"
+                      onNavigate={onNavigate}
+                    />
+                  }
                 />
               }
             />
@@ -312,7 +333,13 @@ export function TutorInsights({
                 icon={BookOpenCheck}
                 title="No sticking points"
                 description="Quizzes your students struggle with will appear here."
-                action={cta('View student results', 'students')}
+                action={
+                  <NavButton
+                    label="View student results"
+                    view="students"
+                    onNavigate={onNavigate}
+                  />
+                }
               />
             )}
           </ChartCard>

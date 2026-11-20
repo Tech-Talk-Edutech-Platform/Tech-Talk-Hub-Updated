@@ -10,8 +10,8 @@ import {
 } from '../../components/dashboard/period'
 import { loadCourseLessons, studentCourseId } from './courseLessons'
 import { optionalRows } from './optionalRows'
+import { DEFAULT_PASS_MARK } from './constants'
 
-const DEFAULT_PASS_MARK = 70
 const HOMEWORK_STATUSES = [
   { status: 'pending', label: 'Not started' },
   { status: 'submitted', label: 'To review' },
@@ -180,10 +180,7 @@ export async function loadTutorInsights(
   ]
 
   const [lessons, courses, quizzes] = await Promise.all([
-    loadCourseLessons(courseIds).catch((error: unknown) => {
-      console.warn('Dashboard lessons unavailable:', error)
-      return []
-    }),
+    loadCourseLessons(courseIds),
     courseIds.length
       ? optionalRows(
           'courses',
@@ -293,10 +290,13 @@ export async function loadTutorInsights(
   const pastEvents = events.filter(
     (event) => Date.parse(event.start_time) <= now,
   )
-  const classesCurrent = pastEvents.filter(
+  const completedEvents = pastEvents.filter(
+    (event) => event.session_status === 'completed' || event.ended_at !== null,
+  )
+  const classesCurrent = completedEvents.filter(
     (event) => periodHalf(range, event.start_time) === 'current',
   ).length
-  const classesPrevious = pastEvents.filter(
+  const classesPrevious = completedEvents.filter(
     (event) => periodHalf(range, event.start_time) === 'previous',
   ).length
 

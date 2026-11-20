@@ -1,18 +1,16 @@
 type RowsResult<T> = { data: T[] | null; error: { message: string } | null }
 
-/**
- * Rows for a panel that can be left empty. A permission or network error in
- * one secondary query should not blank the whole dashboard, so it is logged
- * and treated as no rows.
- */
+/** A report section can fail independently when its caller tracks availability. */
 export async function optionalRows<T>(
   label: string,
   query: PromiseLike<RowsResult<T>>,
+  onUnavailable?: () => void,
 ): Promise<T[]> {
   const { data, error } = await query
   if (error) {
-    console.warn(`Dashboard ${label} unavailable:`, error.message)
-    return []
+    if (!onUnavailable)
+      throw new Error(`Dashboard ${label} unavailable: ${error.message}`)
+    onUnavailable()
   }
   return data ?? []
 }

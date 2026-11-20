@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import type { DashboardNavigation } from '../../navigation'
+import { DashboardViewBoundary } from '../../DashboardViewBoundary'
+import { InsightsError, InsightsStale } from '../../insights/InsightsError'
 import { Plus, CheckCircle2, Activity, Settings, CalendarX } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../../supabase'
-import { notifyTutor } from '../../../Utils/adminActions'
+import { notifyDashboardTutor } from '../../notifyDashboardTutor'
 import { AdminInsights } from '../../insights/AdminInsights'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import Messages from '../../../Utils/fetchMessage'
@@ -15,52 +18,24 @@ interface TodayClass {
   tutorName: string | null
 }
 
-interface AdminStats {
-  tutors: number
-  students: number
-  conversion: string
-}
-
-async function loadAdminDashboard(): Promise<{
-  stats: AdminStats
-  classes: TodayClass[]
-}> {
+/** Today's booked classes for the Live Class Monitor. */
+async function loadTodayClasses(): Promise<TodayClass[]> {
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
   const endOfToday = new Date()
   endOfToday.setHours(23, 59, 59, 999)
 
-  const [
-    { count: tutors },
-    { count: students },
-    { count: leads },
-    { count: converted },
-    { data: classes },
-  ] = await Promise.all([
-    supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 'tutor'),
-    supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 'student'),
-    supabase.from('leads').select('*', { count: 'exact', head: true }),
-    supabase
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'converted'),
-    supabase
-      .from('calendar_events')
-      .select('id, title, tutor_id')
-      // Open availability and cancelled bookings are not classes.
-      .neq('title', 'Free Slot')
-      .neq('booking_status', 'cancelled')
-      .or(
-        `and(start_time.gte.${startOfToday.toISOString()},start_time.lte.${endOfToday.toISOString()}),and(end_time.gte.${startOfToday.toISOString()},end_time.lte.${endOfToday.toISOString()})`,
-      )
-      .order('start_time'),
-  ])
+  const { data: classes, error } = await supabase
+    .from('calendar_events')
+    .select('id, title, tutor_id')
+    // Open availability and cancelled bookings are not classes.
+    .neq('title', 'Free Slot')
+    .neq('booking_status', 'cancelled')
+    .or(
+      `and(start_time.gte.${startOfToday.toISOString()},start_time.lte.${endOfToday.toISOString()}),and(end_time.gte.${startOfToday.toISOString()},end_time.lte.${endOfToday.toISOString()})`,
+    )
+    .order('start_time')
+  if (error) throw error
 
   // `calendar_events` has no foreign key to `users`, so look the tutors up separately.
   const todayClasses = classes ?? []
@@ -78,19 +53,12 @@ async function loadAdminDashboard(): Promise<{
     }
   }
 
-  return {
-    stats: {
-      tutors: tutors ?? 0,
-      students: students ?? 0,
-      conversion: leads ? (((converted ?? 0) / leads) * 100).toFixed(1) : '0',
-    },
-    classes: todayClasses.map((c) => ({
-      id: c.id,
-      title: c.title,
-      tutorId: c.tutor_id,
-      tutorName: (c.tutor_id && tutorNames.get(c.tutor_id)) || null,
-    })),
-  }
+  return todayClasses.map((c) => ({
+    id: c.id,
+    title: c.title,
+    tutorId: c.tutor_id,
+    tutorName: (c.tutor_id && tutorNames.get(c.tutor_id)) || null,
+  }))
 }
 
 export default function AdminHomeView({
@@ -98,46 +66,19 @@ export default function AdminHomeView({
   onNavigate,
 }: {
   userId: string
-  onNavigate?: (view: string) => void
+  onNavigate?: DashboardNavigation
 }) {
-  const [upcoming, setUpcoming] = useState<TodayClass[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-
-    void loadAdminDashboard()
-      .then((result) => {
-        if (cancelled) return
-        setUpcoming(result.classes)
-      })
-      .catch((error: unknown) => {
-        console.error(error)
-        toast.error('Failed to fetch fresh dashboard data.')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center space-y-4 p-28 text-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500/20 border-t-purple-600" />
-        <p className="animate-pulse text-xs font-black tracking-widest text-gray-400 uppercase dark:text-gray-500">
-          Initializing Operations Center...
-        </p>
-      </div>
-    )
-  }
+  const classes = useQuery({
+    queryKey: ['dashboard', 'today-classes', userId],
+    queryFn: loadTodayClasses,
+  })
+  const upcoming = classes.data ?? []
 
   return (
     <div className="animate-fade-in mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
-      <AdminInsights onNavigate={onNavigate} />
+      <DashboardViewBoundary>
+        <AdminInsights onNavigate={onNavigate} />
+      </DashboardViewBoundary>
 
       <div className="grid grid-cols-12 gap-6 lg:gap-8">
         {/* MAIN COLUMN */}
@@ -181,52 +122,67 @@ export default function AdminHomeView({
             </h3>
 
             <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-              {upcoming.length === 0 ? (
-                <EmptyState
-                  size="sm"
-                  icon={CalendarX}
-                  title="No classes scheduled for today"
-                  description="Classes booked in Global Schedule appear here."
+              {classes.isPending ? (
+                <output>Loading today’s classes…</output>
+              ) : classes.isError && !classes.data ? (
+                <InsightsError
+                  title="Today’s classes could not load"
+                  onRetry={() => void classes.refetch()}
                 />
-              ) : (
-                upcoming.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50/30 p-4 dark:border-white/10 dark:bg-white/5"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-black text-gray-900 dark:text-white">
-                        {c.title}
-                      </p>
-                      <p className="mt-0.5 truncate text-[10px] font-bold text-purple-600 dark:text-purple-400">
-                        {c.tutorName || 'Assigned Tutor'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!c.tutorId) return
-                        void toast.promise(
-                          notifyTutor(c.tutorId, `Confirmed: ${c.title}`),
-                          {
-                            loading: 'Notifying tutor…',
-                            success: 'Tutor notified.',
-                            error: (error: unknown) =>
-                              error instanceof Error
-                                ? error.message
-                                : 'Could not notify the tutor.',
-                          },
-                        )
-                      }}
-                      className="shrink-0 rounded-xl border border-gray-100 bg-white p-2.5 text-emerald-600 shadow-2xs transition-all hover:bg-emerald-50 dark:border-white/10 dark:bg-white/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-                      disabled={!c.tutorId}
-                      title="Ping Tutor"
-                    >
-                      <CheckCircle2 size={14} />
-                    </button>
-                  </div>
-                ))
+              ) : null}
+              {classes.isError && classes.data && (
+                <InsightsStale onRetry={() => void classes.refetch()} />
               )}
+              {classes.data &&
+                (upcoming.length === 0 ? (
+                  <EmptyState
+                    size="sm"
+                    icon={CalendarX}
+                    title="No classes scheduled for today"
+                    description="Classes booked in Global Schedule appear here."
+                  />
+                ) : (
+                  upcoming.map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50/30 p-4 dark:border-white/10 dark:bg-white/5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-black text-gray-900 dark:text-white">
+                          {c.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                          {c.tutorName || 'Assigned Tutor'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!c.tutorId) return
+                          void toast.promise(
+                            notifyDashboardTutor(
+                              c.tutorId,
+                              `Confirmed: ${c.title}`,
+                            ),
+                            {
+                              loading: 'Notifying tutor…',
+                              success: 'Notification request sent.',
+                              error: (error: unknown) =>
+                                error instanceof Error
+                                  ? error.message
+                                  : 'Could not notify the tutor.',
+                            },
+                          )
+                        }}
+                        className="shrink-0 rounded-xl border border-gray-100 bg-white p-2.5 text-emerald-600 shadow-2xs transition-all hover:bg-emerald-50 dark:border-white/10 dark:bg-white/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                        disabled={!c.tutorId}
+                        title="Ping Tutor"
+                      >
+                        <CheckCircle2 size={14} />
+                      </button>
+                    </div>
+                  ))
+                ))}
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { useStudentInvites } from '../../insights/useStudentInvites'
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -10,7 +11,6 @@ import {
 import { BadgeMedal } from '../../../components/classroom/ui/BadgeMedal'
 import {
   inviteJoinPath,
-  listMyInvites,
   loadProfileBadges,
   studentClassroomKeys,
 } from '../../../lib/classroom/invites'
@@ -76,16 +76,6 @@ function CardHeading({
       {aside}
     </div>
   )
-}
-
-function useInvites(userId: string) {
-  return useQuery({
-    queryKey: studentClassroomKeys.invites(userId),
-    queryFn: listMyInvites,
-    // A tutor can invite the student, or start the class, at any moment.
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
-  })
 }
 
 function InviteRow({
@@ -179,7 +169,7 @@ export function ClassInvitesCard({
   userId: string
   compact?: boolean
 }) {
-  const invites = useInvites(userId)
+  const invites = useStudentInvites(userId)
   // Ticks so "Opens at 3:45 PM" turns into Join on time.
   const now = useNow(15_000)
   const open = (invites.data ?? [])
@@ -236,7 +226,7 @@ function pastLabel(invite: ClassInvite, now: number) {
 }
 
 function PastClassesCard({ userId }: { userId: string }) {
-  const invites = useInvites(userId)
+  const invites = useStudentInvites(userId)
   const now = useNow(60_000)
   const past = (invites.data ?? []).filter((invite) => !isUpcoming(invite, now))
   if (!past.length) return null

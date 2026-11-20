@@ -17,9 +17,13 @@ export type ActionItem = {
   createdAt: string | null
   /** Dashboard view where the item is resolved. */
   view: 'global-schedule' | 'sales'
+  targetId: string | null
 }
 
+type AdminPanel = 'revenue' | 'students' | 'conversion' | 'leads' | 'actions'
+
 export type AdminInsights = {
+  unavailable: AdminPanel[]
   kpis: {
     revenue: { current: number; change: number | null; sales: number }
     students: { active: number; newCurrent: number; change: number | null }
@@ -42,8 +46,12 @@ function conversionRate(count: { all: number; converted: number }) {
 }
 
 function csvCell(value: string | number | null) {
-  const text = value === null ? '' : String(value)
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+  const raw = value === null ? '' : String(value)
+  const text =
+    typeof value === 'string' && /^[\s]*[=+@-]|^[\t\r\n]/.test(raw)
+      ? "'" + raw
+      : raw
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
 function sourceLabel(source: string | null) {
@@ -57,6 +65,10 @@ export async function loadAdminInsights(
 ): Promise<AdminInsights> {
   const range = periodRange(periodId)
   const since = range.previousStart.toISOString()
+  const unavailable = new Set<AdminPanel>()
+  const markUnavailable = (panel: AdminPanel) => () => {
+    unavailable.add(panel)
+  }
 
   const [
     sales,
@@ -73,6 +85,7 @@ export async function loadAdminInsights(
         .from('sales')
         .select('amount_kes, closed_at')
         .gte('closed_at', since),
+      markUnavailable('revenue'),
     ),
     supabase
       .from('users')
@@ -86,6 +99,7 @@ export async function loadAdminInsights(
         .select('created_at')
         .eq('role', 'student')
         .gte('created_at', since),
+      markUnavailable('students'),
     ),
     optionalRows(
       'trials',
@@ -94,6 +108,7 @@ export async function loadAdminInsights(
         .select('created_at, status')
         .is('removed_at', null)
         .gte('created_at', since),
+      markUnavailable('conversion'),
     ),
     optionalRows(
       'leads',
@@ -101,17 +116,19 @@ export async function loadAdminInsights(
         .from('leads')
         .select('created_at, lead_source')
         .gte('created_at', since),
+      markUnavailable('leads'),
     ),
     optionalRows(
       'unassigned trials',
       supabase
         .from('trial_bookings')
-        .select('id, student_name, parent_name, created_at')
+        .select('id, lead_id, student_name, parent_name, created_at')
         .is('mentor_id', null)
         .is('removed_at', null)
         .eq('status', 'scheduled')
         .order('created_at', { ascending: true })
         .limit(20),
+      markUnavailable('actions'),
     ),
     optionalRows(
       'failed invites',
@@ -123,9 +140,11 @@ export async function loadAdminInsights(
         .neq('status', 'cancelled')
         .order('created_at', { ascending: true })
         .limit(20),
+      markUnavailable('actions'),
     ),
   ])
-  if (activeStudents.error) throw activeStudents.error
+  if (activeStudents.error || activeStudents.count === null)
+    unavailable.add('students')
 
   const revenue = { current: 0, previous: 0, sales: 0 }
   for (const sale of sales) {
@@ -177,6 +196,7 @@ export async function loadAdminInsights(
   ]
 
   return {
+    unavailable: [...unavailable],
     kpis: {
       revenue: {
         current: revenue.current,
@@ -225,6 +245,7 @@ export async function loadAdminInsights(
         parent: trial.parent_name,
         createdAt: trial.created_at,
         view: 'global-schedule' as const,
+        targetId: trial.lead_id,
       })),
       ...failedInvites.map((trial) => ({
         id: `invite-${trial.id}`,
@@ -233,6 +254,7 @@ export async function loadAdminInsights(
         parent: trial.parent_name,
         createdAt: trial.created_at,
         view: 'sales' as const,
+        targetId: trial.id,
       })),
     ],
   }
