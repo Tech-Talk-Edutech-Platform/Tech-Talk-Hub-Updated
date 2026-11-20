@@ -44,6 +44,8 @@ const PAGE_SIZE = 10
 export function SalesBookingsList({
   repId,
   creditRepId,
+  bookingId,
+  onClearBooking,
 }: {
   repId: string | null
   /**
@@ -51,10 +53,12 @@ export function SalesBookingsList({
    * parent's rep's). Null for an admin, who picks who gets the credit.
    */
   creditRepId: string | null
+  bookingId?: string | null
+  onClearBooking?: () => void
 }) {
   const data = useSalesData()
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<Filter>('upcoming')
+  const [filter, setFilter] = useState<Filter>(bookingId ? 'all' : 'upcoming')
   const [mentorFilter, setMentorFilter] = useState('')
   const [openSale, setOpenSale] = useState<string | null>(null)
   const [removing, setRemoving] = useState<TrialBooking | null>(null)
@@ -65,6 +69,10 @@ export function SalesBookingsList({
     const visible = (booking: TrialBooking) =>
       (repId === null || booking.salesRepId === repId) &&
       (!mentorFilter || booking.mentorId === mentorFilter)
+    if (bookingId)
+      return data.bookings.filter(
+        (booking) => visible(booking) && booking.id === bookingId,
+      )
     if (filter === 'removed') {
       return data.removedBookings
         .filter(visible)
@@ -87,7 +95,15 @@ export function SalesBookingsList({
         .toSorted((a, b) => time(b) - time(a))
     }
     return mine.toSorted((a, b) => time(b) - time(a))
-  }, [data.bookings, data.removedBookings, repId, mentorFilter, filter, now])
+  }, [
+    data.bookings,
+    data.removedBookings,
+    repId,
+    mentorFilter,
+    filter,
+    now,
+    bookingId,
+  ])
   const paged = pageOf(rows, page, PAGE_SIZE)
 
   const mentorName = (id: string) =>
@@ -117,56 +133,68 @@ export function SalesBookingsList({
       title="Trial bookings"
       icon={ClipboardList}
       action={
-        <div className="flex flex-wrap gap-2">
-          <fieldset className="inline-flex max-w-full min-w-0 overflow-x-auto rounded-xl bg-slate-100 p-1 dark:bg-white/5">
-            <legend className="sr-only">Filter bookings</legend>
-            {FILTERS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                aria-pressed={filter === option.id}
-                onClick={() => {
-                  setFilter(option.id)
-                  setPage(0)
-                }}
-                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap ${
-                  filter === option.id
-                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </fieldset>
-          <select
-            aria-label="Filter by mentor"
-            value={mentorFilter}
-            onChange={(event) => {
-              setMentorFilter(event.target.value)
-              setPage(0)
-            }}
-            className={`${inlineSelectClass} text-xs`}
+        bookingId ? (
+          <button
+            type="button"
+            className="text-sm font-semibold underline"
+            onClick={onClearBooking}
           >
-            <option value="">All mentors</option>
-            {data.mentors.map((mentor) => (
-              <option key={mentor.id} value={mentor.id}>
-                {mentor.name}
-              </option>
-            ))}
-          </select>
-        </div>
+            Show all bookings
+          </button>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <fieldset className="inline-flex max-w-full min-w-0 overflow-x-auto rounded-xl bg-slate-100 p-1 dark:bg-white/5">
+              <legend className="sr-only">Filter bookings</legend>
+              {FILTERS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={filter === option.id}
+                  onClick={() => {
+                    setFilter(option.id)
+                    setPage(0)
+                  }}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap ${
+                    filter === option.id
+                      ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </fieldset>
+            <select
+              aria-label="Filter by mentor"
+              value={mentorFilter}
+              onChange={(event) => {
+                setMentorFilter(event.target.value)
+                setPage(0)
+              }}
+              className={`${inlineSelectClass} text-xs`}
+            >
+              <option value="">All mentors</option>
+              {data.mentors.map((mentor) => (
+                <option key={mentor.id} value={mentor.id}>
+                  {mentor.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
       }
     >
       {rows.length === 0 ? (
         <EmptyState>
-          {filter === 'upcoming'
-            ? 'No upcoming trials. Book one from “Book a trial”.'
-            : filter === 'needs-update'
-              ? 'Every past trial has an outcome. Nice work.'
-              : filter === 'removed'
-                ? 'Nothing removed. A booking made by mistake lands here, so it can be restored.'
-                : 'No bookings yet.'}
+          {bookingId
+            ? 'This booking could not be found in the available results.'
+            : filter === 'upcoming'
+              ? 'No upcoming trials. Book one from “Book a trial”.'
+              : filter === 'needs-update'
+                ? 'Every past trial has an outcome. Nice work.'
+                : filter === 'removed'
+                  ? 'Nothing removed. A booking made by mistake lands here, so it can be restored.'
+                  : 'No bookings yet.'}
         </EmptyState>
       ) : filter === 'removed' ? (
         <ul className="divide-y divide-slate-100 dark:divide-white/10">

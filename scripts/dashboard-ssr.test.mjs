@@ -110,11 +110,22 @@ await test('verified role homes render navigation without sending tokens or user
     throw new Error(`Unexpected URL ${url.pathname}`)
   })
 
-  const [student, tutor, anonymous] = await Promise.all([
+  const [student, tutor, anonymous, schedule, invalidView] = await Promise.all([
     request('/student', { headers: { cookie: roleCookie } }),
     request('/tutor', { headers: { cookie: roleCookie } }),
     request('/student'),
+    request('/student?view=schedule', { headers: { cookie: roleCookie } }),
+    request('/student?view=users', { headers: { cookie: roleCookie } }),
   ])
+  assert.match(
+    schedule.body,
+    /aria-current="page"[^>]*><svg[^>]*>(?:(?!<\/svg>)[\s\S])*<\/svg>Schedule<\/span>/,
+  )
+  assert.match(
+    invalidView.body,
+    /aria-current="page"[^>]*><svg[^>]*>(?:(?!<\/svg>)[\s\S])*<\/svg>Dashboard<\/span>/,
+  )
+  assert.doesNotMatch(schedule.body, /data-msg="The server did not finish/)
   assert.match(student.body, /data-dashboard-role="student"/)
   assert.match(student.body, /My Courses/)
   assert.doesNotMatch(student.body, /private-user|header\.payload\.signature/)

@@ -61,8 +61,18 @@ const ADMIN_TABS = [
 }[]
 
 /** Admins see every rep, every mentor and every message. */
-export function SalesAdminOverview() {
-  const [tab, setTab] = useState<AdminTab>('overview')
+export function SalesAdminOverview({
+  bookingId,
+  showBookings,
+  onClearBooking,
+}: {
+  bookingId?: string | null
+  showBookings?: boolean
+  onClearBooking?: () => void
+} = {}) {
+  const [tab, setTab] = useState<AdminTab>(
+    bookingId || showBookings ? 'bookings' : 'overview',
+  )
   // The parent picked in "Parents" when the admin chose "Book trial".
   const [bookingFor, setBookingFor] = useState<string | null>(null)
   const open = (next: AdminTab) => {
@@ -96,7 +106,12 @@ export function SalesAdminOverview() {
         />
       )}
       {tab === 'bookings' && (
-        <SalesBookingsList repId={null} creditRepId={null} />
+        <SalesBookingsList
+          repId={null}
+          creditRepId={null}
+          bookingId={bookingId}
+          onClearBooking={onClearBooking}
+        />
       )}
       {tab === 'mentors' && <MentorCalendars />}
       {tab === 'whatsapp' && <WhatsAppFeed repId={null} />}

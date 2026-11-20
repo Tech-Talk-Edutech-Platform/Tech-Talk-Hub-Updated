@@ -1,364 +1,150 @@
-import { useState, type ReactNode } from 'react'
-import { isAdminRole, roleLabel, type AppRole } from '../types/roles'
-import { SALES_NAV } from '../features/sales/navigation'
-import { SidebarButton, SidebarGroup } from './Sidebar'
-import {
-  BookOpen,
-  Activity,
-  Calendar,
-  CalendarHeart,
-  ChevronLeft,
-  ChevronRight,
-  CreditCard,
-  GraduationCap,
-  Layers,
-  Layers3,
-  LayoutDashboard,
-  MessageSquareQuote,
-  Newspaper,
-  Presentation,
-  Settings,
-  ShoppingBag,
-  TrendingUp,
-  Users,
-  Users2,
-  Video,
-} from 'lucide-react'
+import { useRef, useState, type ReactNode } from 'react'
+import { ChevronLeft, ChevronRight, Menu } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Modal } from '../components/ui/Modal'
+import { roleLabel, type AppRole } from '../types/roles'
+import { dashboardNavigation, dashboardViewUrl } from './navigation'
+
+function RoleNavigation({
+  role,
+  activeView,
+  pending,
+  compact = false,
+  onNavigate,
+}: {
+  role: AppRole
+  activeView: string
+  pending: boolean
+  compact?: boolean
+  onNavigate?: () => void
+}) {
+  return (
+    <nav
+      aria-label="Dashboard"
+      aria-busy={pending || undefined}
+      className="space-y-5"
+    >
+      {dashboardNavigation(role).map((group) => (
+        <section key={group.label} aria-label={group.label}>
+          {!compact && (
+            <p className="mb-2 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              {group.label}
+            </p>
+          )}
+          {group.items.map(({ id, label: name, icon: Icon }) => {
+            const active = activeView === id
+            const className = `flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium focus-visible:ring-2 focus-visible:ring-purple-500 ${compact ? 'justify-center' : ''} ${active ? 'bg-purple-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-white/10'}`
+            const content = (
+              <>
+                <Icon size={18} aria-hidden="true" className="shrink-0" />
+                {!compact && name}
+              </>
+            )
+            return pending ? (
+              <span
+                key={id}
+                aria-current={active ? 'page' : undefined}
+                className={className}
+                title={compact ? name : undefined}
+              >
+                {content}
+              </span>
+            ) : (
+              <Link
+                key={id}
+                to={dashboardViewUrl(role, id)}
+                aria-current={active ? 'page' : undefined}
+                aria-label={compact ? name : undefined}
+                title={compact ? name : undefined}
+                onClick={onNavigate}
+                className={className}
+              >
+                {content}
+              </Link>
+            )
+          })}
+        </section>
+      ))}
+    </nav>
+  )
+}
 
 export function DashboardFrame({
   role,
   activeView = 'dashboard',
-  onNavigate,
+  pending = true,
   children,
 }: {
   role: AppRole
   activeView?: string
-  onNavigate?: (view: string) => void
+  pending?: boolean
   children: ReactNode
 }) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const isAdmin = isAdminRole(role)
-  const pending = !onNavigate
-  const setActiveView = onNavigate ?? (() => {})
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const menuTrigger = useRef<HTMLButtonElement>(null)
+  const closeMenu = () => {
+    setMobileOpen(false)
+    menuTrigger.current?.focus()
+  }
+  const label = `${roleLabel(role)} Portal`
+
   return (
-    <div className="flex min-h-screen bg-dashboard-canvas text-gray-900 transition-colors duration-300 dark:bg-dashboard-night dark:text-white">
-      {/* Sidebar */}
+    <div className="min-h-dvh bg-dashboard-canvas text-gray-900 lg:flex dark:bg-dashboard-night dark:text-white">
       <aside
-        className={`relative flex min-h-screen shrink-0 flex-col border-r border-gray-100 bg-white p-5 transition-all duration-300 dark:border-white/10 dark:bg-white/5 ${
-          isCollapsed ? 'w-20' : 'w-64'
-        }`}
+        className={`hidden shrink-0 border-r border-slate-200 bg-white p-4 lg:block dark:border-white/10 dark:bg-white/5 ${collapsed ? 'w-20' : 'w-64'}`}
       >
-        {/* Collapse button */}
-        <button
-          type="button"
-          onClick={() => setIsCollapsed((current) => !current)}
-          className="absolute top-7 -right-3 z-10 rounded-full bg-purple-600 p-1 text-white shadow-md transition hover:bg-purple-700"
-          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-        >
-          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
-
-        {/* Sidebar heading */}
-        {!isCollapsed && (
-          <div className="mb-6 overflow-hidden px-2">
-            <h1 className="bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-xl font-black tracking-tight whitespace-nowrap text-transparent">
-              Tech Talk Hub
-            </h1>
-
-            <div className="mt-0.5 text-xs font-medium whitespace-nowrap text-gray-400 capitalize">
-              {roleLabel(role)} Portal 🚀
-            </div>
-          </div>
-        )}
-
-        {/* Sidebar navigation */}
-        <nav
-          aria-label="Dashboard"
-          aria-busy={pending || undefined}
-          className="flex-1 space-y-6 overflow-x-hidden overflow-y-auto"
-        >
-          {/* Overview */}
-          <SidebarGroup title="Overview" isCollapsed={isCollapsed}>
-            <SidebarButton
-              icon={LayoutDashboard}
-              label="Dashboard"
-              view="dashboard"
-              activeView={activeView}
-              setActiveView={setActiveView}
-              isCollapsed={isCollapsed}
-            />
-          </SidebarGroup>
-
-          {/* Student navigation */}
-          {role === 'student' && (
-            <SidebarGroup title="Learning" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={Presentation}
-                label="My Classroom"
-                view="classroom"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={BookOpen}
-                label="My Courses"
-                view="courses"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={Calendar}
-                label="Schedule"
-                view="schedule"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* Tutor navigation */}
-          {role === 'tutor' && (
-            <SidebarGroup title="Teaching" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={Presentation}
-                label="My Classrooms"
-                view="classrooms"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Users}
-                label="My Students"
-                view="students"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Calendar}
-                label="My Schedule"
-                view="schedule"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={CalendarHeart}
-                label="Trial Bookings"
-                view="trials"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Layers}
-                label="Course Assignment"
-                view="course-assignment"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Video}
-                label="Class Recordings"
-                view="recordings"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {role === 'tutor' && (
-            <SidebarGroup title="Growth" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={GraduationCap}
-                label="Training"
-                view="training"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* Marketer (sales team) navigation */}
-          {role === 'marketer' && (
-            <SidebarGroup title="Sales" isCollapsed={isCollapsed}>
-              {SALES_NAV.map((item) => (
-                <SidebarButton
-                  key={item.id}
-                  icon={item.icon}
-                  label={item.label}
-                  view={item.id}
-                  activeView={activeView}
-                  setActiveView={setActiveView}
-                  isCollapsed={isCollapsed}
-                />
-              ))}
-            </SidebarGroup>
-          )}
-
-          {/* Sales oversight */}
-          {isAdmin && (
-            <SidebarGroup title="Sales" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={TrendingUp}
-                label="Sales & Trials"
-                view="sales"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* E-commerce */}
-          {isAdmin && (
-            <SidebarGroup title="E-Commerce" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={ShoppingBag}
-                label="Shop Management"
-                view="shop"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* Website */}
-          {isAdmin && (
-            <SidebarGroup title="Website" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={Newspaper}
-                label="Blog Management"
-                view="blog"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={CreditCard}
-                label="Pricing Plans"
-                view="pricing"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={MessageSquareQuote}
-                label="Testimonials"
-                view="testimonials"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* Admin management */}
-          {isAdmin && (
-            <SidebarGroup title="Management" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={Users2}
-                label="Users & Staff"
-                view="users"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Layers3}
-                label="Leads"
-                view="Leads"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={BookOpen}
-                label="Courses Hub"
-                view="courses-hub"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Presentation}
-                label="Classroom"
-                view="classroom"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Activity}
-                label="Live Class Monitor"
-                view="Live Class Monitor"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={GraduationCap}
-                label="Tutor Training"
-                view="training"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Calendar}
-                label="Global Schedule"
-                view="global-schedule"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Video}
-                label="Recordings Manager"
-                view="recordings"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* System */}
-          <SidebarGroup title="System" isCollapsed={isCollapsed}>
-            <SidebarButton
-              icon={Settings}
-              label="Settings"
-              view="settings"
-              activeView={activeView}
-              setActiveView={setActiveView}
-              isCollapsed={isCollapsed}
-            />
-          </SidebarGroup>
-        </nav>
+        <div className="mb-5 flex min-h-11 items-center justify-between gap-2">
+          {!collapsed && <p className="text-sm font-bold">{label}</p>}
+          <button
+            type="button"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={() => setCollapsed((value) => !value)}
+            className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-purple-500 dark:hover:bg-white/10"
+          >
+            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+        </div>
+        <RoleNavigation
+          role={role}
+          activeView={activeView}
+          pending={pending}
+          compact={collapsed}
+        />
       </aside>
-
-      {/* Dynamic content */}
-      <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+      <div className="min-w-0 flex-1">
+        <header className="flex min-h-14 items-center gap-2 border-b border-slate-200 bg-white px-3 lg:hidden dark:border-white/10 dark:bg-white/5">
+          <button
+            type="button"
+            ref={menuTrigger}
+            aria-label="Open dashboard navigation"
+            aria-haspopup="dialog"
+            aria-expanded={mobileOpen}
+            disabled={pending}
+            onClick={() => setMobileOpen(true)}
+            className="grid size-11 shrink-0 place-items-center rounded-xl focus-visible:ring-2 focus-visible:ring-purple-500"
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
+          <p className="truncate text-sm font-bold">{label}</p>
+        </header>
+        {mobileOpen && (
+          <Modal
+            title={label}
+            size="compact"
+            closeLabel="Close dashboard navigation"
+            onClose={closeMenu}
+          >
+            <RoleNavigation
+              role={role}
+              activeView={activeView}
+              pending={pending}
+              onNavigate={closeMenu}
+            />
+          </Modal>
+        )}
+        <main className="min-w-0">{children}</main>
+      </div>
     </div>
   )
 }

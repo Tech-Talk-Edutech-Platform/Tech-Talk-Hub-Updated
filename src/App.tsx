@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect } from 'react'
+import React, { lazy, Suspense, useEffect, useSyncExternalStore } from 'react'
 import {
   BrowserRouter,
   Routes,
@@ -7,6 +7,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './supabase'
@@ -32,8 +33,8 @@ import {
   DashboardSignOutSync,
 } from './auth/DashboardSessionSync'
 import { DashboardFrame } from './dashboards/DashboardFrame'
+import { dashboardView } from './dashboards/navigation'
 
-import FullCalendarView from './features/schedule/Calendar'
 import StudentDashboard from './features/assessments/results/parentResult'
 import AdminEntryForm from './features/assessments/results/AdminUpload'
 import UserManagement from './features/accounts/UserManagement'
@@ -79,6 +80,7 @@ const ClassroomRoutes = lazy(() =>
 )
 
 const SalesPreviewPage = lazy(() => import('./features/sales/SalesPreviewPage'))
+const FullCalendarView = lazy(() => import('./features/schedule/Calendar'))
 const UnifiedDashboard = lazy(() => import('./dashboards/UnifiedDashboard'))
 const STUDENT_ROLES = ['student'] as const
 
@@ -151,7 +153,23 @@ function HomeRoute({ user, loading }: { user: User | null; loading: boolean }) {
  * `/:role` matches every one-segment URL, so without this check a public link
  * like `/blog` would land on the role gate's "access denied" screen.
  */
-function RoleDashboardRoute({ dashboardRole }: { dashboardRole?: AppRole }) {
+const subscribeToHydration = () => () => {}
+
+function RoleDashboardRoute({
+  dashboardRole,
+  userId,
+  sessionLoading,
+}: {
+  dashboardRole?: AppRole
+  userId?: string
+  sessionLoading: boolean
+}) {
+  const mounted = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  )
+  const [params] = useSearchParams()
   const { role } = useParams()
 
   if (!isAppRole(role)) {
@@ -164,19 +182,34 @@ function RoleDashboardRoute({ dashboardRole }: { dashboardRole?: AppRole }) {
 
   const loading =
     dashboardRole === role ? (
-      <DashboardFrame role={role}>
+      <DashboardFrame
+        role={role}
+        activeView={dashboardView(role, params.get('view'))}
+      >
         <SessionSpinner />
       </DashboardFrame>
     ) : undefined
 
+  const accessCheck = loading ?? (
+    <output className="flex min-h-screen items-center justify-center">
+      Verifying Access…
+    </output>
+  )
+
   return (
     <>
       <DashboardSessionSync />
-      <RoleGate allowedRoles={APP_ROLES} loadingView={loading}>
-        <Suspense fallback={loading ?? <SessionSpinner />}>
-          <UnifiedDashboard loadingView={loading} />
+      {mounted ? (
+        <Suspense fallback={accessCheck}>
+          <UnifiedDashboard
+            userId={userId}
+            sessionLoading={sessionLoading}
+            loadingView={accessCheck}
+          />
         </Suspense>
-      </RoleGate>
+      ) : (
+        accessCheck
+      )}
     </>
   )
 }
@@ -301,7 +334,13 @@ function DashboardApp({ dashboardRole }: { dashboardRole?: AppRole }) {
         <Route path="/results/:slug" element={<StudentDashboard />} />
         <Route
           path="/:role"
-          element={<RoleDashboardRoute dashboardRole={dashboardRole} />}
+          element={
+            <RoleDashboardRoute
+              dashboardRole={dashboardRole}
+              userId={user?.id}
+              sessionLoading={loading}
+            />
+          }
         />
         <Route
           path="/receive-homework"
@@ -323,7 +362,9 @@ function DashboardApp({ dashboardRole }: { dashboardRole?: AppRole }) {
           path="/calendar"
           element={
             <RoleGate allowedRoles={allRoles}>
-              <FullCalendarView />
+              <Suspense fallback={<SessionSpinner />}>
+                <FullCalendarView />
+              </Suspense>
             </RoleGate>
           }
         />
