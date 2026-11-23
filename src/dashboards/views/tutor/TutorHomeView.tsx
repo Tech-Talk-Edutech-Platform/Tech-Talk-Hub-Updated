@@ -1,22 +1,17 @@
-import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
-import {
-  Calendar,
-  Clock,
-  Users,
-  AlertCircle,
-  User as UserIcon,
-} from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { InsightsError, InsightsStale } from '../../insights/InsightsError'
+import { DashboardViewBoundary } from '../../DashboardViewBoundary'
+import { Users, User as UserIcon } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import UpcomingClasses from '../../../components/UpcomingClasses'
+import { TutorInsights } from '../../insights/TutorInsights'
 import type { DashboardIdentity } from '../../../types/dashboardIdentity'
 import { RecentRecordingsCard } from '../../../components/recordings/RecentRecordingsCard'
-
-const DAY_MS = 86_400_000
 
 interface TutorHomeViewProps {
   userId: string
   user: DashboardIdentity
+  onNavigate?: (view: string) => void
   onOpenRecordings: () => void
 }
 
@@ -28,22 +23,16 @@ interface TutorClass {
   student_name: string
 }
 
-interface TutorStats {
-  classesToday: number
-  upcoming: number
-  activeStudents: number
-  pendingReviews: number
-}
-
-async function loadTutorDashboard(
+/** The tutor's booked classes from today on, for the upcoming list. */
+async function loadUpcomingClasses(
   userId: string,
-): Promise<{ stats: TutorStats; classes: TutorClass[] }> {
+  signal: AbortSignal,
+): Promise<TutorClass[]> {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  // 1. Booked sessions from today on. Open (free) slots and deleted ones
-  // aren't classes, so they stay out of "Next up" and the counts.
-  const calendarPromise = supabase
+  // Open (free) slots and cancelled bookings aren't classes.
+  const { data: events, error } = await supabase
     .from('calendar_events')
     .select(
       '*, classes (student_id), trial_bookings (student_name, removed_at, status)',
@@ -53,39 +42,8 @@ async function loadTutorDashboard(
     .neq('booking_status', 'cancelled')
     .gte('start_time', todayStart.toISOString())
     .order('start_time', { ascending: true })
-
-  // 2. Fetch assigned students
-  const studentsPromise = supabase
-    .from('users')
-    .select('id')
-    .eq('assigned_tutor_id', userId)
-    .eq('role', 'student')
-
-  // 3. Fetch submissions across the whole table without pre-filtered restriction to compute reliably client-side
-  const assignmentsPromise = supabase
-    .from('student_assignments')
-    .select('id, student_id, tutor_id, status')
-
-  const [calendarRes, studentRes, assignmentRes] = await Promise.all([
-    calendarPromise,
-    studentsPromise,
-    assignmentsPromise,
-  ])
-
-  if (calendarRes.error) throw calendarRes.error
-
-  const events = calendarRes.data
-  const studentList = studentRes.data ?? []
-  const studentIds = new Set(studentList.map((s) => s.id))
-
-  // Match pending submissions for this specific tutor's students or direct tutor assignment
-  const allAssignments = assignmentRes.data ?? []
-  const pendingReviewsCount = allAssignments.filter((a) => {
-    const isSubmittedOrPending =
-      a.status === 'submitted' || a.status === 'pending'
-    const isMyStudent = studentIds.has(a.student_id) || a.tutor_id === userId
-    return isSubmittedOrPending && isMyStudent
-  }).length
+    .abortSignal(signal)
+  if (error) throw error
 
   // `classes` has no foreign key to `users`, so look the names up separately.
   const classStudentIds = [
@@ -101,72 +59,37 @@ async function loadTutorDashboard(
       .from('users')
       .select('id, full_name')
       .in('id', classStudentIds)
+      .abortSignal(signal)
     for (const student of students ?? []) {
       studentNames.set(student.id, student.full_name)
     }
   }
 
-  const tomorrowStart = todayStart.getTime() + DAY_MS
-
-  return {
-    stats: {
-      classesToday: events.filter(
-        (e) => new Date(e.start_time).getTime() < tomorrowStart,
-      ).length,
-      upcoming: events.length,
-      activeStudents: studentList.length,
-      pendingReviews: pendingReviewsCount,
-    },
-    classes: events.map((e) => ({
-      id: e.id,
-      start_time: e.start_time,
-      title: e.title,
-      meet_link: e.meet_link,
-      student_name:
-        (e.classes?.student_id && studentNames.get(e.classes.student_id)) ||
-        // Trial students are leads, named on their booking.
-        e.trial_bookings.find(
-          (b) => b.removed_at === null && b.status !== 'cancelled',
-        )?.student_name ||
-        'N/A',
-    })),
-  }
+  return events.map((e) => ({
+    id: e.id,
+    start_time: e.start_time,
+    title: e.title,
+    meet_link: e.meet_link,
+    student_name:
+      (e.classes?.student_id && studentNames.get(e.classes.student_id)) ||
+      // Trial students are leads, named on their booking.
+      e.trial_bookings.find(
+        (b) => b.removed_at === null && b.status !== 'cancelled',
+      )?.student_name ||
+      'N/A',
+  }))
 }
 
 export default function TutorHomeView({
   userId,
   user,
+  onNavigate,
   onOpenRecordings,
 }: TutorHomeViewProps) {
-  const [loading, setLoading] = useState(true)
-  const [upcomingClasses, setUpcomingClasses] = useState<TutorClass[]>([])
-  const [stats, setStats] = useState<TutorStats>({
-    classesToday: 0,
-    upcoming: 0,
-    activeStudents: 0,
-    pendingReviews: 0,
+  const classes = useQuery({
+    queryKey: ['dashboard', 'tutor-upcoming-classes', userId],
+    queryFn: ({ signal }) => loadUpcomingClasses(userId, signal),
   })
-
-  useEffect(() => {
-    let cancelled = false
-
-    void loadTutorDashboard(userId)
-      .then((result) => {
-        if (cancelled) return
-        setStats(result.stats)
-        setUpcomingClasses(result.classes)
-      })
-      .catch((err: unknown) => {
-        console.error('Dashboard Sync Error:', err)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [userId])
 
   const metadata = user.user_metadata
   const tutorAvatar =
@@ -223,68 +146,28 @@ export default function TutorHomeView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-4">
-        <StatCard
-          title="Today's Classes"
-          value={stats.classesToday}
-          color="blue"
-          icon={<Calendar size={20} />}
-        />
-        <StatCard
-          title="Upcoming Classes"
-          value={stats.upcoming}
-          color="purple"
-          icon={<Clock size={20} />}
-        />
-        <StatCard
-          title="My Students"
-          value={stats.activeStudents}
-          color="amber"
-          icon={<Users size={20} />}
-        />
-        <StatCard
-          title="Pending Reviews"
-          value={stats.pendingReviews}
-          color="green"
-          icon={<AlertCircle size={20} />}
-        />
-      </div>
+      <DashboardViewBoundary>
+        <TutorInsights tutorId={userId} onNavigate={onNavigate} />
+      </DashboardViewBoundary>
 
       <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-lg backdrop-blur-xl dark:border-white/8 dark:bg-[#131b31]/60">
-        <UpcomingClasses classes={upcomingClasses} loading={loading} />
+        {classes.isError && classes.data && (
+          <InsightsStale onRetry={() => void classes.refetch()} />
+        )}
+        {classes.isError && !classes.data ? (
+          <InsightsError
+            title="Upcoming classes could not load"
+            onRetry={() => void classes.refetch()}
+          />
+        ) : (
+          <UpcomingClasses
+            classes={classes.data ?? []}
+            loading={classes.isPending}
+          />
+        )}
       </div>
 
       <RecentRecordingsCard onViewAll={onOpenRecordings} showTutor={false} />
-    </div>
-  )
-}
-
-const STAT_COLORS = {
-  blue: 'bg-blue-600 shadow-blue-500/20',
-  purple: 'bg-purple-600 shadow-purple-500/20',
-  amber: 'bg-amber-600 shadow-amber-500/20',
-  green: 'bg-emerald-600 shadow-emerald-500/20',
-} as const
-
-interface StatCardProps {
-  icon: ReactNode
-  title: string
-  value: number
-  color: keyof typeof STAT_COLORS
-}
-
-function StatCard({ icon, title, value, color }: StatCardProps) {
-  return (
-    <div
-      className={`${STAT_COLORS[color]} flex items-center justify-between rounded-[24px] p-5 text-white shadow-lg`}
-    >
-      <div>
-        <p className="text-[10px] font-bold tracking-wider text-white/80 uppercase">
-          {title}
-        </p>
-        <h3 className="mt-1 text-2xl font-black">{value}</h3>
-      </div>
-      <div className="rounded-2xl bg-white/10 p-3 opacity-80">{icon}</div>
     </div>
   )
 }

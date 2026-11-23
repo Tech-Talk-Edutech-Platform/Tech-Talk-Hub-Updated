@@ -255,3 +255,32 @@
   background-color: var(--fc-event-bg-color) !important;
   color: var(--fc-event-text-color) !important;
 } */
+
+/* --- Dashboard: student class calendar and dark mode --- */
+.tth-class-calendar .fc {
+  --fc-border-color: #f1f5f9;
+  --fc-bg-event-color: #a855f7;
+  --fc-bg-event-opacity: 0.25;
+  --fc-today-bg-color: rgb(168 85 247 / 0.08);
+}
+.tth-class-calendar .fc .fc-toolbar-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.tth-class-calendar .fc .fc-button {
+  padding: 0.2rem 0.45rem;
+}
+.tth-class-calendar .fc .fc-daygrid-day {
+  cursor: pointer;
+}
+.tth-class-calendar .fc .tth-selected-day {
+  box-shadow: inset 0 0 0 2px #7c3aed;
+}
+.dark .fc {
+  --fc-border-color: rgb(255 255 255 / 0.1);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: rgb(255 255 255 / 0.05);
+  --fc-today-bg-color: rgb(168 85 247 / 0.15);
+  --fc-list-event-hover-bg-color: rgb(255 255 255 / 0.05);
+  color: inherit;
+}

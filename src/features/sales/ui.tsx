@@ -1,4 +1,8 @@
 import type { ReactNode } from 'react'
+import { EmptyState as SharedEmptyState } from '../../components/ui/EmptyState'
+import { Initials } from '../../components/ui/Initials'
+
+export { Initials }
 import type { LucideIcon } from 'lucide-react'
 import {
   ChevronLeft,
@@ -232,23 +236,6 @@ export function DemoBanner({ children }: { children?: ReactNode }) {
   )
 }
 
-export function Initials({ name, size = 32 }: { name: string; size?: number }) {
-  const letters = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('')
-  return (
-    <span
-      aria-hidden
-      style={{ width: size, height: size }}
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-black text-purple-700 dark:bg-purple-500/20 dark:text-purple-200"
-    >
-      {letters}
-    </span>
-  )
-}
-
 /** A tutor's initials on an orange or violet tile, as on the booking portal. */
 export function TutorAvatar({ name, tone }: { name: string; tone: TutorTone }) {
   const letters = name
@@ -271,11 +258,7 @@ export function TutorAvatar({ name, tone }: { name: string; tone: TutorTone }) {
 }
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return (
-    <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
-      {children}
-    </p>
-  )
+  return <SharedEmptyState size="sm" icon={null} description={children} />
 }
 
 const pagerButton =

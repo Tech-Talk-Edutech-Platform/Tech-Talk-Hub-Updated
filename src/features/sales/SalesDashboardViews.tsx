@@ -11,7 +11,15 @@ import {
 } from './SupabaseSalesDataProvider'
 
 /** "Sales & Trials" in the admin dashboard, on real data. */
-export function AdminSalesView() {
+export function AdminSalesView({
+  bookingId,
+  showBookings,
+  onClearBooking,
+}: {
+  bookingId?: string | null
+  showBookings?: boolean
+  onClearBooking?: () => void
+}) {
   return (
     <SupabaseSalesDataProvider>
       <div className="mx-auto max-w-7xl space-y-5 p-4 md:p-8">
@@ -33,7 +41,11 @@ export function AdminSalesView() {
             Try it on demo data <ExternalLink size={14} aria-hidden />
           </Link>
         </header>
-        <SalesAdminOverview />
+        <SalesAdminOverview
+          bookingId={bookingId}
+          showBookings={showBookings}
+          onClearBooking={onClearBooking}
+        />
       </div>
     </SupabaseSalesDataProvider>
   )

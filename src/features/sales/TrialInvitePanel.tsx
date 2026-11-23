@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import {
   AlertTriangle,
   Check,
@@ -15,13 +15,19 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
-import { problemText } from './salesDataContext'
-import { InviteRequestError, familyJoinUrl } from './trialInvites'
+import { problemText, SalesDataContext } from './salesDataContext'
+import { copyPendingText } from './clipboard'
+import {
+  InviteRequestError,
+  familyJoinUrl,
+  requestTrialGuestLink,
+} from './trialInvites'
 import type { InviteResult, TrialInviteEmail } from './types'
 
 /** A classroom trial, as the invite controls need it. */
 export type InviteTarget = {
   roomCode: string
+  bookingId: string
   parentEmail: string
   invite: TrialInviteEmail
 }
@@ -123,15 +129,20 @@ function useInviteSender(target: InviteTarget, onSend: SendInvite) {
   return { busy, send }
 }
 
-function useCopy() {
+function useCopy(target: InviteTarget) {
+  const isDemo = useContext(SalesDataContext)?.isDemo
   const [copied, setCopied] = useState(false)
-  const copy = async (text: string) => {
+  const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text)
+      await copyPendingText(
+        isDemo
+          ? Promise.resolve(familyJoinUrl(target.roomCode))
+          : requestTrialGuestLink(target.bookingId),
+      )
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      toast.error('Couldn’t copy. Select the link and copy it instead.')
+    } catch (error) {
+      toast.error(problemText(error, 'Could not copy the class link.'))
     }
   }
   return { copied, copy }
@@ -164,9 +175,8 @@ export function TrialInvitePanel({
   /** Where staff open the classroom to host it. */
   hostPath?: string
 }) {
-  const url = familyJoinUrl(target.roomCode)
   const { busy, send } = useInviteSender(target, onSend)
-  const { copied, copy } = useCopy()
+  const { copied, copy } = useCopy(target)
   const state = inviteState(target, sending || busy)
   const canSend = target.parentEmail.trim() !== '' && !sending && !busy
 
@@ -201,11 +211,11 @@ export function TrialInvitePanel({
       <div className="mt-3 flex items-center gap-2 rounded-xl bg-slate-50 py-1.5 pr-1.5 pl-3 ring-1 ring-slate-200 ring-inset dark:bg-slate-900/60 dark:ring-white/10">
         <Link2 size={14} className="shrink-0 text-slate-400" aria-hidden />
         <span className="min-w-0 flex-1 truncate font-mono text-xs text-slate-700 dark:text-slate-200">
-          {url.replace(/^https?:\/\//, '')}
+          Copy an invitation for this trial
         </span>
         <button
           type="button"
-          onClick={() => void copy(url)}
+          onClick={() => void copy()}
           className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-xs ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-white/10 dark:text-slate-100 dark:ring-white/10 dark:hover:bg-white/15"
         >
           {copied ? (
@@ -249,7 +259,7 @@ export function TrialInviteInline({
   studentName: string
 }) {
   const { busy, send } = useInviteSender(target, onSend)
-  const { copied, copy } = useCopy()
+  const { copied, copy } = useCopy(target)
   const state = inviteState(target, busy)
   const canSend = target.parentEmail.trim() !== '' && !busy
 
@@ -264,7 +274,7 @@ export function TrialInviteInline({
       </span>
       <button
         type="button"
-        onClick={() => void copy(familyJoinUrl(target.roomCode))}
+        onClick={() => void copy()}
         aria-label={`Copy ${studentName}’s class link`}
         className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
       >

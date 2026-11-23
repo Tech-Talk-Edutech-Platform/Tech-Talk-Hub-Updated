@@ -1,5 +1,4 @@
-import React, { lazy, Suspense, useEffect } from 'react'
-import type { ReactNode } from 'react'
+import React, { lazy, Suspense, useEffect, useSyncExternalStore } from 'react'
 import {
   BrowserRouter,
   Routes,
@@ -8,6 +7,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './supabase'
@@ -28,13 +28,17 @@ import {
 import Login from './auth/login'
 import ResetPasswordPage from './auth/ResetPasswordPage'
 import RoleGate from './auth/RoleGate'
+import {
+  DashboardSessionSync,
+  DashboardSignOutSync,
+} from './auth/DashboardSessionSync'
+import { DashboardFrame } from './dashboards/DashboardFrame'
+import { dashboardView } from './dashboards/navigation'
 
-import FullCalendarView from './features/schedule/Calendar'
 import StudentDashboard from './features/assessments/results/parentResult'
 import AdminEntryForm from './features/assessments/results/AdminUpload'
 import UserManagement from './features/accounts/UserManagement'
 
-import UnifiedDashboard from './dashboards/UnifiedDashboard'
 import './index.css'
 import AdminDashboard from './dashboards/views/sendReceipt'
 import LandingOrDashboard from './LandingOrDashboard'
@@ -76,6 +80,9 @@ const ClassroomRoutes = lazy(() =>
 )
 
 const SalesPreviewPage = lazy(() => import('./features/sales/SalesPreviewPage'))
+const FullCalendarView = lazy(() => import('./features/schedule/Calendar'))
+const UnifiedDashboard = lazy(() => import('./dashboards/UnifiedDashboard'))
+const STUDENT_ROLES = ['student'] as const
 const RecordingSharePage = lazy(() => import('./pages/RecordingSharePage'))
 
 /** Scrolls to `/#section` targets on the landing page; must render inside the router. */
@@ -143,22 +150,27 @@ function HomeRoute({ user, loading }: { user: User | null; loading: boolean }) {
   return <HomePage />
 }
 
-/** Renders `children` once a saved session (if any) has been restored. */
-function AfterSessionCheck({
-  loading,
-  children,
-}: {
-  loading: boolean
-  children: ReactNode
-}) {
-  return loading ? <SessionSpinner /> : children
-}
-
 /**
  * `/:role` matches every one-segment URL, so without this check a public link
  * like `/blog` would land on the role gate's "access denied" screen.
  */
-function RoleDashboardRoute() {
+const subscribeToHydration = () => () => {}
+
+function RoleDashboardRoute({
+  dashboardRole,
+  userId,
+  sessionLoading,
+}: {
+  dashboardRole?: AppRole
+  userId?: string
+  sessionLoading: boolean
+}) {
+  const mounted = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  )
+  const [params] = useSearchParams()
   const { role } = useParams()
 
   if (!isAppRole(role)) {
@@ -169,10 +181,37 @@ function RoleDashboardRoute() {
     )
   }
 
+  const loading =
+    dashboardRole === role ? (
+      <DashboardFrame
+        role={role}
+        activeView={dashboardView(role, params.get('view'))}
+      >
+        <SessionSpinner />
+      </DashboardFrame>
+    ) : undefined
+
+  const accessCheck = loading ?? (
+    <output className="flex min-h-screen items-center justify-center">
+      Verifying Access…
+    </output>
+  )
+
   return (
-    <RoleGate allowedRoles={APP_ROLES}>
-      <UnifiedDashboard />
-    </RoleGate>
+    <>
+      <DashboardSessionSync />
+      {mounted ? (
+        <Suspense fallback={accessCheck}>
+          <UnifiedDashboard
+            userId={userId}
+            sessionLoading={sessionLoading}
+            loadingView={accessCheck}
+          />
+        </Suspense>
+      ) : (
+        accessCheck
+      )}
+    </>
   )
 }
 
@@ -186,15 +225,16 @@ function BookClassRedirect() {
 import MyHomework from './features/assessments/assignment/MyHomework'
 import StudentAssignments from './features/assessments/assignment/StudentAssignments'
 
-function DashboardApp() {
+function DashboardApp({ dashboardRole }: { dashboardRole?: AppRole }) {
   // Public pages render immediately; only routes that need the user wait for
   // the saved session, and only when there is one.
   const { user, loading } = useAuthUser()
   const allRoles: readonly AppRole[] = APP_ROLES
 
   return (
-    <BrowserRouter>
+    <>
       <AuthRedirectErrorHandler />
+      <DashboardSignOutSync />
       <PasswordRecoveryRedirect />
       <ScrollToHash />
       <Routes>
@@ -295,20 +335,29 @@ function DashboardApp() {
         <Route
           path="/assign-homework"
           element={
-            <AfterSessionCheck loading={loading}>
+            <RoleGate allowedRoles={TUTOR_ADMIN_ROLES}>
               <StudentAssignments user={user} />
-            </AfterSessionCheck>
+            </RoleGate>
           }
         />
         {/* Public Routes */}
         <Route path="/results/:slug" element={<StudentDashboard />} />
-        <Route path="/:role" element={<RoleDashboardRoute />} />
+        <Route
+          path="/:role"
+          element={
+            <RoleDashboardRoute
+              dashboardRole={dashboardRole}
+              userId={user?.id}
+              sessionLoading={loading}
+            />
+          }
+        />
         <Route
           path="/receive-homework"
           element={
-            <AfterSessionCheck loading={loading}>
+            <RoleGate allowedRoles={STUDENT_ROLES}>
               <MyHomework studentId={user?.id} />
-            </AfterSessionCheck>
+            </RoleGate>
           }
         />
         <Route
@@ -323,7 +372,9 @@ function DashboardApp() {
           path="/calendar"
           element={
             <RoleGate allowedRoles={allRoles}>
-              <FullCalendarView />
+              <Suspense fallback={<SessionSpinner />}>
+                <FullCalendarView />
+              </Suspense>
             </RoleGate>
           }
         />
@@ -344,7 +395,7 @@ function DashboardApp() {
           }
         />
       </Routes>
-    </BrowserRouter>
+    </>
   )
 }
 
@@ -373,10 +424,22 @@ function SupabaseConfigurationError() {
   )
 }
 
-export default function App() {
+export default function App({
+  serverRouter = false,
+  dashboardRole,
+}: {
+  serverRouter?: boolean
+  dashboardRole?: AppRole
+}) {
+  const app = isSupabaseConfigured ? (
+    <DashboardApp dashboardRole={dashboardRole} />
+  ) : (
+    <SupabaseConfigurationError />
+  )
+
   return (
     <ErrorBoundary>
-      {isSupabaseConfigured ? <DashboardApp /> : <SupabaseConfigurationError />}
+      {serverRouter ? app : <BrowserRouter>{app}</BrowserRouter>}
     </ErrorBoundary>
   )
 }

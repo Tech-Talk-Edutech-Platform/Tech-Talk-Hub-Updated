@@ -9,7 +9,8 @@ import { supabase } from '../../supabase'
 import { queryKeys } from '../../lib/queryClient'
 import { useNow } from '../../hooks/useNow'
 import type { Tables, TablesUpdate } from '../../types/database'
-import { useNavigate } from 'react-router-dom'
+import { Modal } from '../../components/ui/Modal'
+import { InsightsError, InsightsStale } from '../insights/InsightsError'
 import {
   ArrowLeft,
   CalendarDays,
@@ -27,11 +28,10 @@ import {
   AlertTriangle,
   ExternalLink,
   Trash2,
-  X,
 } from 'lucide-react'
 import { toast, Toaster } from 'react-hot-toast'
 import '../../../src/fullcalendar.css'
-import type { ReactNode, MouseEvent } from 'react'
+import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { isAdminRole } from '../../types/roles'
@@ -101,7 +101,6 @@ const isFreeSlot = (event: CalendarEvent | null | undefined): boolean =>
   !event?.class_id &&
   event?.booking_status !== 'cancelled'
 const isAdmin = isAdminRole
-const startTimeOf = (e: CalendarEvent) => new Date(e.start_time).getTime()
 /** Deleted slots that old trial bookings still point at are kept, cancelled. */
 const isArchived = (event: CalendarEvent) =>
   event.booking_status === 'cancelled'
@@ -246,7 +245,9 @@ async function loadResources(
  * Loads what the schedule shows; `null` when nobody is signed in. Admins get
  * every tutor's calendar; tutors and students only get their own.
  */
-async function loadSchedule(): Promise<ScheduleSnapshot | null> {
+async function loadSchedule(
+  leadId?: string | null,
+): Promise<ScheduleSnapshot | null> {
   try {
     const { data: authData, error: authError } = await supabase.auth.getUser()
     if (authError) throw authError
@@ -320,10 +321,12 @@ async function loadSchedule(): Promise<ScheduleSnapshot | null> {
 
     let leads: Lead[] = []
     if (admin) {
-      const { data: leadRows, error: leadsError } = await supabase
+      const leadsQuery = supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false })
+      if (leadId) leadsQuery.eq('id', leadId)
+      const { data: leadRows, error: leadsError } = await leadsQuery
       if (leadsError) throw leadsError
       leads = leadRows
     }
@@ -372,44 +375,15 @@ function Panel({ title, icon: Icon, children, action }: PanelProps) {
   )
 }
 
-interface ModalProps {
-  title: string
-  onClose: () => void
-  children: ReactNode
-}
-
-function Modal({ title, onClose, children }: ModalProps) {
-  return (
-    // `presentation`: the backdrop only catches clicks outside the dialog.
-    <div
-      role="presentation"
-      className="fixed inset-0 z-1000 flex items-center justify-center bg-slate-950/60 p-4"
-      onMouseDown={(e: MouseEvent<HTMLDivElement>) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-black text-slate-900 dark:text-white">
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-export default function GlobalScheduleView() {
-  const navigate = useNavigate()
+export default function GlobalScheduleView({
+  onBack,
+  leadId,
+  onClearLead,
+}: {
+  onBack: () => void
+  leadId?: string | null
+  onClearLead: () => void
+}) {
   const now = useNow(60_000)
   const [saving, setSaving] = useState(false)
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
@@ -431,8 +405,8 @@ export default function GlobalScheduleView() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const scheduleQuery = useQuery({
-    queryKey: queryKeys.schedule.global,
-    queryFn: loadSchedule,
+    queryKey: [...queryKeys.schedule.global, leadId ?? null],
+    queryFn: () => loadSchedule(leadId),
     // Per-user data under a fixed key: always reload on mount, never reuse it
     // after the view closes (e.g. for the next person who signs in).
     staleTime: 0,
@@ -444,6 +418,13 @@ export default function GlobalScheduleView() {
   const snapshot = scheduleQuery.data ?? null
   const authUser = snapshot?.authUser ?? null
   const profile = snapshot?.profile ?? null
+
+  const hasSchedule = snapshot !== null
+  useEffect(() => {
+    if (leadId && hasSchedule)
+      document.getElementById('dashboard-trial-queue')?.scrollIntoView()
+  }, [leadId, hasSchedule])
+
   const users = snapshot?.users ?? NO_USERS
   const leads = snapshot?.leads ?? NO_LEADS
   const calendarEvents = snapshot?.calendarEvents ?? NO_EVENTS
@@ -742,62 +723,10 @@ export default function GlobalScheduleView() {
 
   const assignTrial = (lead: Lead) =>
     runAction(async () => {
-      // Pick the earliest future free slot. The slot is converted into a trial event,
-      // so it cannot be offered to a second learner at the same time.
-      const currentTime = Date.now()
-      let candidates = calendarEvents
-        .filter((e) => isFreeSlot(e) && startTimeOf(e) > currentTime)
-        .toSorted((a, b) => startTimeOf(a) - startTimeOf(b))
-      // If the parent selected a specific time, only use a slot at that time.
-      // Do not silently move the trial to a different time when the requested slot is unavailable.
-      if (lead.class_date && lead.class_time) {
-        const wantedDate = lead.class_date.slice(0, 10)
-        const wantedTime = lead.class_time.slice(0, 5)
-        candidates = candidates.filter((e) => {
-          const local = new Date(e.start_time)
-          const date = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`
-          const time = `${String(local.getHours()).padStart(2, '0')}:${String(local.getMinutes()).padStart(2, '0')}`
-          return date === wantedDate && time === wantedTime
-        })
-      }
-      const chosen = candidates[0]
-      if (!chosen)
-        throw new Error(
-          'No tutor slot is available at the requested trial time. The trial remains unassigned at the top of the queue.',
-        )
-      const studentName = lead.student_name || 'Trial student'
-      const { error: eventError } = await supabase
-        .from('calendar_events')
-        .update({
-          title: `Trial: ${studentName}`,
-          class_type: 'trial',
-          booking_status: 'confirmed',
-          session_status: 'scheduled',
-          meet_link: lead.personal_meet_link || null,
-        })
-        .eq('id', chosen.id)
-        .eq('title', 'Free Slot')
-      if (eventError) throw eventError
-      const start = new Date(chosen.start_time)
-      const { error: leadError } = await supabase
-        .from('leads')
-        .update({
-          assigned_tutor_id: chosen.tutor_id,
-          class_date: start.toISOString().slice(0, 10),
-          class_time: start.toISOString().slice(11, 16),
-        })
-        .eq('id', lead.id)
-        .is('assigned_tutor_id', null)
-      if (leadError) throw leadError
-      if (lead.student_user_id) {
-        const { error: attendanceError } = await supabase
-          .from('event_attendance')
-          .upsert(
-            { event_id: chosen.id, student_id: lead.student_user_id },
-            { onConflict: 'event_id,student_id' },
-          )
-        if (attendanceError) throw attendanceError
-      }
+      const { error } = await supabase.rpc('assign_dashboard_trial', {
+        p_lead: lead.id,
+      })
+      if (error) throw error
       // The booking gets its classroom; email the family the link.
       sendWaitingInvites()
     }, 'Trial assigned to the earliest available tutor slot.')
@@ -1033,6 +962,19 @@ export default function GlobalScheduleView() {
   const selectedTutor = selectedEvent ? findUser(selectedEvent.tutor_id) : null
   const studentMeetLink = student ? profile?.personal_meet_link : null
 
+  if (scheduleQuery.isError && !snapshot)
+    return (
+      <div className="space-y-3 p-4">
+        <button type="button" onClick={onBack}>
+          Back to dashboard
+        </button>
+        <InsightsError
+          title="Schedule could not be loaded"
+          onRetry={() => void reload()}
+        />
+      </div>
+    )
+
   if (loading)
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm font-semibold text-slate-500">
@@ -1043,10 +985,13 @@ export default function GlobalScheduleView() {
   return (
     <div className="space-y-5 p-3 md:p-6">
       <Toaster position="top-right" />
+      {scheduleQuery.isError && snapshot && (
+        <InsightsStale onRetry={() => void reload()} />
+      )}
       <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="flex items-start gap-3">
           <button
-            onClick={() => void navigate(-1)}
+            onClick={onBack}
             className="mt-1 rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
             aria-label="Go back"
           >
@@ -1267,47 +1212,65 @@ export default function GlobalScheduleView() {
               title={`Unassigned trial queue (${unassignedLeads.length})`}
               icon={AlertTriangle}
             >
-              <p className="mb-3 text-xs text-slate-500">
+              <p
+                id="dashboard-trial-queue"
+                className="mb-3 text-xs text-slate-500"
+              >
                 No available slot? These trials stay unassigned until a tutor
                 slot is available.
               </p>
-              {unassignedLeads.length === 0 ? (
+              {leadId && (
+                <button
+                  type="button"
+                  onClick={onClearLead}
+                  className="mb-2 text-sm font-semibold underline"
+                >
+                  Show all unassigned trials
+                </button>
+              )}
+              {!unassignedLeads.some(
+                (lead) => !leadId || lead.id === leadId,
+              ) ? (
                 <p className="text-sm text-slate-500">
-                  No unassigned trial leads.
+                  {leadId
+                    ? 'This trial is no longer in the unassigned queue.'
+                    : 'No unassigned trial leads.'}
                 </p>
               ) : (
                 <div className="max-h-[360px] space-y-2 overflow-y-auto">
-                  {unassignedLeads.map((lead) => (
-                    <div
-                      key={lead.id}
-                      className="rounded-xl border border-slate-200 p-3 dark:border-white/10"
-                    >
-                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">
-                        {lead.student_name || 'Trial student'}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {lead.parent_name ||
-                          lead.email ||
-                          lead.phone ||
-                          'No parent contact'}
-                      </p>
-                      <button
-                        disabled={
-                          saving ||
-                          !calendarEvents.some(
-                            (e) =>
-                              isFreeSlot(e) &&
-                              new Date(e.start_time).getTime() > now,
-                          )
-                        }
-                        onClick={() => void assignTrial(lead)}
-                        className="mt-3 w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  {unassignedLeads
+                    .filter((lead) => !leadId || lead.id === leadId)
+                    .map((lead) => (
+                      <div
+                        key={lead.id}
+                        className="rounded-xl border border-slate-200 p-3 dark:border-white/10"
                       >
-                        <UserRoundCheck size={13} className="mr-1 inline" />{' '}
-                        Auto-assign next available slot
-                      </button>
-                    </div>
-                  ))}
+                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">
+                          {lead.student_name || 'Trial student'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {lead.parent_name ||
+                            lead.email ||
+                            lead.phone ||
+                            'No parent contact'}
+                        </p>
+                        <button
+                          disabled={
+                            saving ||
+                            !calendarEvents.some(
+                              (e) =>
+                                isFreeSlot(e) &&
+                                new Date(e.start_time).getTime() > now,
+                            )
+                          }
+                          onClick={() => void assignTrial(lead)}
+                          className="mt-3 w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <UserRoundCheck size={13} className="mr-1 inline" />{' '}
+                          Auto-assign next available slot
+                        </button>
+                      </div>
+                    ))}
                 </div>
               )}
             </Panel>
@@ -1375,6 +1338,8 @@ export default function GlobalScheduleView() {
 
       {selectedEvent && (
         <Modal
+          size="wide"
+          closeLabel="Close schedule dialog"
           title={selectedEvent.title || 'Class details'}
           onClose={() => setSelectedEvent(null)}
         >
@@ -1737,6 +1702,8 @@ export default function GlobalScheduleView() {
 
       {showAvailability && (
         <Modal
+          size="wide"
+          closeLabel="Close schedule dialog"
           title="Create tutor availability"
           onClose={() => setShowAvailability(false)}
         >
@@ -1775,6 +1742,8 @@ export default function GlobalScheduleView() {
 
       {showMeetingLink && (
         <Modal
+          size="wide"
+          closeLabel="Close schedule dialog"
           title="Set permanent student Meet link"
           onClose={() => setShowMeetingLink(false)}
         >
@@ -1813,6 +1782,8 @@ export default function GlobalScheduleView() {
 
       {showMerge && (
         <Modal
+          size="wide"
+          closeLabel="Close schedule dialog"
           title="Merge student into class"
           onClose={() => setShowMerge(false)}
         >

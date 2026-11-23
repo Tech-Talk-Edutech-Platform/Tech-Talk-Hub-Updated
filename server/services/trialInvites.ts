@@ -1,3 +1,4 @@
+import { guestJoinPath } from './classroomGuest'
 import { supabase } from '../supabase'
 import {
   trialCalendarFile,
@@ -32,9 +33,20 @@ export function siteUrl(): string {
   ).replace(/\/+$/, '')
 }
 
-/** Families join as guests from this link: no sign-in. */
-export const publicJoinUrl = (roomCode: string) =>
-  `${siteUrl()}/classroom/${encodeURIComponent(roomCode)}?join=1`
+function publicJoinUrl(invite: TrialInvite) {
+  const expiresAt = Math.max(
+    invite.end.getTime(),
+    invite.start.getTime() + 60 * 60_000,
+  )
+  return siteUrl() + guestJoinPath(invite.roomCode, expiresAt)
+}
+
+export async function trialGuestLink(booking: BookingRow) {
+  const invite = await loadTrialInvite(booking)
+  if (invite.end.getTime() <= Date.now())
+    throw new TrialInviteError('This trial has already finished.', 409)
+  return publicJoinUrl(invite)
+}
 
 /** Tutors open the room without ?join=1 to host it (after signing in). */
 const hostUrl = (roomCode: string) =>
@@ -251,7 +263,7 @@ export async function sendTrialInvite(
     tutorName: invite.tutor.name,
     start: invite.start,
     end: invite.end,
-    joinUrl: publicJoinUrl(invite.roomCode),
+    joinUrl: publicJoinUrl(invite),
     roomCode: invite.roomCode,
   }
   const calendar = (url: string, title: string) => ({

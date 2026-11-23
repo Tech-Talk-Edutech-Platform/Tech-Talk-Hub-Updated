@@ -1,139 +1,129 @@
-'use client'
-
-import React, { useState } from 'react'
-import type { ReactNode } from 'react'
+import { lazy, Suspense } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { DashboardFrame } from './DashboardFrame'
+import { DashboardViewBoundary } from './DashboardViewBoundary'
+import {
+  dashboardView,
+  dashboardViewUrl,
+  type DashboardNavigation,
+} from './navigation'
+import { Toaster } from 'react-hot-toast'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
-import type { AppRole } from '../types/roles'
-import { isAdminRole, roleLabel } from '../types/roles'
+import { isAdminRole } from '../types/roles'
+import { isSalesView } from '../features/sales/navigation'
+import { notifyDashboardTutor } from './notifyDashboardTutor'
 
-import {
-  BookOpen,
-  Activity,
-  Calendar,
-  CalendarHeart,
-  ChevronLeft,
-  ChevronRight,
-  CreditCard,
-  GraduationCap,
-  Layers,
-  Layers3,
-  LayoutDashboard,
-  MessageSquareQuote,
-  Newspaper,
-  Presentation,
-  Settings,
-  ShoppingBag,
-  TrendingUp,
-  Users,
-  Users2,
-  Video,
-} from 'lucide-react'
-import AdminPricingPage from './views/admin/AdminPricingPage'
-// Shared Views
-import GlobalScheduleView from './views/GlobalScheduleView'
-import ClassRecordingsManager from './views/ClassRecordingsManager'
+const AdminPricingPage = lazy(() => import('./views/admin/AdminPricingPage'))
+const GlobalScheduleView = lazy(() => import('./views/GlobalScheduleView'))
+const ClassRecordingsManager = lazy(
+  () => import('./views/ClassRecordingsManager'),
+)
+const StudentCoursesView = lazy(
+  () => import('./views/student/StudentCoursesView'),
+)
+const StudentSettingsView = lazy(
+  () => import('./views/student/StudentSettingsView'),
+)
+const StudentHomeView = lazy(() => import('./views/student/StudentHomeView'))
+const StudentClassroomView = lazy(
+  () => import('./views/student/StudentClassroomView'),
+)
+const TutorHomeView = lazy(() => import('./views/tutor/TutorHomeView'))
+const TutorStudentsView = lazy(() => import('./views/tutor/TutorStudentsView'))
+const TutorCourseAssignmentView = lazy(
+  () => import('./views/tutor/TutorCourseAssignmentView'),
+)
+const TutorClassroomsView = lazy(
+  () => import('./views/tutor/TutorClassroomsView'),
+)
+const TutorTrialBookingsView = lazy(
+  () => import('./views/tutor/TutorTrialBookingsView'),
+)
+const TutorTrainingView = lazy(() => import('./views/tutor/TutorTrainingView'))
+const AdminHomeView = lazy(() => import('./views/admin/AdminHomeView'))
+const AdminUsersView = lazy(() => import('./views/admin/AdminUsersView'))
+const AdminCoursesView = lazy(() => import('./views/admin/AdminCoursesView'))
+const LiveClassMonitor = lazy(() => import('./views/admin/LiveClassMonitor'))
+const ClassroomManager = lazy(
+  () => import('./views/admin/classroom/ClassroomManager'),
+)
+const AdminSettingsView = lazy(() => import('./views/admin/AdminSettingsView'))
+const LeadsPage = lazy(() => import('./views/admin/LeadsPage'))
+const AdminShopPage = lazy(() => import('./views/admin/AdminShopPage'))
+const AdminBlogPage = lazy(() => import('./views/admin/AdminBlogPage'))
+const AdminTestimonialsPage = lazy(
+  () => import('./views/admin/AdminTestimonialsPage'),
+)
+const AdminTrainingView = lazy(() => import('./views/admin/AdminTrainingView'))
 
-// Student Views
-import StudentCoursesView from './views/student/StudentCoursesView'
-import StudentSettingsView from './views/student/StudentSettingsView'
-import StudentHomeView from './views/student/StudentHomeView'
-import StudentClassroomView from './views/student/StudentClassroomView'
+const AdminSalesView = lazy(() =>
+  import('../features/sales/SalesDashboardViews').then((module) => ({
+    default: module.AdminSalesView,
+  })),
+)
+const SalesPortalView = lazy(() =>
+  import('../features/sales/SalesDashboardViews').then((module) => ({
+    default: module.SalesPortalView,
+  })),
+)
 
-// Tutor Views
-import TutorHomeView from './views/tutor/TutorHomeView'
-import TutorStudentsView from './views/tutor/TutorStudentsView'
-import TutorCourseAssignmentView from './views/tutor/TutorCourseAssignmentView'
-import TutorClassroomsView from './views/tutor/TutorClassroomsView'
-import TutorTrialBookingsView from './views/tutor/TutorTrialBookingsView'
-import TutorTrainingView from './views/tutor/TutorTrainingView'
-
-// Sales & trials (src/features/sales)
-import {
-  AdminSalesView,
-  SalesPortalView,
-} from '../features/sales/SalesDashboardViews'
-import { isSalesView, SALES_NAV } from '../features/sales/navigation'
-import { SidebarButton, SidebarGroup } from './Sidebar'
-
-// Admin Views
-import AdminHomeView from './views/admin/AdminHomeView'
-import AdminUsersView from './views/admin/AdminUsersView'
-import AdminCoursesView from './views/admin/AdminCoursesView'
-import LiveClassMonitor from './views/admin/LiveClassMonitor'
-import ClassroomManager from './views/admin/classroom/ClassroomManager'
-import AdminSettingsView from './views/admin/AdminSettingsView'
-// import AdminProgramsPage from "./views/admin/AdminProgramsPage";
-import LeadsPage from './views/admin/LeadsPage'
-import AdminShopPage from './views/admin/AdminShopPage'
-import AdminBlogPage from './views/admin/AdminBlogPage'
-import AdminTestimonialsPage from './views/admin/AdminTestimonialsPage'
-import AdminTrainingView from './views/admin/AdminTrainingView'
-
-interface DashboardLayoutProps {
-  role: AppRole
-  user: DashboardIdentity | null
-  children?: ReactNode
-}
-
-export default function DashboardLayout({
-  role,
-  user,
-  children,
-}: DashboardLayoutProps) {
-  const [activeView, setActiveView] = useState('dashboard')
-
-  const [isCollapsed, setIsCollapsed] = useState(false)
-
-  const isAdmin = isAdminRole(role)
-
-  if (!user) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center bg-gray-900 font-sans text-white">
-        <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
-
-        <p className="text-xs font-bold tracking-widest text-gray-400 uppercase">
-          Signing out...
-        </p>
-      </div>
-    )
+export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
+  const { role } = user
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const activeView = dashboardView(role, params.get('view'))
+  const setActiveView: DashboardNavigation = (view, options) => {
+    void navigate(dashboardViewUrl(role, dashboardView(role, view), options))
   }
-
-  // `renderMainContent` is hoisted, so it can't see the null check above.
-  const currentUser = user
+  const isAdmin = isAdminRole(role)
   const openRecordings = () => setActiveView('recordings')
 
   function renderMainContent() {
     // Role-specific settings
     if (activeView === 'settings') {
       if (isAdmin) {
-        return <AdminSettingsView user={currentUser} />
+        return <AdminSettingsView user={user} />
       }
 
-      return <StudentSettingsView user={currentUser} />
+      return <StudentSettingsView user={user} />
     }
 
     // Shared recordings manager
     if (activeView === 'recordings') {
-      return <ClassRecordingsManager userId={currentUser.id} role={role} />
+      return <ClassRecordingsManager userId={user.id} role={role} />
     }
 
     // Student views
     if (role === 'student') {
       switch (activeView) {
         case 'courses':
-          return <StudentCoursesView userId={currentUser.id} />
+          return (
+            <StudentCoursesView
+              key={`${params.get('course')}/${params.get('lesson')}`}
+              userId={user.id}
+              requestedCourseId={params.get('course')}
+              requestedLessonId={params.get('lesson')}
+            />
+          )
 
         case 'schedule':
-          return <GlobalScheduleView />
+          return (
+            <GlobalScheduleView
+              onBack={() => setActiveView('dashboard')}
+              leadId={params.get('lead')}
+              onClearLead={() => setActiveView(activeView)}
+            />
+          )
 
         case 'classroom':
-          return <StudentClassroomView userId={currentUser.id} />
+          return <StudentClassroomView userId={user.id} />
 
         case 'dashboard':
         default:
           return (
             <StudentHomeView
-              userId={currentUser.id}
+              userId={user.id}
+              onNavigate={setActiveView}
               onOpenRecordings={openRecordings}
             />
           )
@@ -144,29 +134,36 @@ export default function DashboardLayout({
     if (role === 'tutor') {
       switch (activeView) {
         case 'students':
-          return <TutorStudentsView userId={currentUser.id} />
+          return <TutorStudentsView userId={user.id} />
 
         case 'schedule':
-          return <GlobalScheduleView />
+          return (
+            <GlobalScheduleView
+              onBack={() => setActiveView('dashboard')}
+              leadId={params.get('lead')}
+              onClearLead={() => setActiveView(activeView)}
+            />
+          )
 
         case 'course-assignment':
-          return <TutorCourseAssignmentView userId={currentUser.id} />
+          return <TutorCourseAssignmentView userId={user.id} />
 
         case 'classrooms':
-          return <TutorClassroomsView userId={currentUser.id} />
+          return <TutorClassroomsView userId={user.id} />
 
         case 'trials':
-          return <TutorTrialBookingsView userId={currentUser.id} />
+          return <TutorTrialBookingsView userId={user.id} />
 
         case 'training':
-          return <TutorTrainingView userId={currentUser.id} />
+          return <TutorTrainingView userId={user.id} />
 
         case 'dashboard':
         default:
           return (
             <TutorHomeView
-              userId={currentUser.id}
-              user={currentUser}
+              userId={user.id}
+              user={user}
+              onNavigate={setActiveView}
               onOpenRecordings={openRecordings}
             />
           )
@@ -177,8 +174,8 @@ export default function DashboardLayout({
     if (role === 'marketer') {
       return (
         <SalesPortalView
-          userId={currentUser.id}
-          name={currentUser.full_name || ''}
+          userId={user.id}
+          name={user.full_name || ''}
           view={isSalesView(activeView) ? activeView : 'dashboard'}
           onNavigate={setActiveView}
         />
@@ -191,39 +188,44 @@ export default function DashboardLayout({
         case 'users':
           return <AdminUsersView />
 
-        // case "programs":
-        //   return <AdminProgramsPage />;
-
         case 'Leads':
           return <LeadsPage />
 
         case 'courses-hub':
           return <AdminCoursesView />
 
-        // case "analytics":
-        //   return (
-        //     <AdminAnalyticsView
-        //       userId={user.id}
-        //       role={role}
-        //     />
-        //   );
         case 'Live Class Monitor':
-          return <LiveClassMonitor />
+          return <LiveClassMonitor notifyTutor={notifyDashboardTutor} />
 
         case 'classroom':
           return <ClassroomManager />
 
         case 'global-schedule':
-          return <GlobalScheduleView />
+          return (
+            <GlobalScheduleView
+              onBack={() => setActiveView('dashboard')}
+              leadId={params.get('lead')}
+              onClearLead={() => setActiveView(activeView)}
+            />
+          )
 
         case 'shop':
           return <AdminShopPage />
 
         case 'blog':
-          return <AdminBlogPage userId={currentUser.id} role={role} />
+          return <AdminBlogPage userId={user.id} role={role} />
 
         case 'sales':
-          return <AdminSalesView />
+          return (
+            <AdminSalesView
+              key={params.get('booking') ?? params.get('section') ?? 'all'}
+              bookingId={params.get('booking')}
+              showBookings={params.get('section') === 'bookings'}
+              onClearBooking={() =>
+                setActiveView('sales', { section: 'bookings' })
+              }
+            />
+          )
 
         case 'testimonials':
           return <AdminTestimonialsPage />
@@ -235,341 +237,35 @@ export default function DashboardLayout({
         default:
           return (
             <AdminHomeView
-              userId={currentUser.id}
+              userId={user.id}
+              onNavigate={setActiveView}
               onOpenRecordings={openRecordings}
             />
           )
       }
     }
 
-    return <div className="p-6">{children}</div>
+    return null
   }
 
   return (
-    <div className="flex min-h-screen bg-dashboard-canvas text-gray-900 transition-colors duration-300 dark:bg-dashboard-night dark:text-white">
-      {/* Sidebar */}
-      <aside
-        className={`relative flex min-h-screen shrink-0 flex-col border-r border-gray-100 bg-white p-5 transition-all duration-300 dark:border-white/10 dark:bg-white/5 ${
-          isCollapsed ? 'w-20' : 'w-64'
-        }`}
-      >
-        {/* Collapse button */}
-        <button
-          type="button"
-          onClick={() => setIsCollapsed((current) => !current)}
-          className="absolute top-7 -right-3 z-10 rounded-full bg-purple-600 p-1 text-white shadow-md transition hover:bg-purple-700"
-          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+    <DashboardFrame role={role} activeView={activeView} pending={false}>
+      {activeView !== 'sales' &&
+        activeView !== 'global-schedule' &&
+        activeView !== 'schedule' &&
+        role !== 'marketer' && <Toaster position="top-right" />}
+      {role === 'marketer' && activeView === 'settings' && (
+        <Toaster position="top-right" />
+      )}
+      <DashboardViewBoundary key={activeView}>
+        <Suspense
+          fallback={
+            <output className="block p-6">Loading dashboard view…</output>
+          }
         >
-          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
-
-        {/* Sidebar heading */}
-        {!isCollapsed && (
-          <div className="mb-6 overflow-hidden px-2">
-            <h1 className="bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-xl font-black tracking-tight whitespace-nowrap text-transparent">
-              Tech Talk Hub
-            </h1>
-
-            <div className="mt-0.5 text-xs font-medium whitespace-nowrap text-gray-400 capitalize">
-              {roleLabel(role)} Portal 🚀
-            </div>
-          </div>
-        )}
-
-        {/* Sidebar navigation */}
-        <nav className="flex-1 space-y-6 overflow-x-hidden overflow-y-auto">
-          {/* Overview */}
-          <SidebarGroup title="Overview" isCollapsed={isCollapsed}>
-            <SidebarButton
-              icon={LayoutDashboard}
-              label="Dashboard"
-              view="dashboard"
-              activeView={activeView}
-              setActiveView={setActiveView}
-              isCollapsed={isCollapsed}
-            />
-          </SidebarGroup>
-
-          {/* Student navigation */}
-          {role === 'student' && (
-            <SidebarGroup title="Learning" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={Presentation}
-                label="My Classroom"
-                view="classroom"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={BookOpen}
-                label="My Courses"
-                view="courses"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={Calendar}
-                label="Schedule"
-                view="schedule"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={Video}
-                label="My Recordings"
-                view="recordings"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* Tutor navigation */}
-          {role === 'tutor' && (
-            <SidebarGroup title="Teaching" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={Presentation}
-                label="My Classrooms"
-                view="classrooms"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Users}
-                label="My Students"
-                view="students"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Calendar}
-                label="My Schedule"
-                view="schedule"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={CalendarHeart}
-                label="Trial Bookings"
-                view="trials"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Layers}
-                label="Course Assignment"
-                view="course-assignment"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Video}
-                label="Class Recordings"
-                view="recordings"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {role === 'tutor' && (
-            <SidebarGroup title="Growth" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={GraduationCap}
-                label="Training"
-                view="training"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* Marketer (sales team) navigation */}
-          {role === 'marketer' && (
-            <SidebarGroup title="Sales" isCollapsed={isCollapsed}>
-              {SALES_NAV.map((item) => (
-                <SidebarButton
-                  key={item.id}
-                  icon={item.icon}
-                  label={item.label}
-                  view={item.id}
-                  activeView={activeView}
-                  setActiveView={setActiveView}
-                  isCollapsed={isCollapsed}
-                />
-              ))}
-            </SidebarGroup>
-          )}
-
-          {/* Sales oversight */}
-          {isAdmin && (
-            <SidebarGroup title="Sales" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={TrendingUp}
-                label="Sales & Trials"
-                view="sales"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* E-commerce */}
-          {isAdmin && (
-            <SidebarGroup title="E-Commerce" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={ShoppingBag}
-                label="Shop Management"
-                view="shop"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* Website */}
-          {isAdmin && (
-            <SidebarGroup title="Website" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={Newspaper}
-                label="Blog Management"
-                view="blog"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={CreditCard}
-                label="Pricing Plans"
-                view="pricing"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarButton
-                icon={MessageSquareQuote}
-                label="Testimonials"
-                view="testimonials"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* Admin management */}
-          {isAdmin && (
-            <SidebarGroup title="Management" isCollapsed={isCollapsed}>
-              <SidebarButton
-                icon={Users2}
-                label="Users & Staff"
-                view="users"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Layers3}
-                label="Leads"
-                view="Leads"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={BookOpen}
-                label="Courses Hub"
-                view="courses-hub"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Presentation}
-                label="Classroom"
-                view="classroom"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Activity}
-                label="Live Class Monitor"
-                view="Live Class Monitor"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={GraduationCap}
-                label="Tutor Training"
-                view="training"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Calendar}
-                label="Global Schedule"
-                view="global-schedule"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={Video}
-                label="Recordings Manager"
-                view="recordings"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-            </SidebarGroup>
-          )}
-
-          {/* System */}
-          <SidebarGroup title="System" isCollapsed={isCollapsed}>
-            <SidebarButton
-              icon={Settings}
-              label="Settings"
-              view="settings"
-              activeView={activeView}
-              setActiveView={setActiveView}
-              isCollapsed={isCollapsed}
-            />
-          </SidebarGroup>
-        </nav>
-      </aside>
-
-      {/* Dynamic content */}
-      <main className="min-w-0 flex-1 overflow-y-auto">
-        {renderMainContent()}
-      </main>
-    </div>
+          {renderMainContent()}
+        </Suspense>
+      </DashboardViewBoundary>
+    </DashboardFrame>
   )
 }

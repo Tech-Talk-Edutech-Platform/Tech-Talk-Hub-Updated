@@ -2512,6 +2512,20 @@ export type Database = {
       }
     }
     Functions: {
+      dashboard_sales_metrics: {
+        Args: { p_from: string; p_to: string; p_chart_end: string }
+        Returns: Json
+      }
+      assign_dashboard_trial: { Args: { p_lead: string }; Returns: string }
+      dashboard_admin_metrics: {
+        Args: {
+          p_previous: string
+          p_start: string
+          p_end: string
+          p_buckets: number
+        }
+        Returns: Json
+      }
       book_trial: {
         Args: {
           p_category: string
