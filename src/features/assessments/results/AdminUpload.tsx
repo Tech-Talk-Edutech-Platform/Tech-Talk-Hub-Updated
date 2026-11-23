@@ -144,7 +144,16 @@ const AdminEntryForm = () => {
 
       if (error) throw error
 
-      const link = `${window.location.origin}/results/${data.slug}`
+      const { data: shareToken, error: shareError } = await supabase.rpc(
+        'share_dashboard_report',
+        { p_report: data.id },
+      )
+      if (shareError || !shareToken) {
+        alert('Assessment saved, but a secure share link could not be created.')
+        setFormData(createInitialState())
+        return
+      }
+      const link = `${window.location.origin}/results/${shareToken}`
       alert(
         `✅ Saved Assessment Record!\n\nShareable Report Card Link:\n${link}`,
       )

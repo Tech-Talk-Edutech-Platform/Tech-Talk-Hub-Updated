@@ -1,25 +1,43 @@
 import { useState, useEffect } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { supabase } from '../../supabase' // Verified from your tree structure
+import { supabase } from '../../supabase'
 import type { Tables } from '../../types/database'
 import { apiUrl } from '../../lib/apiUrl'
 import { getErrorMessage } from '../../lib/getErrorMessage'
 
-type Receipt = Tables<'receipts'>
+type Receipt = Pick<
+  Tables<'receipts'>,
+  | 'id'
+  | 'receipt_number'
+  | 'customer_name'
+  | 'transaction_code'
+  | 'payment_method'
+  | 'total_paid'
+  | 'created_at'
+>
 
 interface ReceiptApiResult {
   success?: boolean
   error?: string
 }
 
-async function loadReceipts(): Promise<Receipt[]> {
-  const { data, error } = await supabase
-    .from('receipts')
-    .select('*')
-    .order('created_at', { ascending: false })
+async function receiptHeaders() {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) throw new Error('Sign in to access receipts.')
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  }
+}
 
-  if (error) throw error
-  return data
+async function loadReceipts(): Promise<Receipt[]> {
+  const response = await fetch(apiUrl('/api/send-receipt/api/receipts'), {
+    headers: await receiptHeaders(),
+  })
+  if (!response.ok) throw new Error('Could not load recent receipts.')
+  const result: { receipts: Receipt[] } = await response.json()
+  return result.receipts
 }
 
 export default function AdminDashboard() {
@@ -78,45 +96,26 @@ export default function AdminDashboard() {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  // Process transaction: Update Supabase Secure Vault -> Blast Resend Dispatch Engine
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setStatusMessage({ type: '', text: '' })
 
     try {
-      const amountPaid = Number(formData.amountPaid)
-
-      // 1. Log transaction inside Supabase. The ledger stores the payment
-      // itself; plan, billing cycle, currency and parent email only go in the email.
-      const { error: dbError } = await supabase.from('receipts').insert([
-        {
-          receipt_number: formData.receiptNumber,
-          customer_name: formData.studentName,
-          amount: amountPaid,
-          total_paid: amountPaid,
-          payment_method: formData.gatewayMethod,
-          transaction_code: formData.transactionId,
-        },
-      ])
-
-      if (dbError) throw new Error(`Database Error: ${dbError.message}`)
-
-      // 2. Route payload through to express node app
       const response = await fetch(apiUrl('/api/send-receipt/api/receipts'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await receiptHeaders(),
         body: JSON.stringify(formData),
       })
 
       const apiResult: ReceiptApiResult = await response.json()
-      if (!apiResult.success)
-        throw new Error(apiResult.error || 'Failed to dispatch email matrix.')
+      if (!response.ok || !apiResult.success)
+        throw new Error(apiResult.error || 'Could not send the receipt.')
 
       // Complete execution cycle success cleanup
       setStatusMessage({
         type: 'success',
-        text: `Receipt #${formData.receiptNumber} compiled and locked into ledger!`,
+        text: `Receipt #${formData.receiptNumber} saved and emailed.`,
       })
       setFormData({
         ...formData,

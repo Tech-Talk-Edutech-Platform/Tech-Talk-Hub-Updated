@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { z } from 'zod'
 import type { FormEvent, ReactNode } from 'react'
 import {
   BookOpen,
@@ -53,7 +54,6 @@ interface LessonAssignment {
 interface QuizQuestion {
   id: string
   question_text: string
-  correct_option_index: number
   options: string[]
 }
 
@@ -67,6 +67,7 @@ interface QuizResult {
   score: number
   passed: boolean
   attemptsCount: number
+  nextRetakeAt: string | null
 }
 
 const HOMEWORK_STATUSES = [
@@ -352,52 +353,49 @@ async function loadLessonAssignment(
   }
 }
 
-async function loadLessonQuiz(
-  userId: string,
-  lessonId: string,
-): Promise<LessonQuizState> {
-  try {
-    const { data: quizData, error: qErr } = await supabase
-      .from('quizzes')
-      .select('*, quiz_questions(*)')
-      .eq('lesson_id', lessonId)
-      .maybeSingle()
+const savedQuizResult = z.object({
+  score: z.number(),
+  passed: z.boolean(),
+  attemptsCount: z.number(),
+  nextRetakeAt: z.string().nullable(),
+})
+const lessonQuizState = z.object({
+  quiz: z
+    .object({
+      id: z.string(),
+      passing_score: z.number().nullable(),
+      quiz_questions: z.array(
+        z.object({
+          id: z.string(),
+          question_text: z.string(),
+          options: z.array(z.union([z.string(), z.number()])),
+        }),
+      ),
+    })
+    .nullable(),
+  result: savedQuizResult.nullable(),
+})
 
-    if (qErr) throw qErr
-    if (!quizData) return { quiz: null, result: null }
-
-    const quiz: LessonQuiz = {
-      id: quizData.id,
-      passing_score: quizData.passing_score,
-      quiz_questions: quizData.quiz_questions.map((q) => ({
-        id: q.id,
-        question_text: q.question_text,
-        correct_option_index: q.correct_option_index,
-        options: quizOptions(q.options),
-      })),
-    }
-
-    const { data: attempts, error: attErr } = await supabase
-      .from('student_quiz_attempts')
-      .select('*')
-      .eq('student_id', userId)
-      .eq('quiz_id', quizData.id)
-      .order('completed_at', { ascending: false })
-
-    const latestAttempt = attErr ? undefined : attempts[0]
-    return {
-      quiz,
-      result: latestAttempt
-        ? {
-            score: latestAttempt.score,
-            passed: latestAttempt.passed,
-            attemptsCount: attempts?.length ?? 0,
-          }
-        : null,
-    }
-  } catch (err) {
-    console.error('Error fetching lesson data:', getErrorMessage(err))
-    return { quiz: null, result: null }
+async function loadLessonQuiz(lessonId: string): Promise<LessonQuizState> {
+  const { data, error } = await supabase.rpc('dashboard_lesson_quiz', {
+    p_lesson: lessonId,
+  })
+  if (error) throw error
+  const { quiz, result } = lessonQuizState.parse(data)
+  return {
+    quiz: quiz
+      ? {
+          ...quiz,
+          quiz_questions: quiz.quiz_questions.map(
+            ({ id, question_text, options }) => ({
+              id,
+              question_text,
+              options: quizOptions(options),
+            }),
+          ),
+        }
+      : null,
+    result,
   }
 }
 
@@ -452,6 +450,11 @@ export default function StudentCoursesView({
   })
 
   const selectedLessonId = selectedLesson?.id
+  const quizSelection = useRef(selectedLessonId)
+
+  useEffect(() => {
+    quizSelection.current = selectedLessonId
+  }, [selectedLessonId])
 
   useEffect(() => {
     if (!userId) return undefined
@@ -516,11 +519,17 @@ export default function StudentCoursesView({
     if (!selectedLessonId) return undefined
     let cancelled = false
 
-    void loadLessonQuiz(userId, selectedLessonId).then(({ quiz, result }) => {
-      if (cancelled) return
-      setLessonQuiz(quiz)
-      setQuizResult(result)
-    })
+    void loadLessonQuiz(selectedLessonId).then(
+      ({ quiz, result }) => {
+        if (cancelled) return
+        setLessonQuiz(quiz)
+        setQuizResult(result)
+      },
+      () => {
+        if (!cancelled)
+          toast.error('The lesson assessment could not be loaded.')
+      },
+    )
 
     void loadLessonAssignment(userId, selectedLessonId).then((assignment) => {
       if (cancelled) return
@@ -535,24 +544,11 @@ export default function StudentCoursesView({
 
   // Countdown timer checker for Saturday retakes
   useEffect(() => {
-    if (!quizResult || quizResult.passed) return undefined
+    if (!quizResult?.nextRetakeAt) return undefined
+    const opensAt = Date.parse(quizResult.nextRetakeAt)
 
     const updateCountdown = () => {
-      const now = new Date()
-      // Calculate next Saturday at 12:00 PM (12:00)
-      const target = new Date()
-      const dayOfWeek = now.getDay() // 0 is Sunday, 6 is Saturday
-      const daysUntilSaturday = (6 - dayOfWeek + 7) % 7
-
-      target.setDate(now.getDate() + daysUntilSaturday)
-      target.setHours(12, 0, 0, 0)
-
-      // If today is Saturday and it's past 12 PM, target next Saturday
-      if (dayOfWeek === 6 && now.getTime() > target.getTime()) {
-        target.setDate(target.getDate() + 7)
-      }
-
-      const diff = target.getTime() - now.getTime()
+      const diff = opensAt - Date.now()
       if (diff <= 0) {
         setCanRetakeQuiz(true)
         setRetakeCountdown('')
@@ -659,40 +655,30 @@ export default function StudentCoursesView({
 
   const handleQuizSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!lessonQuiz) return
+    if (!lessonQuiz || !selectedLessonId || submittingQuiz) return
 
     setSubmittingQuiz(true)
     try {
-      const questions = lessonQuiz.quiz_questions
-      const correctCount = questions.filter(
-        (q, idx) => quizAnswers[idx] === q.correct_option_index,
-      ).length
-
-      const score = Math.round((correctCount / questions.length) * 100)
-      const passingScore = lessonQuiz.passing_score || 70
-      const passed = score >= passingScore
-
-      await supabase.from('student_quiz_attempts').insert({
-        student_id: userId,
-        quiz_id: lessonQuiz.id,
-        score,
-        passed,
+      const answers = Object.fromEntries(
+        lessonQuiz.quiz_questions.flatMap((question, index) => {
+          const answer = quizAnswers[index]
+          return Number.isInteger(answer) ? [[question.id, answer]] : []
+        }),
+      )
+      const { data, error } = await supabase.rpc('submit_dashboard_quiz', {
+        p_quiz: lessonQuiz.id,
+        p_answers: answers,
       })
-
-      const newResult = {
-        score,
-        passed,
-        attemptsCount: (quizResult?.attemptsCount || 0) + 1,
-      }
+      if (error) throw error
+      const newResult = savedQuizResult.parse(data)
+      if (quizSelection.current !== selectedLessonId) return
       setQuizResult(newResult)
 
-      if (passed) {
-        toast.success(`Quiz Passed! You got ${score}% 🎉`)
+      if (newResult.passed) {
+        toast.success(`Quiz passed. You got ${newResult.score}%.`)
         checkAndAutoComplete(newResult, lessonAssignment)
       } else {
-        toast.error(
-          `You got ${score}%. Assessment failed. Grade is recorded until Saturday 6 PM retake.`,
-        )
+        toast.error(`You got ${newResult.score}%. Your score was recorded.`)
       }
     } catch (err) {
       toast.error('Failed to submit quiz: ' + getErrorMessage(err))
@@ -1111,7 +1097,7 @@ export default function StudentCoursesView({
                           ) : (
                             <span>
                               ⚠️ You did not pass. Grade recorded. Retakes
-                              unlock Saturday at 12:00 PM.
+                              unlock Saturday at noon Nairobi time.
                             </span>
                           )}
                         </div>

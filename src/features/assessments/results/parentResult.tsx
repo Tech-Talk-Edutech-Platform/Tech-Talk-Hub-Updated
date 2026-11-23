@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { ChangeEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
+import { z } from 'zod'
+import { toast } from 'react-hot-toast'
 import { supabase } from '../../../supabase'
 import {
   User,
@@ -13,123 +15,99 @@ import {
   MessageSquare,
   Rocket,
   ExternalLink,
-  Camera,
   Activity,
   Award,
   Share2,
   CheckCircle2,
 } from 'lucide-react'
 
-interface StudentResult {
-  id: string
-  student_name: string
-  avatar_url?: string | null
-  course_name?: string | null
-  grade_level?: string | number | null
-  total_classes_allocated?: number | null
-  classes_attended?: number | null
-  overall_score?: number | null
-  theory_score?: number | null
-  practical_score?: number | null
-  problem_solving_score?: number | null
-  creativity_score?: number | null
-  performance_label?: string | null
-  project_url?: string | null
-  exam_title?: string | null
-  exam_date?: string | null
-  tutor_feedback?: string | null
-  today_summary?: string | null
-}
+const optionalText = z.string().nullish()
+const optionalNumber = z.number().nullish()
+const studentResult = z.object({
+  id: z.string(),
+  student_name: z.string(),
+  course_name: optionalText,
+  grade_level: z.union([z.string(), z.number()]).nullish(),
+  total_classes_allocated: optionalNumber,
+  classes_attended: optionalNumber,
+  overall_score: optionalNumber,
+  theory_score: optionalNumber,
+  practical_score: optionalNumber,
+  problem_solving_score: optionalNumber,
+  creativity_score: optionalNumber,
+  performance_label: optionalText,
+  project_url: optionalText,
+  exam_title: optionalText,
+  exam_date: optionalText,
+  tutor_feedback: optionalText,
+  today_summary: optionalText,
+  is_share_link: z.boolean(),
+  can_share: z.boolean(),
+})
 
 const StudentDashboard = () => {
   const { slug } = useParams()
-  const [data, setData] = useState<StudentResult | null>(null)
+  const [data, setData] = useState<z.infer<typeof studentResult> | null>(null)
 
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
+  const [loadedReference, setLoadedReference] = useState<string>()
+  const [shareLink, setShareLink] = useState<{
+    reference: string
+    url: string
+  }>()
+  const [sharing, setSharing] = useState(false)
+  const loading = loadedReference !== slug
 
   useEffect(() => {
-    if (!slug) return
+    if (!slug) return undefined
+    const controller = new AbortController()
 
-    const fetchStudentResult = async () => {
-      try {
-        const { data: profileData, error: profileErr } = await supabase
-          .from('student_results')
-          .select('*')
-          .eq('slug', slug)
-          .single()
+    void supabase
+      .rpc('read_dashboard_report', { p_reference: slug })
+      .abortSignal(controller.signal)
+      .then(({ data: result, error }) => {
+        if (controller.signal.aborted) return
+        const parsed = studentResult.safeParse(result)
+        setData(!error && parsed.success ? parsed.data : null)
+        setLoadedReference(slug)
+      })
 
-        if (profileErr) throw profileErr
-        setData(profileData)
-      } catch (err) {
-        console.error(
-          'Data Matrix load failure:',
-          err instanceof Error ? err.message : String(err),
-        )
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void fetchStudentResult()
+    return () => controller.abort()
   }, [slug])
 
-  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    try {
-      setUploading(true)
-      const file = e.currentTarget.files?.[0]
-      if (!file || !data?.id) return
-
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${data.id}-${Math.random().toString(36).substring(7)}.${fileExt}`
-      const filePath = `avatars/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('student-assets')
-        .upload(filePath, file)
-
-      if (uploadError) throw uploadError
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('student-assets').getPublicUrl(filePath)
-
-      const { error: updateError } = await supabase
-        .from('student_results')
-        .update({ avatar_url: publicUrl })
-        .eq('id', data.id)
-
-      if (updateError) throw updateError
-
-      setData({ ...data, avatar_url: publicUrl })
-      alert('Profile picture updated!')
-    } catch (err) {
-      alert(
-        'Upload error: ' + (err instanceof Error ? err.message : String(err)),
-      )
-    } finally {
-      setUploading(false)
-    }
-  }
-
   const handleShareDashboard = async () => {
-    if (!data) return
-
-    const shareData = {
-      title: `${data.student_name}'s Coding Dashboard`,
-      text: `Check out ${data.student_name}'s latest projects and coding milestones at Tech Talk Hub!`,
-      url: window.location.href,
-    }
+    if (!data || !slug) return
+    setSharing(true)
 
     try {
+      let url = data.is_share_link
+        ? window.location.href
+        : shareLink?.reference === slug
+          ? shareLink.url
+          : undefined
+      if (!url) {
+        const { data: token, error } = await supabase.rpc(
+          'share_dashboard_report',
+          { p_report: data.id },
+        )
+        if (error || !token) throw new Error('Could not create a share link.')
+        url = new URL(`/results/${token}`, window.location.origin).href
+        setShareLink({ reference: slug, url })
+      }
       if (navigator.share) {
-        await navigator.share(shareData)
+        await navigator.share({
+          title: `${data.student_name}'s Coding Dashboard`,
+          url,
+        })
       } else {
-        await navigator.clipboard.writeText(window.location.href)
-        alert('Dashboard link copied to clipboard for easy sharing!')
+        await navigator.clipboard.writeText(url)
+        toast.success('Report link copied.')
       }
     } catch (err) {
-      console.warn('Sharing canceled or failed', err)
+      if (!(err instanceof DOMException && err.name === 'AbortError')) {
+        toast.error('Could not share the report. Try again.')
+      }
+    } finally {
+      setSharing(false)
     }
   }
 
@@ -142,15 +120,18 @@ const StudentDashboard = () => {
   if (!data)
     return <div className="p-10 text-center font-sans">Result not found.</div>
 
-  const totalAllocated = data.total_classes_allocated || 12
-  const attended = data.classes_attended || 0
-  const remainingClasses = totalAllocated - attended
+  const totalAllocated = data.total_classes_allocated ?? null
+  const attended = data.classes_attended ?? null
+  const remainingClasses =
+    totalAllocated != null && attended != null
+      ? Math.max(0, totalAllocated - attended)
+      : null
 
   const milestoneTarget = totalAllocated
-  const rawProgressPercent = Math.min(
-    100,
-    Math.round((attended / milestoneTarget) * 100),
-  )
+  const rawProgressPercent =
+    milestoneTarget && attended != null
+      ? Math.min(100, Math.round((attended / milestoneTarget) * 100))
+      : 0
 
   const projectUrl = data.project_url
 
@@ -159,43 +140,24 @@ const StudentDashboard = () => {
     <div className="relative mx-auto min-h-screen max-w-md bg-gray-50 pb-20 font-sans shadow-2xl print:bg-white print:shadow-none">
       {/* 1. HEADER SECTION */}
       <div className="rounded-b-3xl border-b border-gray-100 bg-white p-6 shadow-xs">
-        <div className="mb-4 flex items-center justify-between print:hidden">
-          <button
-            type="button"
-            onClick={() => void handleShareDashboard()}
-            className="ml-auto flex items-center gap-1 rounded-xl bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100"
-          >
-            <Share2 size={14} /> Share Report
-          </button>
-        </div>
+        {(data.is_share_link || data.can_share) && (
+          <div className="mb-4 flex items-center justify-between print:hidden">
+            <button
+              type="button"
+              onClick={() => void handleShareDashboard()}
+              disabled={sharing}
+              className="ml-auto flex items-center gap-1 rounded-xl bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100"
+            >
+              <Share2 size={14} /> Share Report
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center gap-4">
           <div className="group relative">
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-indigo-100 shadow-inner">
-              {data.avatar_url && data.avatar_url.trim() !== '' ? (
-                <img
-                  key={data.avatar_url}
-                  src={data.avatar_url}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = ''
-                  }}
-                />
-              ) : (
-                <User size={40} className="text-indigo-500" />
-              )}
+              <User size={40} className="text-indigo-500" />
             </div>
-            <label className="absolute right-0 bottom-0 cursor-pointer rounded-full bg-indigo-600 p-1.5 text-white shadow-lg transition-transform hover:scale-110 print:hidden">
-              <Camera size={14} />
-              <input
-                type="file"
-                className="hidden"
-                onChange={(e) => void handleAvatarChange(e)}
-                disabled={uploading}
-                accept="image/*"
-              />
-            </label>
           </div>
           <div className="flex-1">
             <h1 className="text-xl font-extrabold text-gray-800">
@@ -230,9 +192,11 @@ const StudentDashboard = () => {
             />
           </div>
           <p className="text-[11px] font-medium text-slate-500">
-            {remainingClasses > 0
-              ? `${remainingClasses} more classes until next core certification boundary.`
-              : 'Course phase milestone achieved!'}
+            {remainingClasses === null
+              ? 'Milestone target unavailable.'
+              : remainingClasses > 0
+                ? `${remainingClasses} more classes until next core certification boundary.`
+                : 'Course phase milestone achieved!'}
           </p>
         </div>
       </div>
@@ -252,7 +216,7 @@ const StudentDashboard = () => {
                 Allocated
               </span>
               <span className="text-lg font-black text-slate-800">
-                {totalAllocated}
+                {totalAllocated ?? '—'}
               </span>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-2.5">
@@ -260,7 +224,7 @@ const StudentDashboard = () => {
                 Attended
               </span>
               <span className="text-lg font-black text-emerald-700">
-                {attended}
+                {attended ?? '—'}
               </span>
             </div>
             <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-2.5">
@@ -268,7 +232,7 @@ const StudentDashboard = () => {
                 Remaining
               </span>
               <span className="text-lg font-black text-indigo-700">
-                {remainingClasses}
+                {remainingClasses ?? '—'}
               </span>
             </div>
           </div>

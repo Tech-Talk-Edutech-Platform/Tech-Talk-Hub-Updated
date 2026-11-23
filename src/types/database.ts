@@ -2526,6 +2526,17 @@ export type Database = {
         }
         Returns: Json
       }
+      dashboard_lesson_quiz: { Args: { p_lesson: string }; Returns: Json }
+      submit_dashboard_quiz: {
+        Args: { p_quiz: string; p_answers: Json }
+        Returns: Json
+      }
+      share_dashboard_report: { Args: { p_report: string }; Returns: string }
+      revoke_dashboard_report_share: {
+        Args: { p_report: string }
+        Returns: undefined
+      }
+      read_dashboard_report: { Args: { p_reference: string }; Returns: Json }
       book_trial: {
         Args: {
           p_category: string

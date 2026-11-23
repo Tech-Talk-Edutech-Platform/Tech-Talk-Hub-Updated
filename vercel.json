@@ -57,6 +57,7 @@
     { "source": "/contact-us", "destination": "/contact", "permanent": true }
   ],
   "rewrites": [
+    { "source": "/receipt/:reference", "destination": { "service": "server" } },
     { "source": "/api/(.*)", "destination": { "service": "server" } },
     { "source": "/studio", "destination": { "service": "studio" } },
     { "source": "/studio/(.*)", "destination": { "service": "studio" } },

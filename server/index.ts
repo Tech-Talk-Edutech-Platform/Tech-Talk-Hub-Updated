@@ -3,7 +3,9 @@ import express from 'express'
 import type { ErrorRequestHandler } from 'express'
 import dashboardPush from './routes/dashboardPush'
 import { startReminderScheduler } from './reminderScheduler'
-import sendReceiptRoute from './routes/sendReceipt'
+import sendReceiptRoute, {
+  receiptVerificationRoute,
+} from './routes/sendReceipt'
 import sendCurriculumRoute from './routes/sendCurriculum'
 import classroomTokenRoute from './routes/classroomToken'
 import classroomEndRoute from './routes/classroomEnd'
@@ -48,6 +50,8 @@ app.use((req, res, next) => {
 app.use('/', homeRoute)
 app.use(['/docs', '/api/docs'], apiDocsRoute)
 app.use('/api/send-receipt', sendReceiptRoute)
+app.use('/api/send-receipt', receiptVerificationRoute)
+app.use(receiptVerificationRoute)
 app.use('/api/send-curriculum', sendCurriculumRoute)
 app.use('/api/classroom/token', classroomTokenRoute)
 app.use('/api/classroom/end', classroomEndRoute)
