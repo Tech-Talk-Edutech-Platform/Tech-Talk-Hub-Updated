@@ -21,7 +21,7 @@ import {
   loadScheduledClasses,
   loadStudentInsights,
   studentClassroomSessions,
-} from './studentInsights'
+} from './studentInsightsData'
 import { useStudentInvites } from './useStudentInvites'
 import { InsightsError, InsightsStale } from './InsightsError'
 import { NavButton } from './NavButton'

@@ -113,6 +113,7 @@ export function TrialBookingDetails({
         <TrialInvitePanel
           target={{
             roomCode,
+            bookingId: row.id,
             parentEmail: row.parent_email ?? '',
             invite: toInviteEmail(row),
           }}

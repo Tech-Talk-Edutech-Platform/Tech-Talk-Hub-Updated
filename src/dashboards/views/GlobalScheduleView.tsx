@@ -31,7 +31,7 @@ import {
 } from 'lucide-react'
 import { toast, Toaster } from 'react-hot-toast'
 import '../../../src/fullcalendar.css'
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { isAdminRole } from '../../types/roles'
@@ -963,6 +963,9 @@ export default function GlobalScheduleView({
     : []
   const selectedTutor = selectedEvent ? findUser(selectedEvent.tutor_id) : null
   const studentMeetLink = student ? profile?.personal_meet_link : null
+
+  // The calendar toolbar is sticky; the day-name row pins just under it.
+  useStickyToolbarHeight(calendarBoxRef, loading)
 
   if (scheduleQuery.isError && !snapshot)
     return (

@@ -21,6 +21,11 @@ export const createQueryClient = () =>
   })
 
 export const queryKeys = {
+  classAlerts: {
+    all: ['class-alerts'] as const,
+    inbox: (includeResolved: boolean) =>
+      ['class-alerts', 'inbox', includeResolved] as const,
+  },
   dashboard: {
     admin: (period: string) => ['dashboard', 'admin', period] as const,
     tutor: (tutorId: string, period: string) =>
@@ -43,6 +48,8 @@ export const queryKeys = {
     global: ['schedule', 'global'] as const,
     calendar: (userId: string | null, role: string | null) =>
       ['schedule', 'calendar', userId, role] as const,
+    tutorTrials: (tutorId: string) =>
+      ['schedule', 'tutor-trials', tutorId] as const,
   },
   training: {
     course: ['training', 'course'] as const,

@@ -10,7 +10,7 @@ import { dateKey } from '../../components/dashboard/dateKey'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { useNow } from '../../hooks/useNow'
-import { joinableNow, type StudentClass } from './studentInsights'
+import { joinableNow, type StudentClass } from './studentInsightsData'
 
 const dayAndTime = new Intl.DateTimeFormat('en-KE', {
   weekday: 'short',

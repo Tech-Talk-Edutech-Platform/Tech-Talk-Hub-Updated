@@ -39,7 +39,7 @@ import {
   adminInsightsCsv,
   loadAdminInsights,
   type ActionItem,
-} from './adminInsights'
+} from './adminInsightsData'
 import { InsightsError, InsightsStale } from './InsightsError'
 import { NavButton } from './NavButton'
 
