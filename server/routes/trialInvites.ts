@@ -21,8 +21,8 @@ import {
  *   POST /:bookingId/guest-link  create a family link for a scheduled trial
  *
  * Callers send their Supabase session as `Authorization: Bearer <token>`.
- * Admins and the sales team may send any trial's invite; a tutor only their
- * own trials'.
+ * Admins may act on any trial; a sales rep only on trials credited to them,
+ * and a tutor only on their own.
  */
 const router = express.Router()
 
@@ -31,6 +31,15 @@ const UUID_PATTERN =
 
 const isSalesOrAdmin = (role: string) =>
   dashboardAdmins.has(role) || role === 'marketer'
+
+/** Admins: any trial. Reps: the ones credited to them. Tutors: their own. */
+const mayActOn = (
+  actor: { id: string; role: string },
+  booking: { mentor_id: string; marketer_id: string | null },
+) =>
+  dashboardAdmins.has(actor.role) ||
+  (actor.role === 'marketer' && booking.marketer_id === actor.id) ||
+  (actor.role === 'tutor' && booking.mentor_id === actor.id)
 
 async function emailStatus(req: Request, res: Response) {
   const user = await dashboardActor(req)
@@ -63,9 +72,9 @@ async function invite(req: InviteRequest, res: Response) {
   }
 
   try {
-    if (!isSalesOrAdmin(user.role)) {
+    if (!dashboardAdmins.has(user.role)) {
       const booking = await loadBooking(bookingId)
-      if (user.role !== 'tutor' || booking.mentor_id !== user.id) {
+      if (!mayActOn(user, booking)) {
         res.status(403).json({ error: 'You can only email your own trials.' })
         return
       }
@@ -123,7 +132,7 @@ router.post(
     }
     try {
       const booking = await loadBooking(req.params.bookingId)
-      if (!isSalesOrAdmin(actor.role) && booking.mentor_id !== actor.id) {
+      if (!mayActOn(actor, booking)) {
         res.status(403).json({ error: 'You can only share your own trials.' })
         return
       }

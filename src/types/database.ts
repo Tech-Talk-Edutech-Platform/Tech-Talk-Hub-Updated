@@ -3026,6 +3026,10 @@ export type Database = {
         }
       }
       sales_can_work: { Args: { p_marketer_id: string }; Returns: boolean }
+      sales_rep_standing: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       sales_release_slot: {
         Args: {
           p_booking: Database['public']['Tables']['trial_bookings']['Row']
