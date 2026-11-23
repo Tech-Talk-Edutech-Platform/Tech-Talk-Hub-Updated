@@ -16,7 +16,8 @@ import {
  *   GET  /email-status          is email configured? (staff)
  *   POST /:bookingId/invite     email the family their classroom link
  *                               body: { resend?: boolean }
- *   POST /send-pending          admin or sales action to process queued invites
+ *   POST /send-pending          public, rate-limited: sends invites already
+ *                               queued, e.g. right after a website booking
  *   POST /:bookingId/guest-link  create a family link for a scheduled trial
  *
  * Callers send their Supabase session as `Authorization: Bearer <token>`.
@@ -85,14 +86,11 @@ async function invite(req: InviteRequest, res: Response) {
 
 /**
  * Only sends what's already queued, to the address on each booking, once; so
- * calling it early or often changes nothing but the timing.
+ * calling it early or often changes nothing but the timing. It stays public
+ * (rate-limited, no input) because families booking on the website are not
+ * signed in, and nothing else runs the queue on Vercel without a cron.
  */
-async function sendPending(req: Request, res: Response) {
-  const actor = await dashboardActor(req)
-  if (!actor || !isSalesOrAdmin(actor.role)) {
-    res.status(actor ? 403 : 401).json({ error: 'Staff access is required.' })
-    return
-  }
+async function sendPending(_req: Request, res: Response) {
   try {
     await sendPendingTrialInvites()
   } catch (error) {
