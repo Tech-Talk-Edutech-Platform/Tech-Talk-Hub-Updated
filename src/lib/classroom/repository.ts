@@ -525,6 +525,35 @@ export async function saveAlert(
   if (error) fail(error, 'Couldn’t send the alert.')
 }
 
+/**
+ * The "Need help?" chat: the topic and the tutor's message go to the admins'
+ * Class alerts inbox (migration 20261123120000_classroom_alert_routing.sql).
+ */
+export async function saveHelpRequest(
+  sessionId: string,
+  topic: string,
+  message: string,
+) {
+  const { error } = await plannedDb.from('classroom_alerts').insert({
+    session_id: sessionId,
+    alert_type: 'help',
+    topic: topic.slice(0, 120),
+    message: message.slice(0, 2000),
+  })
+  if (!error) return
+  // Before the migration: no "help" type and no message column.
+  if (
+    error.code === '23514' ||
+    error.code === '42703' ||
+    error.code === 'PGRST204'
+  ) {
+    throw new Error(
+      'Help requests aren’t set up in the database yet (migration 20261123120000).',
+    )
+  }
+  fail(error, 'Couldn’t send your message.')
+}
+
 /** The teacher opened the room: the session is live. */
 export async function markSessionLive(sessionId: string) {
   const { data, error } = await plannedDb

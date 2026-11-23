@@ -56,10 +56,27 @@ function readConfig(): MailerConfig {
     port,
     secure: secureSetting ? secureSetting === 'true' : port === 465,
     user,
-    pass,
-    from: env('MAIL_FROM') ?? `Tech Talk Hub <${user}>`,
+    // Gmail shows app passwords in groups ("abcd efgh ..."); SMTP wants them
+    // without the spaces.
+    pass: /^[a-z]{4}( [a-z]{4}){3}$/i.test(pass)
+      ? pass.replace(/ /g, '')
+      : pass,
+    from: senderFor(env('MAIL_FROM'), user),
     replyTo: env('MAIL_REPLY_TO'),
   }
+}
+
+/**
+ * "Tech Talk Hub <classes@x.com>" is used as is; a bare name such as
+ * "Tech Talk Hub" is sent from the SMTP mailbox, since a From without an
+ * address would be rejected or rewritten.
+ */
+function senderFor(setting: string | undefined, user: string): string {
+  const fallback = `Tech Talk Hub <${user}>`
+  if (!setting) return fallback
+  if (setting.includes('@')) return setting
+  const name = setting.replace(/["<>]/g, '').trim()
+  return name ? `${name} <${user}>` : fallback
 }
 
 /** Whether email can be sent, without throwing. */

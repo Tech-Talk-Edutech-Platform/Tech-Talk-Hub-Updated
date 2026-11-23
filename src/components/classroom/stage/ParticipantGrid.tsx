@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { useElementSize } from '../../../hooks/useElementSize'
 import type { RemoteMedia } from '../../../hooks/classroom/useLiveKitRoom'
+import { spotlightOf, tutorFirst } from '../../../lib/classroom/videoPriority'
 import type { Participant } from '../../../types/classroom'
 import { ParticipantTile } from './ParticipantTile'
 import { VideoView } from './VideoView'
@@ -35,11 +36,19 @@ type ParticipantGridProps = {
   remoteMedia: Record<string, RemoteMedia>
 }
 
+/** The largest 16:9 box that fits in w × h. */
+function fit169(w: number, h: number) {
+  const width = Math.max(0, Math.min(w, (h * 16) / 9))
+  return { width, height: (width * 9) / 16 }
+}
+
 export function ParticipantGrid({
-  participants,
+  participants: unordered,
   self,
   remoteMedia,
 }: ParticipantGridProps) {
+  // The tutor first: students need to see who is teaching.
+  const participants = tutorFirst(unordered)
   const box = useRef<HTMLDivElement>(null)
   const { width, height } = useElementSize(box)
 
@@ -72,10 +81,50 @@ export function ParticipantGrid({
   const screenShareName = self.screen
     ? 'You are sharing your screen'
     : `${remoteShare?.name ?? 'A participant'} is sharing their screen`
+  const sharing = screenShare !== null || remoteScreenTrack !== null
+  // Someone else is teaching: they take the stage, everyone else (you
+  // included) moves to a strip beside them, as in a 1:1 call.
+  const spotlight =
+    !sharing && participants.length > 1 ? spotlightOf(participants) : null
+  const stripPeople = spotlight
+    ? participants.filter((person) => person.id !== spotlight.id)
+    : participants
+  const stage = narrow
+    ? fit169(width, height - 110 - GAP)
+    : fit169(width - 184 - GAP, height)
 
   return (
     <div ref={box} className="size-full">
-      {screenShare || remoteScreenTrack ? (
+      {spotlight ? (
+        <div
+          className={`flex size-full gap-3 ${narrow ? 'flex-col' : 'flex-row'}`}
+        >
+          <div className="grid min-h-0 min-w-0 flex-1 place-items-center">
+            {width > 0 && (
+              <ParticipantTile
+                person={spotlight}
+                {...tileMedia(spotlight)}
+                width={stage.width}
+                height={stage.height}
+              />
+            )}
+          </div>
+          <div
+            className={`flex shrink-0 gap-3 overflow-auto ${narrow ? 'h-[110px] flex-row' : 'w-[184px] flex-col justify-center'}`}
+          >
+            {stripPeople.map((person) => (
+              <ParticipantTile
+                key={person.id}
+                person={person}
+                {...tileMedia(person)}
+                width={184}
+                height={104}
+                compact
+              />
+            ))}
+          </div>
+        </div>
+      ) : sharing ? (
         // Screen share takes the room; people move to a strip beside it.
         <div
           className={`flex size-full gap-3 ${narrow ? 'flex-col' : 'flex-row'}`}

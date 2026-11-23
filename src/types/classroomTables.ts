@@ -16,6 +16,34 @@ type Table<Row extends Record<string, unknown>, Required extends keyof Row> = {
   Relationships: []
 }
 
+/** Who each goes to: see migration 20261123120000_classroom_alert_routing.sql. */
+export type ClassAlertType = 'ac' | 'support' | 'help'
+
+/** A row of classroom_alert_inbox(): the alert with its class and contacts. */
+export type ClassAlertInboxRow = {
+  id: string
+  alert_type: ClassAlertType
+  topic: string | null
+  message: string | null
+  created_at: string
+  resolved_at: string | null
+  resolved_by_name: string | null
+  sender_name: string | null
+  sender_email: string | null
+  session_id: string
+  room_code: string
+  session_title: string
+  class_type: string | null
+  session_status: string
+  scheduled_at: string | null
+  tutor_name: string | null
+  tutor_email: string | null
+  students: string | null
+  parent_name: string | null
+  parent_phone: string | null
+  parent_email: string | null
+}
+
 export type ClassroomSessionStatus =
   'scheduled' | 'live' | 'completed' | 'not_completed' | 'cancelled'
 
@@ -146,7 +174,11 @@ export type ClassroomTables = {
     {
       id: string
       session_id: string
-      alert_type: 'ac' | 'support'
+      /** 'help' (the Need help chat) from migration 20261123120000. */
+      alert_type: ClassAlertType
+      /** Help requests: the topic picked and the tutor's message. */
+      topic: string | null
+      message: string | null
       sent_by: string | null
       created_at: string
       resolved_at: string | null
@@ -202,6 +234,19 @@ export type ClassroomFunctions = {
    */
   delete_classroom_session: {
     Args: { p_session_id: string }
+    Returns: undefined
+  }
+  /**
+   * The signed-in user's alert inbox: AC alerts for sales, support alerts
+   * for tech admins, everything for admins (migration 20261123120000).
+   */
+  classroom_alert_inbox: {
+    Args: { p_include_resolved?: boolean; p_limit?: number }
+    Returns: ClassAlertInboxRow[]
+  }
+  /** Closes (or reopens) an alert routed to the signed-in user. */
+  resolve_classroom_alert: {
+    Args: { p_alert_id: string; p_resolved?: boolean }
     Returns: undefined
   }
 }

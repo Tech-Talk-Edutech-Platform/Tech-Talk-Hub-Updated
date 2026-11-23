@@ -255,3 +255,43 @@
   background-color: var(--fc-event-bg-color) !important;
   color: var(--fc-event-text-color) !important;
 } */
+
+/* --- My Schedule / Global Schedule: sticky calendar chrome ---
+ * The dashboard's content area is the scroll container (DashboardLayout's
+ * <main>). While you scroll down the week, the toolbar (prev / today / next,
+ * the title, the view switch) and the row of day names stay pinned on top,
+ * so you always know which day a slot is on. --fc-toolbar-h is the toolbar's
+ * measured height, set by GlobalScheduleView. */
+.global-schedule-calendar {
+  --fc-page-bg-color: #ffffff;
+}
+.dark .global-schedule-calendar {
+  --fc-page-bg-color: #0f172a;
+  --fc-neutral-bg-color: rgba(255, 255, 255, 0.04);
+}
+.global-schedule-calendar .fc .fc-toolbar.fc-header-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: 0 !important;
+  padding: 10px 0;
+  background: var(--fc-page-bg-color);
+}
+.global-schedule-calendar
+  .fc
+  .fc-scrollgrid-section-header.fc-scrollgrid-section-sticky
+  > * {
+  top: var(--fc-toolbar-h, 0px);
+  background: var(--fc-page-bg-color);
+  box-shadow: 0 1px 0 #e2e8f0;
+}
+.dark
+  .global-schedule-calendar
+  .fc
+  .fc-scrollgrid-section-header.fc-scrollgrid-section-sticky
+  > * {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.dark .global-schedule-calendar .fc-col-header-cell-cushion {
+  color: #e2e8f0 !important;
+}

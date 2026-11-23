@@ -62,6 +62,7 @@ import {
   reopenSession,
   saveAlert,
   saveBadgeAward,
+  saveHelpRequest,
   saveProject,
   saveRecording,
   saveSessionEnd,
@@ -445,6 +446,7 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     isSelf: true,
     speaking,
     watching: watchOnly,
+    host: teacherMode,
   }
 
   const finish = (info: Omit<ClassEndInfo, 'elapsedMs'>) => {
@@ -835,7 +837,15 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
       </main>
 
       {teacherMode && helpOpen && (
-        <NeedHelpWidget onClose={() => setHelpOpen(false)} />
+        <NeedHelpWidget
+          onClose={() => setHelpOpen(false)}
+          onSendToAdmin={
+            persist && sessionId
+              ? (topic, message) =>
+                  saveHelpRequest(sessionId, topic.label, message)
+              : undefined
+          }
+        />
       )}
 
       {teacherMode && (

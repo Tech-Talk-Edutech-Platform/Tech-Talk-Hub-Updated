@@ -3,23 +3,32 @@
  * (Gmail, Outlook, Apple Mail) render reliably. Every value from the database
  * goes through `esc()`.
  *
+ * The design: the class itself is the hero. Date, time and the Join button
+ * sit together on one solid brand-colour "ticket", so a parent who reads
+ * nothing else still knows when it is and how to get in. Everything else
+ * (who, what, how to get ready) follows in plain, readable type. No
+ * gradients, shadows or hairline boxes: surfaces are separated by tone.
+ *
  * Brand colours match the site (src/index.css): brand #3f51b5, ink #172554,
  * pink #db2777.
  */
 
 const BRAND = '#3f51b5'
 const BRAND_STRONG = '#303f9f'
-const BRAND_SOFT = '#eef0fa'
+/** Secondary text on the brand field: 5.6:1 against BRAND. */
+const ON_BRAND_SOFT = '#e1e5f7'
 const PINK = '#db2777'
 const INK = '#172554'
-const MUTED = '#64748b'
-const LINE = '#e2e8f0'
+/** Secondary text: 5.9:1 on white, 5.4:1 on PANEL. */
+const MUTED = '#556079'
+const PANEL = '#f2f4fb'
+const CANVAS = '#eceff7'
 const FONT =
-  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  "'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 
 export const SUPPORT = {
-  whatsappDisplay: '+254 704 494 504',
-  whatsappUrl: 'https://wa.me/254704494504',
+  whatsappDisplay: '+254 118 755 558',
+  whatsappUrl: 'https://wa.me/254118755558',
 }
 
 export function esc(value: string): string {
@@ -38,43 +47,76 @@ type Detail = { label: string; value: string }
 type Layout = {
   /** Shown in the inbox next to the subject. */
   preheader: string
-  eyebrow: string
   heading: string
   /** Plain sentences; each becomes a paragraph. */
   intro: string[]
+  /** The class on the brand-colour ticket. */
+  ticket: {
+    day: string
+    hours: string
+    /** One short line under the time, e.g. "Free trial · Coding & AI". */
+    caption: string
+    cta: { label: string; url: string }
+    /** Under the button, e.g. when the room opens. */
+    note: string
+    /** "Add to Google Calendar"; the .ics attachment covers other apps. */
+    calendarUrl: string
+  }
   details: Detail[]
-  cta: { label: string; url: string; note: string }
   steps: { title: string; items: string[] }
   footnote: string
 }
 
+/** A "Add to Google Calendar" link for the class. */
+export function googleCalendarUrl(input: {
+  title: string
+  start: Date
+  end: Date
+  details: string
+  location: string
+}): string {
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: input.title,
+    dates: `${icsStamp(input.start)}/${icsStamp(input.end)}`,
+    details: input.details,
+    location: input.location,
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+
+function renderDetails(details: Detail[]): string {
+  return details
+    .map(
+      (detail, index) => `
+              <tr>
+                <td class="detail-label" style="padding:${index === 0 ? '18px' : '7px'} 0 ${index === details.length - 1 ? '18px' : '7px'} 22px;width:34%;font-family:${FONT};font-size:14px;line-height:22px;color:${MUTED};vertical-align:top;">${esc(detail.label)}</td>
+                <td style="padding:${index === 0 ? '18px' : '7px'} 22px ${index === details.length - 1 ? '18px' : '7px'} 12px;font-family:${FONT};font-size:16px;line-height:22px;color:${INK};font-weight:700;vertical-align:top;">${esc(detail.value)}</td>
+              </tr>`,
+    )
+    .join('')
+}
+
+function renderSteps(items: string[]): string {
+  return items
+    .map(
+      (item) => `
+              <tr>
+                <td style="padding:9px 14px 0 0;width:8px;vertical-align:top;">
+                  <div style="width:8px;height:8px;background:${PINK};border-radius:2px;font-size:0;line-height:0;">&nbsp;</div>
+                </td>
+                <td style="padding:0 0 12px;font-family:${FONT};font-size:16px;line-height:25px;color:${INK};vertical-align:top;">${esc(item)}</td>
+              </tr>`,
+    )
+    .join('')
+}
+
 function renderLayout(layout: Layout): string {
+  const { ticket } = layout
   const paragraphs = layout.intro
     .map(
       (line) =>
-        `<p style="margin:0 0 14px;font-size:16px;line-height:26px;color:${INK};">${esc(line)}</p>`,
-    )
-    .join('')
-
-  const detailRows = layout.details
-    .map(
-      (detail, index) => `
-        <tr>
-          <td style="padding:12px 18px;${index > 0 ? `border-top:1px solid ${LINE};` : ''}font-size:13px;line-height:20px;color:${MUTED};width:38%;vertical-align:top;">${esc(detail.label)}</td>
-          <td style="padding:12px 18px;${index > 0 ? `border-top:1px solid ${LINE};` : ''}font-size:15px;line-height:22px;color:${INK};font-weight:600;vertical-align:top;">${esc(detail.value)}</td>
-        </tr>`,
-    )
-    .join('')
-
-  const stepRows = layout.steps.items
-    .map(
-      (item, index) => `
-        <tr>
-          <td style="padding:0 12px 12px 0;vertical-align:top;width:28px;">
-            <div style="width:26px;height:26px;border-radius:13px;background:${BRAND_SOFT};color:${BRAND_STRONG};font-size:13px;line-height:26px;font-weight:700;text-align:center;">${index + 1}</div>
-          </td>
-          <td style="padding:2px 0 12px;font-size:15px;line-height:23px;color:${INK};vertical-align:top;">${esc(item)}</td>
-        </tr>`,
+        `<p style="margin:0 0 14px;font-family:${FONT};font-size:16px;line-height:26px;color:${INK};">${esc(line)}</p>`,
     )
     .join('')
 
@@ -84,82 +126,99 @@ function renderLayout(layout: Layout): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <title>${esc(layout.heading)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
+  body { margin: 0; padding: 0; }
+  a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
   @media (max-width: 620px) {
     .container { width: 100% !important; }
-    .px { padding-left: 22px !important; padding-right: 22px !important; }
-    .cta a { display: block !important; }
+    .px { padding-left: 24px !important; padding-right: 24px !important; }
+    .ticket { padding: 26px 22px 24px !important; }
+    .h1 { font-size: 27px !important; line-height: 33px !important; }
+    .day { font-size: 24px !important; line-height: 30px !important; }
+    .button { width: 100% !important; }
+    .button a { display: block !important; text-align: center !important; }
+    .detail-label { width: 40% !important; }
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#f1f3fb;font-family:${FONT};-webkit-font-smoothing:antialiased;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${esc(layout.preheader)}</div>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f1f3fb;">
+<body style="margin:0;padding:0;background:${CANVAS};-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${esc(layout.preheader)}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="${CANVAS}" style="background:${CANVAS};">
     <tr>
-      <td align="center" style="padding:32px 12px;">
+      <td align="center" style="padding:28px 12px 36px;">
         <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px;max-width:600px;">
           <tr>
-            <td style="padding:0 4px 18px;font-size:18px;line-height:24px;font-weight:800;color:${BRAND};letter-spacing:-0.2px;">
-              Tech Talk Hub <span style="font-size:12px;font-weight:600;color:${MUTED};letter-spacing:0;">&nbsp;Think. Code. Create.</span>
+            <td class="px" style="padding:0 40px 18px;font-family:${FONT};font-size:20px;line-height:26px;font-weight:800;color:${BRAND};letter-spacing:-0.3px;">
+              Tech Talk Hub
             </td>
           </tr>
           <tr>
-            <td style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 18px 40px -24px rgba(63,81,181,0.45);">
+            <td bgcolor="#ffffff" style="background:#ffffff;border-radius:22px;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                  <td style="height:6px;background:${BRAND};background-image:linear-gradient(90deg, ${BRAND} 0%, ${PINK} 100%);font-size:0;line-height:0;">&nbsp;</td>
-                </tr>
-                <tr>
-                  <td class="px" style="padding:36px 40px 8px;">
-                    <p style="margin:0 0 10px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:${PINK};">${esc(layout.eyebrow)}</p>
-                    <h1 style="margin:0 0 18px;font-size:28px;line-height:34px;font-weight:800;letter-spacing:-0.5px;color:${INK};">${esc(layout.heading)}</h1>
+                  <td class="px" style="padding:40px 40px 10px;">
+                    <h1 class="h1" style="margin:0 0 18px;font-family:${FONT};font-size:30px;line-height:36px;font-weight:800;letter-spacing:-0.6px;color:${INK};">${esc(layout.heading)}</h1>
                     ${paragraphs}
                   </td>
                 </tr>
                 <tr>
-                  <td class="px" style="padding:8px 40px 4px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid ${LINE};border-radius:14px;border-collapse:separate;">
-                      ${detailRows}
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="px cta" align="center" style="padding:28px 40px 8px;">
-                    <a href="${esc(layout.cta.url)}" style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;font-size:17px;line-height:22px;font-weight:700;padding:16px 34px;border-radius:12px;">${esc(layout.cta.label)} &rarr;</a>
-                    <p style="margin:12px 0 0;font-size:13px;line-height:20px;color:${MUTED};">${esc(layout.cta.note)}</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="px" style="padding:12px 40px 0;">
-                    <p style="margin:0;font-size:12px;line-height:18px;color:${MUTED};">Button not working? Copy this link into your browser:<br><a href="${esc(layout.cta.url)}" style="color:${BRAND};word-break:break-all;">${esc(layout.cta.url)}</a></p>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="px" style="padding:30px 40px 10px;">
-                    <p style="margin:0 0 14px;font-size:16px;line-height:22px;font-weight:800;color:${INK};">${esc(layout.steps.title)}</p>
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${stepRows}</table>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="px" style="padding:8px 40px 34px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${BRAND_SOFT};border-radius:12px;">
+                  <td class="px" style="padding:10px 40px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:16px 18px;font-size:14px;line-height:21px;color:${INK};">
-                          Questions or need to change the time? Message us on WhatsApp:
-                          <a href="${SUPPORT.whatsappUrl}" style="color:${BRAND_STRONG};font-weight:700;text-decoration:none;white-space:nowrap;">${SUPPORT.whatsappDisplay}</a>
+                        <td class="ticket" bgcolor="${BRAND}" style="background:${BRAND};border-radius:18px;padding:30px 30px 26px;">
+                          <p class="day" style="margin:0;font-family:${FONT};font-size:28px;line-height:34px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;">${esc(ticket.day)}</p>
+                          <p style="margin:6px 0 0;font-family:${FONT};font-size:18px;line-height:26px;font-weight:600;color:#ffffff;">${esc(ticket.hours)}</p>
+                          <p style="margin:4px 0 0;font-family:${FONT};font-size:15px;line-height:22px;color:${ON_BRAND_SOFT};">${esc(ticket.caption)}</p>
+                          <table role="presentation" class="button" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0;">
+                            <tr>
+                              <td bgcolor="#ffffff" style="background:#ffffff;border-radius:999px;">
+                                <a href="${esc(ticket.cta.url)}" style="display:inline-block;padding:16px 30px;font-family:${FONT};font-size:17px;line-height:22px;font-weight:800;color:${BRAND_STRONG};text-decoration:none;border-radius:999px;">${esc(ticket.cta.label)}&nbsp;&rarr;</a>
+                              </td>
+                            </tr>
+                          </table>
+                          <p style="margin:16px 0 0;font-family:${FONT};font-size:14px;line-height:21px;color:${ON_BRAND_SOFT};">${esc(ticket.note)}</p>
+                          <p style="margin:10px 0 0;font-family:${FONT};font-size:14px;line-height:21px;">
+                            <a href="${esc(ticket.calendarUrl)}" style="color:#ffffff;font-weight:700;text-decoration:underline;">Add to Google Calendar</a>
+                            <span style="color:${ON_BRAND_SOFT};">&nbsp;&middot; or open the attached invite</span>
+                          </p>
                         </td>
                       </tr>
                     </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px" style="padding:18px 40px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="${PANEL}" style="background:${PANEL};border-radius:16px;">
+                      ${renderDetails(layout.details)}
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px" style="padding:14px 40px 0;">
+                    <p style="margin:0;font-family:${FONT};font-size:13px;line-height:20px;color:${MUTED};">Button not working? Copy this link into your browser:<br><a href="${esc(ticket.cta.url)}" style="color:${BRAND};word-break:break-all;">${esc(ticket.cta.url)}</a></p>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px" style="padding:36px 40px 4px;">
+                    <h2 style="margin:0 0 14px;font-family:${FONT};font-size:20px;line-height:26px;font-weight:800;letter-spacing:-0.3px;color:${INK};">${esc(layout.steps.title)}</h2>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${renderSteps(layout.steps.items)}</table>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px" style="padding:18px 40px 40px;">
+                    <p style="margin:0;font-family:${FONT};font-size:16px;line-height:25px;color:${INK};">Questions, or need to change the time? Message us on WhatsApp at <a href="${SUPPORT.whatsappUrl}" style="color:${BRAND_STRONG};font-weight:800;text-decoration:none;white-space:nowrap;">${SUPPORT.whatsappDisplay}</a>, or just reply to this email.</p>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 8px 0;font-size:12px;line-height:18px;color:${MUTED};text-align:center;">
+            <td class="px" style="padding:22px 40px 0;font-family:${FONT};font-size:12px;line-height:18px;color:${MUTED};">
               ${esc(layout.footnote)}<br>
               &copy; ${new Date().getFullYear()} Tech Talk Hub &middot; Coding and AI classes for children
             </td>
@@ -173,20 +232,26 @@ function renderLayout(layout: Layout): string {
 }
 
 function renderText(layout: Layout): string {
+  const { ticket } = layout
   return [
     layout.heading,
     '',
     ...layout.intro,
     '',
+    ticket.day,
+    ticket.hours,
+    ticket.caption,
+    '',
+    `${ticket.cta.label}: ${ticket.cta.url}`,
+    ticket.note,
+    `Add to Google Calendar: ${ticket.calendarUrl}`,
+    '',
     ...layout.details.map((detail) => `${detail.label}: ${detail.value}`),
     '',
-    `${layout.cta.label}: ${layout.cta.url}`,
-    layout.cta.note,
-    '',
     layout.steps.title,
-    ...layout.steps.items.map((item, index) => `${index + 1}. ${item}`),
+    ...layout.steps.items.map((item) => `- ${item}`),
     '',
-    `Questions? WhatsApp ${SUPPORT.whatsappDisplay} (${SUPPORT.whatsappUrl})`,
+    `Questions, or need to change the time? WhatsApp ${SUPPORT.whatsappDisplay} (${SUPPORT.whatsappUrl}), or reply to this email.`,
     '',
     layout.footnote,
   ].join('\n')
@@ -234,14 +299,27 @@ export function trialInviteEmail(data: TrialEmailData): RenderedEmail {
   const when = classTime(data.start, data.end)
   const firstName = data.parentName.split(/\s+/)[0] || 'there'
   const layout: Layout = {
-    preheader: `${data.studentName}'s free trial class is on ${when.day}. Here's the link to join.`,
-    eyebrow: 'Free trial class',
-    heading: `${data.studentName}'s trial class is booked!`,
+    preheader: `${when.day}, ${when.hours}. Join from this email: no app, no account.`,
+    heading: `${data.studentName}'s trial class is booked`,
     intro: [
       `Hi ${firstName},`,
       `Thank you for booking a free trial with Tech Talk Hub. ${data.studentName} will build a small project live with ${data.tutorName}, and you'll see how our classes work.`,
       'The class runs in our own online classroom, right in the browser. There is nothing to install and no account to create.',
     ],
+    ticket: {
+      day: when.day,
+      hours: when.hours,
+      caption: `Free trial · ${data.programLabel} · with ${data.tutorName}`,
+      cta: { label: 'Join the trial class', url: data.joinUrl },
+      note: 'The classroom opens 15 minutes before the class starts.',
+      calendarUrl: googleCalendarUrl({
+        title: `${data.studentName}'s trial class · Tech Talk Hub`,
+        start: data.start,
+        end: data.end,
+        details: `Join the class: ${data.joinUrl}`,
+        location: data.joinUrl,
+      }),
+    },
     details: [
       {
         label: 'Student',
@@ -250,16 +328,10 @@ export function trialInviteEmail(data: TrialEmailData): RenderedEmail {
           .join(' · '),
       },
       { label: 'Program', value: data.programLabel },
-      { label: 'Date', value: when.day },
-      { label: 'Time', value: when.hours },
       { label: 'Tutor', value: data.tutorName },
+      { label: 'Class length', value: lengthText(data.start, data.end) },
       { label: 'Class ID', value: data.roomCode },
     ],
-    cta: {
-      label: 'Join the trial class',
-      url: data.joinUrl,
-      note: 'The classroom opens 15 minutes before the class starts.',
-    },
     steps: {
       title: 'Getting ready',
       items: [
@@ -278,6 +350,16 @@ export function trialInviteEmail(data: TrialEmailData): RenderedEmail {
   }
 }
 
+/** "60 minutes" */
+function lengthText(start: Date, end: Date): string {
+  const minutes = Math.max(
+    0,
+    Math.round((end.getTime() - start.getTime()) / 60_000),
+  )
+  if (minutes % 60 === 0 && minutes >= 120) return `${minutes / 60} hours`
+  return `${minutes} minutes`
+}
+
 /** To the tutor: a new trial is on their calendar, with the classroom link. */
 export function tutorTrialEmail(
   data: TrialEmailData & { tutorUrl: string; notes: string | null },
@@ -285,12 +367,25 @@ export function tutorTrialEmail(
   const when = classTime(data.start, data.end)
   const layout: Layout = {
     preheader: `${data.studentName} (${gradeText(data.studentGrade) || data.programLabel}) on ${when.day}.`,
-    eyebrow: 'New trial on your calendar',
-    heading: `Trial with ${data.studentName}`,
+    heading: `New trial with ${data.studentName}`,
     intro: [
       `Hi ${data.tutorName.split(/\s+/)[0] || 'there'},`,
       'A free trial class has been booked into your open slot. It runs in the Tech Talk Hub classroom; the family has been emailed the join link.',
     ],
+    ticket: {
+      day: when.day,
+      hours: when.hours,
+      caption: `Free trial · ${data.programLabel}`,
+      cta: { label: 'Open the classroom', url: data.tutorUrl },
+      note: 'Sign in with your tutor account to host the class.',
+      calendarUrl: googleCalendarUrl({
+        title: `Trial: ${data.studentName} · Tech Talk Hub`,
+        start: data.start,
+        end: data.end,
+        details: `Host the class: ${data.tutorUrl}`,
+        location: data.tutorUrl,
+      }),
+    },
     details: [
       {
         label: 'Student',
@@ -299,25 +394,19 @@ export function tutorTrialEmail(
           .join(' · '),
       },
       { label: 'Program', value: data.programLabel },
-      { label: 'Date', value: when.day },
-      { label: 'Time', value: when.hours },
       { label: 'Class ID', value: data.roomCode },
       ...(data.notes ? [{ label: 'Notes from sales', value: data.notes }] : []),
     ],
-    cta: {
-      label: 'Open the classroom',
-      url: data.tutorUrl,
-      note: 'Sign in with your tutor account to host the class.',
-    },
     steps: {
       title: 'Before the trial',
       items: [
-        'Read the student’s grade and the notes under Trial bookings in your dashboard.',
+        'Read the student’s grade and the notes on the trial in My Schedule.',
         'Open the classroom 5–10 minutes early and test your camera and microphone.',
         'Have a project ready for this age group, plus a backup.',
       ],
     },
-    footnote: 'This trial is also on your calendar in the tutor dashboard.',
+    footnote:
+      'This trial is also on your calendar under My Schedule in the tutor dashboard.',
   }
   return {
     subject: `New trial: ${data.studentName} · ${when.day}`,

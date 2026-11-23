@@ -130,7 +130,7 @@ export const TOUR_SECTIONS: TourSection[] = [
       {
         term: 'Send alert',
         description:
-          'Flag the class for an academic counsellor (AC) or support. Admins see them under Dashboard › Classroom › Manage, on that class. Each alert can be sent once a minute.',
+          'Flag the class. An AC alert reaches the sales team and the admins; a support alert reaches the tech admins and the admins. It lands in their Class alerts inbox in the dashboard. Each alert can be sent once a minute.',
       },
       {
         term: 'AI tools',
@@ -148,7 +148,8 @@ export const TOUR_SECTIONS: TourSection[] = [
       },
       {
         term: 'Need help?',
-        description: 'Support chat. Pick a topic, then describe the issue.',
+        description:
+          'Support chat. Pick a topic, then describe the issue: it goes to the admin team’s Class alerts inbox.',
       },
       {
         term: 'End class',

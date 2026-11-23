@@ -173,6 +173,7 @@ function remoteParticipant(peer: RemoteParticipant): {
       speaking: peer.isSpeaking,
       // Set by the server in their token.
       watching: peer.attributes.role === 'viewer',
+      host: peer.attributes.role === 'host',
     },
     media: {
       camera: camera instanceof RemoteVideoTrack ? camera : null,
@@ -282,6 +283,7 @@ export function useLiveKitRoom({
     room.on(RoomEvent.TrackUnmuted, refreshParticipants)
     room.on(RoomEvent.ActiveSpeakersChanged, refreshParticipants)
     room.on(RoomEvent.ParticipantNameChanged, refreshParticipants)
+    room.on(RoomEvent.ParticipantAttributesChanged, refreshParticipants)
     room.on(RoomEvent.DataReceived, (payload, sender) => {
       if (!state.active) return
       messageRef.current(messageFromJson(payload), {

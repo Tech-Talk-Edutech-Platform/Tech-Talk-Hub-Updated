@@ -3,9 +3,13 @@ import { ChevronLeft, SendHorizontal, Sparkles, X } from 'lucide-react'
 import { HELP_TOPICS } from '../../../data/classroom'
 import { CLASSROOM_BRAND } from '../../../data/classroomBrand'
 import {
+  faqReply,
   GREETING,
-  replyForQuestion,
+  NOT_SAVED,
+  PASSED_TO_ADMIN,
   replyForTopic,
+  sendFailed,
+  SENT_TO_ADMIN,
 } from '../../../lib/classroom/helpBot'
 import { uid } from '../../../lib/classroom/uid'
 import type { HelpMessage, HelpTopic } from '../../../types/classroom'
@@ -26,18 +30,30 @@ function clearTimers(pending: Set<number>) {
   pending.clear()
 }
 
-type NeedHelpWidgetProps = { onClose: () => void }
+type NeedHelpWidgetProps = {
+  onClose: () => void
+  /**
+   * Sends the message to the admins' Class alerts inbox. Left out when the
+   * room isn't a saved class: nothing could be filed against it.
+   */
+  onSendToAdmin?: (topic: HelpTopic, message: string) => Promise<void>
+}
 
 /**
  * Floating support chat, top-left over the page (docs/breakdown/11-need-help.md).
  * Loads with a skeleton, greets, offers topics, then becomes a conversation.
+ * What the tutor writes goes to the admin team.
  */
-export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
+export function NeedHelpWidget({
+  onClose,
+  onSendToAdmin,
+}: NeedHelpWidgetProps) {
   const [loading, setLoading] = useState(true)
   const [thread, setThread] = useState(initialThread)
   const [topic, setTopic] = useState<HelpTopic | null>(null)
   const [typing, setTyping] = useState(false)
   const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
   const listRef = useRef<HTMLOListElement>(null)
   const panelRef = useRef<HTMLDialogElement>(null)
   // Pending bot replies. Cleared in place (never replaced) so unmount clears them all.
@@ -97,13 +113,52 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
     botSays(replyForTopic(picked.id))
   }
 
+  const say = (text: string) =>
+    setThread((t) => [...t, { id: uid(), from: 'bot', text, at: Date.now() }])
+
+  const sendToAdmin = async (
+    picked: HelpTopic,
+    text: string,
+    reply: string,
+  ) => {
+    if (!onSendToAdmin) {
+      botSays(NOT_SAVED)
+      return
+    }
+    setSending(true)
+    setTyping(true)
+    try {
+      await onSendToAdmin(picked, text)
+      say(reply)
+    } catch (error) {
+      say(
+        sendFailed(
+          error instanceof Error && error.message
+            ? error.message.replace(/\.?$/, '.')
+            : 'the connection dropped.',
+        ),
+      )
+      // Put the words back so they can be sent again.
+      setDraft((current) => current || text)
+    } finally {
+      setTyping(false)
+      setSending(false)
+    }
+  }
+
   const ask = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const text = draft.trim()
-    if (!text) return
+    if (!text || !topic || sending) return
     setDraft('')
     setThread((t) => [...t, { id: uid(), from: 'me', text, at: Date.now() }])
-    botSays(replyForQuestion(text))
+    if (topic.ai) {
+      const answer = faqReply(text)
+      if (answer) botSays(answer)
+      else void sendToAdmin(topic, text, PASSED_TO_ADMIN)
+      return
+    }
+    void sendToAdmin(topic, text, SENT_TO_ADMIN)
   }
 
   return (
@@ -129,7 +184,7 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
         <div className="min-w-0 flex-1">
           <h2 className="text-[16.5px] leading-6 font-bold">Need help?</h2>
           <p className="text-[13px] leading-4 text-white/90">
-            Response time within minutes
+            Messages go to the admin team
           </p>
         </div>
         <button
@@ -201,7 +256,7 @@ export function NeedHelpWidget({ onClose }: NeedHelpWidgetProps) {
               />
               <button
                 type="submit"
-                disabled={!draft.trim()}
+                disabled={!draft.trim() || sending}
                 aria-label="Send"
                 className="press grid size-10 place-items-center rounded-[10px] bg-brand text-white hover:bg-brand-strong disabled:bg-brand-faded"
               >

@@ -24,6 +24,7 @@ import { Button, Card, CardTitle, ErrorNote, Loading, StatusPill } from './ui'
 const ALERT_LABEL = {
   ac: 'Academic counsellor',
   support: 'Support team',
+  help: 'Need help',
 } as const
 
 const END_REASONS = [...END_COMPLETED_VIA, ...END_NOT_COMPLETED]
@@ -234,7 +235,13 @@ export function SessionActivityPanel({ session }: { session: SessionRow }) {
                 <div>
                   <p className="font-bold text-slate-900 dark:text-white">
                     {ALERT_LABEL[alert.alert_type]}
+                    {alert.topic ? ` · ${alert.topic}` : ''}
                   </p>
+                  {alert.message && (
+                    <p className="mt-0.5 text-sm whitespace-pre-line text-slate-700 dark:text-slate-200">
+                      {alert.message}
+                    </p>
+                  )}
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Sent {time(alert.created_at)}
                     {alert.resolved_at &&

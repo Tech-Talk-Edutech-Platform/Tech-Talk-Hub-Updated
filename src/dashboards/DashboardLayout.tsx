@@ -9,8 +9,8 @@ import { isAdminRole, roleLabel } from '../types/roles'
 import {
   BookOpen,
   Activity,
+  BellRing,
   Calendar,
-  CalendarHeart,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -44,7 +44,6 @@ import TutorHomeView from './views/tutor/TutorHomeView'
 import TutorStudentsView from './views/tutor/TutorStudentsView'
 import TutorCourseAssignmentView from './views/tutor/TutorCourseAssignmentView'
 import TutorClassroomsView from './views/tutor/TutorClassroomsView'
-import TutorTrialBookingsView from './views/tutor/TutorTrialBookingsView'
 import TutorTrainingView from './views/tutor/TutorTrainingView'
 
 // Sales & trials (src/features/sales)
@@ -54,6 +53,9 @@ import {
 } from '../features/sales/SalesDashboardViews'
 import { isSalesView, SALES_NAV } from '../features/sales/navigation'
 import { SidebarButton, SidebarGroup } from './Sidebar'
+// Alerts tutors send from the classroom (src/features/classAlerts)
+import { ClassAlertsView } from '../features/classAlerts/ClassAlertsView'
+import { alertTypesFor, useOpenAlertCount } from '../features/classAlerts/api'
 
 // Admin Views
 import AdminHomeView from './views/admin/AdminHomeView'
@@ -85,6 +87,10 @@ export default function DashboardLayout({
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const isAdmin = isAdminRole(role)
+  // Sales, tech admins and admins each get the classroom alerts routed to
+  // them, with the open count on the sidebar.
+  const getsAlerts = alertTypesFor(role).length > 0
+  const openAlerts = useOpenAlertCount(getsAlerts && user !== null)
 
   if (!user) {
     return (
@@ -110,6 +116,10 @@ export default function DashboardLayout({
       }
 
       return <StudentSettingsView user={currentUser} />
+    }
+
+    if (activeView === 'class-alerts' && getsAlerts) {
+      return <ClassAlertsView role={role} />
     }
 
     // Shared recordings manager
@@ -154,9 +164,6 @@ export default function DashboardLayout({
 
         case 'classrooms':
           return <TutorClassroomsView userId={currentUser.id} />
-
-        case 'trials':
-          return <TutorTrialBookingsView userId={currentUser.id} />
 
         case 'training':
           return <TutorTrainingView userId={currentUser.id} />
@@ -246,10 +253,10 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-dashboard-canvas text-gray-900 transition-colors duration-300 dark:bg-dashboard-night dark:text-white">
+    <div className="flex h-dvh overflow-hidden bg-dashboard-canvas text-gray-900 transition-colors duration-300 dark:bg-dashboard-night dark:text-white">
       {/* Sidebar */}
       <aside
-        className={`relative flex min-h-screen shrink-0 flex-col border-r border-gray-100 bg-white p-5 transition-all duration-300 dark:border-white/10 dark:bg-white/5 ${
+        className={`relative flex h-full shrink-0 flex-col border-r border-gray-100 bg-white p-5 transition-all duration-300 dark:border-white/10 dark:bg-white/5 ${
           isCollapsed ? 'w-20' : 'w-64'
         }`}
       >
@@ -288,6 +295,17 @@ export default function DashboardLayout({
               setActiveView={setActiveView}
               isCollapsed={isCollapsed}
             />
+            {getsAlerts && (
+              <SidebarButton
+                icon={BellRing}
+                label="Class alerts"
+                view="class-alerts"
+                activeView={activeView}
+                setActiveView={setActiveView}
+                isCollapsed={isCollapsed}
+                badge={openAlerts}
+              />
+            )}
           </SidebarGroup>
 
           {/* Student navigation */}
@@ -353,15 +371,6 @@ export default function DashboardLayout({
                 icon={Calendar}
                 label="My Schedule"
                 view="schedule"
-                activeView={activeView}
-                setActiveView={setActiveView}
-                isCollapsed={isCollapsed}
-              />
-
-              <SidebarButton
-                icon={CalendarHeart}
-                label="Trial Bookings"
-                view="trials"
                 activeView={activeView}
                 setActiveView={setActiveView}
                 isCollapsed={isCollapsed}
@@ -567,7 +576,10 @@ export default function DashboardLayout({
       </aside>
 
       {/* Dynamic content */}
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main
+        id="dashboard-scroll"
+        className="min-w-0 flex-1 overflow-y-auto overscroll-contain"
+      >
         {renderMainContent()}
       </main>
     </div>

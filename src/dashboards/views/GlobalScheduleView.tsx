@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -31,11 +31,12 @@ import {
 } from 'lucide-react'
 import { toast, Toaster } from 'react-hot-toast'
 import '../../../src/fullcalendar.css'
-import type { ReactNode, MouseEvent } from 'react'
+import type { ReactNode, MouseEvent, RefObject } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { isAdminRole } from '../../types/roles'
 import { sendWaitingInvites } from '../../lib/sendWaitingInvites'
+import { TrialBookingDetails } from './shared/TrialBookingDetails'
 
 type AppUser = Tables<'users'>
 type Lead = Tables<'leads'>
@@ -440,6 +441,7 @@ export default function GlobalScheduleView() {
     retry: false,
   })
   const loading = scheduleQuery.isPending
+  const calendarBoxRef = useRef<HTMLDivElement>(null)
   const refreshing = scheduleQuery.isFetching && !scheduleQuery.isPending
   const snapshot = scheduleQuery.data ?? null
   const authUser = snapshot?.authUser ?? null
@@ -1033,6 +1035,9 @@ export default function GlobalScheduleView() {
   const selectedTutor = selectedEvent ? findUser(selectedEvent.tutor_id) : null
   const studentMeetLink = student ? profile?.personal_meet_link : null
 
+  // The calendar toolbar is sticky; the day-name row pins just under it.
+  useStickyToolbarHeight(calendarBoxRef, loading)
+
   if (loading)
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm font-semibold text-slate-500">
@@ -1173,7 +1178,10 @@ export default function GlobalScheduleView() {
               </span>
             </div>
           </div>
-          <div className="global-schedule-calendar min-h-[620px] text-sm">
+          <div
+            ref={calendarBoxRef}
+            className="global-schedule-calendar min-h-[620px] text-sm"
+          >
             <FullCalendar
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
@@ -1183,6 +1191,7 @@ export default function GlobalScheduleView() {
                 right: 'dayGridMonth,timeGridWeek,timeGridDay',
               }}
               height="auto"
+              stickyHeaderDates
               nowIndicator
               selectable={false}
               events={fullCalendarEvents}
@@ -1200,7 +1209,7 @@ export default function GlobalScheduleView() {
           </div>
         </section>
 
-        <aside className="space-y-4">
+        <aside className="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain">
           {student && (
             <Panel title="Your permanent meeting link" icon={Video}>
               {studentMeetLink ? (
@@ -1404,6 +1413,13 @@ export default function GlobalScheduleView() {
                 </p>
               </div>
             </div>
+            {(tutor || admin) && selectedEvent.class_type === 'trial' && (
+              <TrialBookingDetails
+                eventId={selectedEvent.id}
+                meetLink={selectedEvent.meet_link}
+                endTime={selectedEvent.end_time}
+              />
+            )}
             {eventAttendees.length > 0 && (
               <div>
                 <h4 className="mb-2 text-sm font-extrabold text-slate-900 dark:text-white">
@@ -1866,4 +1882,29 @@ export default function GlobalScheduleView() {
       )}
     </div>
   )
+}
+
+/**
+ * Publishes the calendar toolbar's height as --fc-toolbar-h on the calendar
+ * box, so the sticky day-name row sits right under the sticky toolbar
+ * (src/fullcalendar.css). The toolbar wraps onto more lines on a phone.
+ */
+function useStickyToolbarHeight(
+  boxRef: RefObject<HTMLDivElement | null>,
+  loading: boolean,
+) {
+  useEffect(() => {
+    const box = boxRef.current
+    if (loading || !box) return undefined
+    const update = () => {
+      const toolbar = box.querySelector<HTMLElement>('.fc-header-toolbar')
+      box.style.setProperty('--fc-toolbar-h', `${toolbar?.offsetHeight ?? 0}px`)
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(box)
+    const toolbar = box.querySelector('.fc-header-toolbar')
+    if (toolbar) observer.observe(toolbar)
+    return () => observer.disconnect()
+  }, [boxRef, loading])
 }

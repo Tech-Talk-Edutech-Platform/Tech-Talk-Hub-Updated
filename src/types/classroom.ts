@@ -185,6 +185,8 @@ export type Participant = {
   lastSeen?: number
   /** Joined from the parent link: watches and listens, never on camera. */
   watching?: boolean
+  /** The tutor running the class (their token's role). Shown first. */
+  host?: boolean
 }
 
 export type ChatMessage = {

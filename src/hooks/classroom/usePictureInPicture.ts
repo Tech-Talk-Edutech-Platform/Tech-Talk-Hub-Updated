@@ -27,8 +27,33 @@ function documentPip(): DocumentPictureInPicture | null {
   return isDocumentPip(api) ? api : null
 }
 
+/**
+ * Automatic Picture in Picture (Chrome and Edge 120+), what Google Meet
+ * does: a page that is using the camera or mic and registers this media
+ * session action gets called when the user switches to another tab, and may
+ * open its floating window then without a click. Not in the DOM typings yet.
+ */
+type PipMediaSession = {
+  setActionHandler: (
+    action: 'enterpictureinpicture',
+    handler: (() => void) | null,
+  ) => void
+}
+
+const isPipMediaSession = (value: unknown): value is PipMediaSession =>
+  typeof value === 'object' &&
+  value !== null &&
+  'setActionHandler' in value &&
+  typeof value.setActionHandler === 'function'
+
+function pipMediaSession(): PipMediaSession | null {
+  if (!('mediaSession' in navigator)) return null
+  const session: unknown = navigator.mediaSession
+  return isPipMediaSession(session) ? session : null
+}
+
 /** Size of the floating window when it first opens; the user can resize it. */
-const PIP_WINDOW = { width: 420, height: 340 }
+const PIP_WINDOW = { width: 460, height: 380 }
 
 /**
  * The floating window starts as a blank page: give it this page's styles and
@@ -63,6 +88,12 @@ type PictureInPictureOptions = {
   remote: RemoteVideoTrack | null
   /** Drawn on the fallback canvas when there is no video at all. */
   initial: string
+  /**
+   * Open by itself when the user switches to another tab, and close again
+   * when they come back (only a window opened this way; one they opened
+   * with the button stays until they close it).
+   */
+  auto?: boolean
 }
 
 /**
@@ -75,18 +106,24 @@ type PictureInPictureOptions = {
  *
  * Elsewhere (Safari) it pops out one video: someone else's share or camera,
  * then your own, then your initial on a canvas.
+ *
+ * With `auto`, Chrome and Edge pop the class out on their own when you
+ * switch tabs, like Google Meet, and tuck it away when you return.
  */
 export function usePictureInPicture({
   cam,
   screen,
   remote,
   initial,
+  auto = false,
 }: PictureInPictureOptions) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasTimer = useRef(0)
   const [videoActive, setVideoActive] = useState(false)
   const [pipWindow, setPipWindow] = useState<Window | null>(null)
   const pipWindowRef = useRef<Window | null>(null)
+  /** The open window was opened by a tab switch, not by the button. */
+  const autoOpened = useRef(false)
 
   useEffect(() => {
     pipWindowRef.current = pipWindow
@@ -165,7 +202,16 @@ export function usePictureInPicture({
   const openFloatingWindow = async (api: DocumentPictureInPicture) => {
     const pip = await api.requestWindow(PIP_WINDOW)
     preparePipDocument(pip)
-    pip.addEventListener('pagehide', () => setPipWindow(null), { once: true })
+    pip.addEventListener(
+      'pagehide',
+      () => {
+        autoOpened.current = false
+        pipWindowRef.current = null
+        setPipWindow(null)
+      },
+      { once: true },
+    )
+    pipWindowRef.current = pip
     setPipWindow(pip)
   }
 
@@ -191,6 +237,7 @@ export function usePictureInPicture({
   }
 
   const togglePictureInPicture = async () => {
+    autoOpened.current = false
     try {
       if (pipWindow) {
         pipWindow.close()
@@ -208,6 +255,61 @@ export function usePictureInPicture({
       toast('Couldn’t open Picture in Picture.')
     }
   }
+
+  // The latest openers, for the media session handler registered once below.
+  const openAutomatically = async () => {
+    if (pipWindowRef.current || document.pictureInPictureElement) return
+    autoOpened.current = true
+    try {
+      const api = documentPip()
+      if (api) await openFloatingWindow(api)
+      else await openVideoWindow()
+    } catch {
+      // The browser said no (setting off, no camera or mic in use): the tab
+      // just goes to the background as before.
+      autoOpened.current = false
+    }
+  }
+  const autoOpenRef = useRef(openAutomatically)
+  useEffect(() => {
+    autoOpenRef.current = openAutomatically
+  })
+
+  useEffect(() => {
+    const session = auto ? pipMediaSession() : null
+    if (!session) return undefined
+    try {
+      session.setActionHandler('enterpictureinpicture', () => {
+        void autoOpenRef.current()
+      })
+    } catch {
+      // This browser has no automatic Picture in Picture.
+      return undefined
+    }
+    // Back on the class tab: put away a window that opened by itself.
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || !autoOpened.current) {
+        return
+      }
+      autoOpened.current = false
+      if (pipWindowRef.current) {
+        pipWindowRef.current.close()
+        pipWindowRef.current = null
+        setPipWindow(null)
+      } else if (document.pictureInPictureElement) {
+        void document.exitPictureInPicture().catch(() => undefined)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      try {
+        session.setActionHandler('enterpictureinpicture', null)
+      } catch {
+        // Nothing was registered.
+      }
+    }
+  }, [auto])
 
   return {
     videoRef,

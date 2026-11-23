@@ -91,6 +91,9 @@ export function Stage({
     screen: media.screen,
     remote: featuredRemoteVideo(participants, remoteMedia),
     initial: self.initial,
+    // Pop out on its own when you switch tabs, as Google Meet does, while the
+    // class is on our own video (not an external platform).
+    auto: platform.builtIn,
   })
   const external = !platform.builtIn
   // Parents watching (the parent link) are listed under People, not given a
@@ -199,7 +202,8 @@ export function Stage({
 
 /**
  * The video worth keeping an eye on from another tab: someone's screen share,
- * else whoever is talking (with their camera on), else the first camera.
+ * else the tutor's camera, else whoever is talking (with their camera on),
+ * else the first camera.
  */
 function featuredRemoteVideo(
   participants: Participant[],
@@ -212,6 +216,8 @@ function featuredRemoteVideo(
   }
   const cameraOf = (person: Participant) =>
     person.cam ? (remoteMedia[person.id]?.camera ?? null) : null
+  const tutor = others.find((person) => person.host && cameraOf(person))
+  if (tutor) return cameraOf(tutor)
   const speaker = others.find((person) => person.speaking && cameraOf(person))
   if (speaker) return cameraOf(speaker)
   for (const person of others) {
