@@ -1,3 +1,8 @@
+import {
+  emptySalesStats,
+  reportWeeks,
+  useSalesReporting,
+} from './useSalesReporting'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
@@ -124,10 +129,16 @@ function RepOverview({
 }) {
   const data = useSalesData()
   const now = useNow(60_000)
+  const report = useSalesReporting(data.isDemo, now)
+  const metrics = report.data
 
   const view = useMemo(() => {
     const today = new Date(now)
-    const month = funnelStats(data, rep.id, startOfMonth(today), today)
+    const month =
+      metrics?.stats[rep.id] ??
+      (data.isDemo
+        ? funnelStats(data, rep.id, startOfMonth(today), today)
+        : emptySalesStats)
     const upcoming = data.bookings
       .filter(
         (booking) =>
@@ -156,10 +167,29 @@ function RepOverview({
       waiting: waiting.length,
       notContacted: waiting.filter((lead) => lead.status === 'new').length,
       recentSales,
-      weeks: weeklySales(data.sales, rep.id, today),
+      weeks: metrics
+        ? reportWeeks(metrics, rep.id, today)
+        : weeklySales(data.sales, rep.id, today),
       badges: achievements(data, rep, today),
     }
-  }, [data, rep, now])
+  }, [data, metrics, rep, now])
+
+  if (!data.isDemo && !metrics) {
+    return report.isError ? (
+      <div role="alert" className="space-y-2">
+        <p>Sales totals could not load.</p>
+        <button
+          type="button"
+          className="underline"
+          onClick={() => void report.refetch()}
+        >
+          Try again
+        </button>
+      </div>
+    ) : (
+      <output>Loading sales totals…</output>
+    )
+  }
 
   const progress = Math.min(1, view.month.sales / rep.monthlyTarget)
   const monthName = new Date(now).toLocaleDateString([], { month: 'long' })

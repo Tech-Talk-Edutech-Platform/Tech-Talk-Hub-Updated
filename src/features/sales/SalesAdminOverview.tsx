@@ -1,3 +1,8 @@
+import {
+  emptySalesStats,
+  reportWeeks,
+  useSalesReporting,
+} from './useSalesReporting'
 import { useMemo, useState } from 'react'
 import {
   BadgeCheck,
@@ -123,16 +128,29 @@ export function SalesAdminOverview({
 function TeamOverview() {
   const data = useSalesData()
   const now = useNow(60_000)
+  const report = useSalesReporting(data.isDemo, now)
+  const metrics = report.data
 
   const view = useMemo(() => {
     const today = new Date(now)
     const from = startOfMonth(today)
     const twoWeeks = now + 14 * 86_400_000
     return {
-      team: funnelStats(data, null, from, today),
-      weeks: weeklySales(data.sales, null, today),
+      team:
+        metrics?.stats.team ??
+        (data.isDemo ? funnelStats(data, null, from, today) : emptySalesStats),
+      weeks: metrics
+        ? reportWeeks(metrics, 'team', today)
+        : weeklySales(data.sales, null, today),
       reps: data.reps
-        .map((rep) => ({ rep, stats: funnelStats(data, rep.id, from, today) }))
+        .map((rep) => ({
+          rep,
+          stats:
+            metrics?.stats[rep.id] ??
+            (data.isDemo
+              ? funnelStats(data, rep.id, from, today)
+              : emptySalesStats),
+        }))
         .toSorted((a, b) => b.stats.sales - a.stats.sales),
       mentors: data.mentors.map((mentor) => {
         const upcoming = data.slots.filter((slot) => {
@@ -148,21 +166,46 @@ function TeamOverview() {
         )
         return {
           mentor,
-          open: upcoming.length - booked,
-          booked,
-          held: theirs.filter((b) =>
-            ['attended', 'converted', 'lost'].includes(b.status),
-          ).length,
-          converted: theirs.filter((b) => b.status === 'converted').length,
+          open: metrics
+            ? (metrics.mentors[mentor.id]?.open ?? 0)
+            : upcoming.length - booked,
+          booked: metrics ? (metrics.mentors[mentor.id]?.booked ?? 0) : booked,
+          held: metrics
+            ? (metrics.mentors[mentor.id]?.held ?? 0)
+            : theirs.filter((b) =>
+                ['attended', 'converted', 'lost'].includes(b.status),
+              ).length,
+          converted: metrics
+            ? (metrics.mentors[mentor.id]?.converted ?? 0)
+            : theirs.filter((b) => b.status === 'converted').length,
         }
       }),
-      website: data.bookings.filter(
-        (booking) =>
-          booking.source === 'website' &&
-          new Date(booking.createdAt).getTime() >= from.getTime(),
-      ).length,
+      website: metrics
+        ? (metrics.stats.team?.website ?? 0)
+        : data.bookings.filter(
+            (booking) =>
+              booking.source === 'website' &&
+              new Date(booking.createdAt).getTime() >= from.getTime(),
+          ).length,
     }
-  }, [data, now])
+  }, [data, metrics, now])
+
+  if (!data.isDemo && !metrics) {
+    return report.isError ? (
+      <div role="alert" className="space-y-2">
+        <p>Sales totals could not load.</p>
+        <button
+          type="button"
+          className="underline"
+          onClick={() => void report.refetch()}
+        >
+          Try again
+        </button>
+      </div>
+    ) : (
+      <output>Loading sales totals…</output>
+    )
+  }
 
   const monthName = new Date(now).toLocaleDateString([], { month: 'long' })
   const teamTarget = data.reps.reduce((sum, rep) => sum + rep.monthlyTarget, 0)

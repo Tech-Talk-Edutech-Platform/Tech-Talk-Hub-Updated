@@ -1,13 +1,18 @@
 import { apiUrl } from './apiUrl'
+import { supabase } from '../supabase'
 
-/**
- * After a family books a trial on the website: asks the server to email the
- * classroom links waiting to go out (server/routes/trialInvites.ts). Best
- * effort; the server's scheduled run catches anything this misses.
- */
+/** Staff can prompt delivery after assigning a trial. Public bookings use the scheduled sweep. */
 export function sendWaitingInvites(): void {
-  void fetch(apiUrl('/api/trials/send-pending'), {
-    method: 'POST',
-    keepalive: true,
-  }).catch(() => undefined)
+  void supabase.auth
+    .getSession()
+    .then(({ data }) => {
+      const token = data.session?.access_token
+      if (!token) return undefined
+      return fetch(apiUrl('/api/trials/send-pending'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        keepalive: true,
+      })
+    })
+    .catch(() => undefined)
 }

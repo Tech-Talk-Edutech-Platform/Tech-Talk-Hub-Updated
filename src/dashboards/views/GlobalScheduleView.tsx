@@ -101,7 +101,6 @@ const isFreeSlot = (event: CalendarEvent | null | undefined): boolean =>
   !event?.class_id &&
   event?.booking_status !== 'cancelled'
 const isAdmin = isAdminRole
-const startTimeOf = (e: CalendarEvent) => new Date(e.start_time).getTime()
 /** Deleted slots that old trial bookings still point at are kept, cancelled. */
 const isArchived = (event: CalendarEvent) =>
   event.booking_status === 'cancelled'
@@ -246,7 +245,9 @@ async function loadResources(
  * Loads what the schedule shows; `null` when nobody is signed in. Admins get
  * every tutor's calendar; tutors and students only get their own.
  */
-async function loadSchedule(): Promise<ScheduleSnapshot | null> {
+async function loadSchedule(
+  leadId?: string | null,
+): Promise<ScheduleSnapshot | null> {
   try {
     const { data: authData, error: authError } = await supabase.auth.getUser()
     if (authError) throw authError
@@ -320,10 +321,12 @@ async function loadSchedule(): Promise<ScheduleSnapshot | null> {
 
     let leads: Lead[] = []
     if (admin) {
-      const { data: leadRows, error: leadsError } = await supabase
+      const leadsQuery = supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false })
+      if (leadId) leadsQuery.eq('id', leadId)
+      const { data: leadRows, error: leadsError } = await leadsQuery
       if (leadsError) throw leadsError
       leads = leadRows
     }
@@ -402,8 +405,8 @@ export default function GlobalScheduleView({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const scheduleQuery = useQuery({
-    queryKey: queryKeys.schedule.global,
-    queryFn: loadSchedule,
+    queryKey: [...queryKeys.schedule.global, leadId ?? null],
+    queryFn: () => loadSchedule(leadId),
     // Per-user data under a fixed key: always reload on mount, never reuse it
     // after the view closes (e.g. for the next person who signs in).
     staleTime: 0,
@@ -720,62 +723,10 @@ export default function GlobalScheduleView({
 
   const assignTrial = (lead: Lead) =>
     runAction(async () => {
-      // Pick the earliest future free slot. The slot is converted into a trial event,
-      // so it cannot be offered to a second learner at the same time.
-      const currentTime = Date.now()
-      let candidates = calendarEvents
-        .filter((e) => isFreeSlot(e) && startTimeOf(e) > currentTime)
-        .toSorted((a, b) => startTimeOf(a) - startTimeOf(b))
-      // If the parent selected a specific time, only use a slot at that time.
-      // Do not silently move the trial to a different time when the requested slot is unavailable.
-      if (lead.class_date && lead.class_time) {
-        const wantedDate = lead.class_date.slice(0, 10)
-        const wantedTime = lead.class_time.slice(0, 5)
-        candidates = candidates.filter((e) => {
-          const local = new Date(e.start_time)
-          const date = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`
-          const time = `${String(local.getHours()).padStart(2, '0')}:${String(local.getMinutes()).padStart(2, '0')}`
-          return date === wantedDate && time === wantedTime
-        })
-      }
-      const chosen = candidates[0]
-      if (!chosen)
-        throw new Error(
-          'No tutor slot is available at the requested trial time. The trial remains unassigned at the top of the queue.',
-        )
-      const studentName = lead.student_name || 'Trial student'
-      const { error: eventError } = await supabase
-        .from('calendar_events')
-        .update({
-          title: `Trial: ${studentName}`,
-          class_type: 'trial',
-          booking_status: 'confirmed',
-          session_status: 'scheduled',
-          meet_link: lead.personal_meet_link || null,
-        })
-        .eq('id', chosen.id)
-        .eq('title', 'Free Slot')
-      if (eventError) throw eventError
-      const start = new Date(chosen.start_time)
-      const { error: leadError } = await supabase
-        .from('leads')
-        .update({
-          assigned_tutor_id: chosen.tutor_id,
-          class_date: start.toISOString().slice(0, 10),
-          class_time: start.toISOString().slice(11, 16),
-        })
-        .eq('id', lead.id)
-        .is('assigned_tutor_id', null)
-      if (leadError) throw leadError
-      if (lead.student_user_id) {
-        const { error: attendanceError } = await supabase
-          .from('event_attendance')
-          .upsert(
-            { event_id: chosen.id, student_id: lead.student_user_id },
-            { onConflict: 'event_id,student_id' },
-          )
-        if (attendanceError) throw attendanceError
-      }
+      const { error } = await supabase.rpc('assign_dashboard_trial', {
+        p_lead: lead.id,
+      })
+      if (error) throw error
       // The booking gets its classroom; email the family the link.
       sendWaitingInvites()
     }, 'Trial assigned to the earliest available tutor slot.')

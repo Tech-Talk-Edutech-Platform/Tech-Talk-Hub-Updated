@@ -20,13 +20,18 @@ import {
 } from './bookingStyles'
 import { gradeCategory, gradeLabel } from './gradeCategories'
 import { formatPhone } from './phone'
-import { useSalesData } from './salesDataContext'
+import { problemText, useSalesData } from './salesDataContext'
 import { secondaryButton, whatsappButton } from './styles'
 import { classroomHostPath } from './trialInvites'
 import { TrialInvitePanel } from './TrialInvitePanel'
 import type { TrialBooking } from './types'
 import { StatusBadge, TutorAvatar } from './ui'
-import { whatsappLink, whatsappMessage } from './whatsapp'
+import {
+  messageWithTrialLink,
+  openTrialWhatsApp,
+  whatsappLink,
+  whatsappMessage,
+} from './whatsapp'
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
 const clock = (iso: string) =>
@@ -61,6 +66,7 @@ export function BookingComplete({
   const mentor = data.mentors.find((m) => m.id === booking.mentorId)
   const tutorName = mentor?.name ?? 'the tutor'
   const message = whatsappMessage('trial_confirmation', booking, mentor)
+  const needsGuestLink = Boolean(classroomCode && !data.isDemo)
   const reference = bookingReference(booking.id)
   const booker =
     data.reps.find((rep) => rep.id === booking.salesRepId)?.name ?? 'Admin team'
@@ -68,14 +74,18 @@ export function BookingComplete({
 
   const copy = async (what: 'reference' | 'message', text: string) => {
     try {
-      await navigator.clipboard.writeText(text)
+      const withLink =
+        what === 'message' && needsGuestLink
+          ? await messageWithTrialLink(booking.id, text)
+          : text
+      await navigator.clipboard.writeText(withLink)
       setCopied(what)
       window.setTimeout(
         () => setCopied((current) => (current === what ? null : current)),
         2000,
       )
-    } catch {
-      toast.error('Couldn’t copy. Select the text and copy it instead.')
+    } catch (error) {
+      toast.error(problemText(error, 'Couldn’t copy the text.'))
     }
   }
 
@@ -174,6 +184,7 @@ export function BookingComplete({
               <TrialInvitePanel
                 target={{
                   roomCode: classroomCode,
+                  bookingId: booking.id,
                   parentEmail: booking.parentEmail,
                   invite: booking.inviteEmail,
                 }}
@@ -236,6 +247,17 @@ export function BookingComplete({
               target="_blank"
               rel="noreferrer"
               className={whatsappButton}
+              onClick={(event) => {
+                if (!needsGuestLink) return
+                event.preventDefault()
+                void openTrialWhatsApp(
+                  booking.id,
+                  booking.parentPhone,
+                  message,
+                ).catch((error: unknown) =>
+                  toast.error(problemText(error, 'Couldn’t open WhatsApp.')),
+                )
+              }}
             >
               <MessageCircle size={16} aria-hidden /> Open in WhatsApp
             </a>

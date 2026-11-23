@@ -1,8 +1,21 @@
 import { supabase } from '../supabase'
+import { apiUrl } from '../lib/apiUrl'
 
 export async function notifyDashboardTutor(tutorId: string, message: string) {
-  const { error } = await supabase.functions.invoke('send-push', {
-    body: { tutor_id: tutorId, title: 'Class Update', body: message },
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) throw new Error('Sign in to notify tutors.')
+  const response = await fetch(apiUrl('/api/push'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ tutor_id: tutorId, body: message }),
   })
-  if (error) throw new Error('Could not notify the tutor.')
+  const result: { success?: boolean; error?: string } | null = await response
+    .json()
+    .catch(() => null)
+  if (!response.ok || result?.success !== true)
+    throw new Error(result?.error ?? 'Could not notify the tutor.')
 }

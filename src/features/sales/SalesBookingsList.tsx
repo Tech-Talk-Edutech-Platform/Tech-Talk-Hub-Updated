@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   BadgeCheck,
   ClipboardList,
@@ -19,7 +20,12 @@ import type { SalesPlan, SalesRep, TrialBooking, TrialOutcome } from './types'
 import { REMOVAL_REASON_LABEL, SOURCE_LABEL, TRIAL_STATUS_LABEL } from './types'
 import { EmptyState, Pager, Panel, StatusBadge } from './ui'
 import { inlineSelectClass, inputClass, selectClass } from './styles'
-import { trialTime, whatsappLink, whatsappMessage } from './whatsapp'
+import {
+  openTrialWhatsApp,
+  trialTime,
+  whatsappLink,
+  whatsappMessage,
+} from './whatsapp'
 
 type Filter = 'upcoming' | 'needs-update' | 'all' | 'removed'
 
@@ -64,6 +70,20 @@ export function SalesBookingsList({
   const [removing, setRemoving] = useState<TrialBooking | null>(null)
   const [page, setPage] = useState(0)
   const [now] = useState(() => Date.now())
+  const request = {
+    bookingId,
+    filter,
+    mentorId: mentorFilter,
+    now,
+    page,
+    pageSize: PAGE_SIZE,
+    repId,
+  }
+  const serverPage = useQuery({
+    queryKey: ['dashboard-trial-bookings', request],
+    enabled: Boolean(data.loadBookingPage),
+    queryFn: ({ signal }) => data.loadBookingPage?.(request, signal) ?? null,
+  })
 
   const rows = useMemo(() => {
     const visible = (booking: TrialBooking) =>
@@ -104,7 +124,11 @@ export function SalesBookingsList({
     now,
     bookingId,
   ])
-  const paged = pageOf(rows, page, PAGE_SIZE)
+  const localPage = pageOf(rows, page, PAGE_SIZE)
+  const paged = data.loadBookingPage ? serverPage.data : localPage
+  const total = data.loadBookingPage
+    ? (serverPage.data?.total ?? 0)
+    : rows.length
 
   const mentorName = (id: string) =>
     data.mentors.find((mentor) => mentor.id === id)?.name ?? '—'
@@ -184,7 +208,21 @@ export function SalesBookingsList({
         )
       }
     >
-      {rows.length === 0 ? (
+      {data.loadBookingPage && serverPage.isError ? (
+        <EmptyState>
+          Trial bookings couldn’t be loaded.{' '}
+          <button
+            type="button"
+            onClick={() => void serverPage.refetch()}
+            className="underline"
+          >
+            Try again
+          </button>
+          .
+        </EmptyState>
+      ) : !paged ? (
+        <EmptyState>Loading trial bookings…</EmptyState>
+      ) : total === 0 ? (
         <EmptyState>
           {bookingId
             ? 'This booking could not be found in the available results.'
@@ -216,6 +254,11 @@ export function SalesBookingsList({
               !past && booking.status === 'scheduled'
                 ? booking.classroomCode
                 : null
+            const message = whatsappMessage(
+              past ? 'trial_follow_up' : 'trial_reminder',
+              booking,
+              mentor,
+            )
             return (
               <li key={booking.id} className="py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -240,6 +283,7 @@ export function SalesBookingsList({
                       <TrialInviteInline
                         target={{
                           roomCode: classroomCode,
+                          bookingId: booking.id,
                           parentEmail: booking.parentEmail,
                           invite: booking.inviteEmail,
                         }}
@@ -252,16 +296,22 @@ export function SalesBookingsList({
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <a
-                      href={whatsappLink(
-                        booking.parentPhone,
-                        whatsappMessage(
-                          past ? 'trial_follow_up' : 'trial_reminder',
-                          booking,
-                          mentor,
-                        ),
-                      )}
+                      href={whatsappLink(booking.parentPhone, message)}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={(event) => {
+                        if (!classroomCode || data.isDemo) return
+                        event.preventDefault()
+                        void openTrialWhatsApp(
+                          booking.id,
+                          booking.parentPhone,
+                          message,
+                        ).catch((error: unknown) =>
+                          toast.error(
+                            problemText(error, 'Couldn’t open WhatsApp.'),
+                          ),
+                        )
+                      }}
                       className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
                       <MessageCircle size={13} aria-hidden />
@@ -370,9 +420,9 @@ export function SalesBookingsList({
         </ul>
       )}
       <Pager
-        page={paged.page}
-        pageCount={paged.pageCount}
-        total={rows.length}
+        page={paged?.page ?? 0}
+        pageCount={paged?.pageCount ?? 1}
+        total={total}
         noun="bookings"
         onPage={setPage}
       />

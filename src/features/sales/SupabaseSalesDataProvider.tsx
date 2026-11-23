@@ -2,15 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AlertTriangle, Loader2, RotateCcw } from 'lucide-react'
 import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { supabase } from '../../supabase'
 import type { Tables } from '../../types/database'
 import { GRADE_CATEGORIES } from './gradeCategories'
-import { SalesDataContext, type SalesData } from './salesDataContext'
+import {
+  SalesDataContext,
+  type BookingPageRequest,
+  type SalesData,
+} from './salesDataContext'
 import { secondaryButton } from './styles'
 import {
   classroomCodeOf,
-  familyJoinUrl,
   requestTrialInvite,
   toInviteEmail,
 } from './trialInvites'
@@ -115,6 +119,55 @@ function monthStart(now = new Date()) {
 }
 
 /** Builds the screens' model from database rows. */
+function mapBooking(
+  row: BookingRow,
+  mentors: ReadonlyMap<string, Mentor>,
+  repIds: ReadonlySet<string>,
+): TrialBooking {
+  const event = row.calendar_events
+  const mentor = mentors.get(row.mentor_id)
+  // Classroom trials link to their room; earlier ones to the tutor's Meet.
+  const classroomCode = row.uses_classroom
+    ? classroomCodeOf(event?.meet_link)
+    : null
+  return {
+    id: row.id,
+    slotId: row.calendar_event_id,
+    leadId: row.lead_id,
+    mentorId: row.mentor_id,
+    salesRepId: row.marketer_id,
+    category: oneOf(row.category_id, GRADE_CATEGORY_IDS, 'junior-coders'),
+    parentName: row.parent_name,
+    parentPhone: row.parent_phone,
+    parentEmail: row.parent_email ?? '',
+    studentName: row.student_name,
+    studentGrade: row.student_grade,
+    start: event?.start_time ?? row.created_at,
+    end: event?.end_time ?? row.created_at,
+    meetLink: row.uses_classroom
+      ? ''
+      : event?.meet_link?.trim() || mentor?.meetLink || '',
+    classroomCode,
+    inviteEmail: toInviteEmail(row),
+    status: oneOf(row.status, TRIAL_STATUSES, 'scheduled'),
+    source: toSource(row.source),
+    notes: row.notes ?? '',
+    createdAt: row.created_at,
+    removal: row.removed_at
+      ? {
+          at: row.removed_at,
+          // Shown as "by an admin" unless a rep removed it.
+          byRepId:
+            row.removed_by && repIds.has(row.removed_by)
+              ? row.removed_by
+              : null,
+          reason: oneOf(row.removal_reason, REMOVAL_REASONS, 'other'),
+          note: row.removal_note ?? '',
+        }
+      : null,
+  }
+}
+
 function buildSnapshot(rows: {
   tutors: Pick<
     Tables<'users'>,
@@ -175,52 +228,9 @@ function buildSnapshot(rows: {
     .toSorted((a, b) => a.name.localeCompare(b.name))
   const repIds = new Set(reps.map((rep) => rep.id))
 
-  const allBookings: TrialBooking[] = rows.bookings.map((row) => {
-    const event = row.calendar_events
-    const mentor = mentorById.get(row.mentor_id)
-    // Classroom trials link to their room; earlier ones to the tutor's Meet.
-    const classroomCode = row.uses_classroom
-      ? classroomCodeOf(event?.meet_link)
-      : null
-    return {
-      id: row.id,
-      slotId: row.calendar_event_id,
-      leadId: row.lead_id,
-      mentorId: row.mentor_id,
-      salesRepId: row.marketer_id,
-      category: oneOf(row.category_id, GRADE_CATEGORY_IDS, 'junior-coders'),
-      parentName: row.parent_name,
-      parentPhone: row.parent_phone,
-      parentEmail: row.parent_email ?? '',
-      studentName: row.student_name,
-      studentGrade: row.student_grade,
-      start: event?.start_time ?? row.created_at,
-      end: event?.end_time ?? row.created_at,
-      meetLink: classroomCode
-        ? familyJoinUrl(classroomCode)
-        : row.uses_classroom
-          ? ''
-          : event?.meet_link?.trim() || mentor?.meetLink || '',
-      classroomCode,
-      inviteEmail: toInviteEmail(row),
-      status: oneOf(row.status, TRIAL_STATUSES, 'scheduled'),
-      source: toSource(row.source),
-      notes: row.notes ?? '',
-      createdAt: row.created_at,
-      removal: row.removed_at
-        ? {
-            at: row.removed_at,
-            // Shown as "by an admin" unless a rep removed it.
-            byRepId:
-              row.removed_by && repIds.has(row.removed_by)
-                ? row.removed_by
-                : null,
-            reason: oneOf(row.removal_reason, REMOVAL_REASONS, 'other'),
-            note: row.removal_note ?? '',
-          }
-        : null,
-    }
-  })
+  const allBookings = rows.bookings.map((row) =>
+    mapBooking(row, mentorById, repIds),
+  )
 
   // Upcoming sessions: the open ones, and the ones a live trial holds.
   const now = Date.now()
@@ -450,6 +460,65 @@ async function loadSnapshot(): Promise<SalesSnapshot> {
   })
 }
 
+async function fetchBookingPage(
+  request: BookingPageRequest,
+  signal: AbortSignal,
+) {
+  const { bookingId, filter, mentorId, now, pageSize, repId } = request
+  const start = new Date(now).toISOString()
+  const queryPage = (page: number) => {
+    const query = supabase
+      .from('trial_bookings')
+      .select('*, calendar_events!inner(start_time, end_time, meet_link)', {
+        count: 'exact',
+      })
+    if (bookingId) query.eq('id', bookingId)
+    if (repId) query.eq('marketer_id', repId)
+    if (mentorId && !bookingId) query.eq('mentor_id', mentorId)
+    if (filter === 'removed' && !bookingId) {
+      query
+        .not('removed_at', 'is', null)
+        .order('removed_at', { ascending: false })
+    } else {
+      query.is('removed_at', null)
+      if (!bookingId && filter === 'upcoming') {
+        query.eq('status', 'scheduled').gte('calendar_events.start_time', start)
+      }
+      if (!bookingId && filter === 'needs-update') {
+        query
+          .in('status', ['scheduled', 'attended'])
+          .lt('calendar_events.start_time', start)
+      }
+      query.order('calendar_events(start_time)', {
+        ascending: filter === 'upcoming',
+      })
+    }
+    const offset = page * pageSize
+    return query
+      .order('id')
+      .range(offset, offset + pageSize - 1)
+      .abortSignal(signal)
+  }
+  let page = bookingId ? 0 : request.page
+  let result = await queryPage(page)
+  const lastPage = Math.max(0, Math.ceil((result.count ?? 0) / pageSize) - 1)
+  if (
+    page > 0 &&
+    (result.status === 416 || (!result.error && page > lastPage))
+  ) {
+    page = lastPage
+    result = await queryPage(page)
+  }
+  if (result.error) throw failure(result.error, 'Couldn’t load trial bookings.')
+  const total = result.count ?? 0
+  return {
+    rows: result.data,
+    total,
+    page,
+    pageCount: Math.max(1, Math.ceil(total / pageSize)),
+  }
+}
+
 type LoadOutcome =
   | { stale: boolean; ok: true; snapshot: SalesSnapshot }
   | { stale: boolean; ok: false; error: unknown }
@@ -488,6 +557,7 @@ export function SupabaseSalesDataProvider({
 }: {
   children: ReactNode
 }) {
+  const queryClient = useQueryClient()
   const [snapshot, setSnapshot] = useState<SalesSnapshot | null>(null)
   const [plans, setPlans] = useState<readonly SalesPlan[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -508,8 +578,12 @@ export function SupabaseSalesDataProvider({
     }
     setSnapshot(outcome.snapshot)
     setLoadError(null)
+    void queryClient.invalidateQueries({
+      queryKey: ['dashboard-trial-bookings'],
+    })
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-sales-report'] })
     return outcome.snapshot
-  }, [load])
+  }, [load, queryClient])
 
   useEffect(() => {
     let active = true
@@ -590,6 +664,17 @@ export function SupabaseSalesDataProvider({
       bookings: snapshot.bookings.filter((booking) => !booking.removal),
       removedBookings: snapshot.bookings.filter((booking) => booking.removal),
       isDemo: false,
+      loadBookingPage: async (request, signal) => {
+        const { rows, ...page } = await fetchBookingPage(request, signal)
+        const mentors = new Map(
+          snapshot.mentors.map((mentor) => [mentor.id, mentor]),
+        )
+        const repIds = new Set(snapshot.reps.map((rep) => rep.id))
+        return {
+          ...page,
+          items: rows.map((row) => mapBooking(row, mentors, repIds)),
+        }
+      },
       plans,
 
       addLead: async (input) => {

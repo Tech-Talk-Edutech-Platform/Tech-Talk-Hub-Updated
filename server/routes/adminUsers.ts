@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto'
 import express, { type Request, type Response } from 'express'
+import { dashboardActor, dashboardAdmins } from '../services/dashboardActor'
 import { rateLimit } from '../middleware/rateLimit'
 import { supabase } from '../supabase'
 
@@ -24,12 +25,6 @@ const ASSIGNABLE_ROLES = [
 ] as const
 
 type AssignableRole = (typeof ASSIGNABLE_ROLES)[number]
-
-const ADMIN_ROLES: ReadonlySet<string> = new Set([
-  'owner',
-  'operations_admin',
-  'tech_admin',
-])
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -91,33 +86,13 @@ function temporaryPassword() {
   return `${group()}-${group()}-${group()}-${randomInt(10, 100)}`
 }
 
-function bearerToken(req: Request) {
-  const match = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '')
-  return match?.[1]?.trim() || null
-}
-
-/** The signed-in caller and their role, or null. */
-async function caller(req: Request) {
-  const jwt = bearerToken(req)
-  if (!jwt) return null
-  const { data, error } = await supabase.auth.getUser(jwt)
-  if (error || !data.user) return null
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', data.user.id)
-    .maybeSingle()
-  const role = (profile as { role?: string } | null)?.role ?? ''
-  return { id: data.user.id, role }
-}
-
 async function createUser(req: CreateUserRequest, res: Response) {
-  const admin = await caller(req)
+  const admin = await dashboardActor(req)
   if (!admin) {
     res.status(401).json({ error: 'Sign in again, then try once more.' })
     return
   }
-  if (!ADMIN_ROLES.has(admin.role)) {
+  if (!dashboardAdmins.has(admin.role)) {
     res.status(403).json({ error: 'Only admins can add people.' })
     return
   }

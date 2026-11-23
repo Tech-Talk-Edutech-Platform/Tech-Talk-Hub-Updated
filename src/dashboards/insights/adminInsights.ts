@@ -2,11 +2,11 @@ import { supabase } from '../../supabase'
 import {
   bucketSeries,
   percentChange,
-  periodHalf,
   periodRange,
   type ChartPoint,
   type PeriodId,
 } from '../../components/dashboard/period'
+import { z } from 'zod'
 import { optionalRows } from './optionalRows'
 
 export type ActionItem = {
@@ -60,72 +60,42 @@ function sourceLabel(source: string | null) {
   return text.charAt(0).toUpperCase() + text.slice(1).replaceAll('_', ' ')
 }
 
+const comparison = z.object({ current: z.number(), previous: z.number() })
+const adminReport = z.object({
+  sales: comparison.extend({ count: z.number() }),
+  students: comparison.extend({ active: z.number() }),
+  trials: comparison.extend({
+    current_converted: z.number(),
+    previous_converted: z.number(),
+  }),
+  leads: comparison,
+  revenueBuckets: z.array(z.object({ bucket: z.number(), amount: z.number() })),
+  leadSources: z.array(z.object({ source: z.string(), count: z.number() })),
+})
+
 export async function loadAdminInsights(
   periodId: PeriodId,
 ): Promise<AdminInsights> {
   const range = periodRange(periodId)
-  const since = range.previousStart.toISOString()
+  const buckets = range.days <= 7 ? range.days : 6
   const unavailable = new Set<AdminPanel>()
   const markUnavailable = (panel: AdminPanel) => () => {
     unavailable.add(panel)
   }
 
-  const [
-    sales,
-    activeStudents,
-    newStudents,
-    trials,
-    leads,
-    unassigned,
-    failedInvites,
-  ] = await Promise.all([
-    optionalRows(
-      'sales',
-      supabase
-        .from('sales')
-        .select('amount_kes, closed_at')
-        .gte('closed_at', since),
-      markUnavailable('revenue'),
-    ),
-    supabase
-      .from('users')
-      .select('id', { count: 'exact', head: true })
-      .eq('role', 'student')
-      .neq('is_active', false),
-    optionalRows(
-      'new students',
-      supabase
-        .from('users')
-        .select('created_at')
-        .eq('role', 'student')
-        .gte('created_at', since),
-      markUnavailable('students'),
-    ),
-    optionalRows(
-      'trials',
-      supabase
-        .from('trial_bookings')
-        .select('created_at, status')
-        .is('removed_at', null)
-        .gte('created_at', since),
-      markUnavailable('conversion'),
-    ),
-    optionalRows(
-      'leads',
-      supabase
-        .from('leads')
-        .select('created_at, lead_source')
-        .gte('created_at', since),
-      markUnavailable('leads'),
-    ),
+  const [metrics, unassigned, failedInvites] = await Promise.all([
+    supabase.rpc('dashboard_admin_metrics', {
+      p_previous: range.previousStart.toISOString(),
+      p_start: range.start.toISOString(),
+      p_end: range.end.toISOString(),
+      p_buckets: buckets,
+    }),
     optionalRows(
       'unassigned trials',
       supabase
-        .from('trial_bookings')
-        .select('id, lead_id, student_name, parent_name, created_at')
-        .is('mentor_id', null)
-        .is('removed_at', null)
-        .eq('status', 'scheduled')
+        .from('leads')
+        .select('id, student_name, parent_name, created_at')
+        .is('assigned_tutor_id', null)
         .order('created_at', { ascending: true })
         .limit(20),
       markUnavailable('actions'),
@@ -143,50 +113,37 @@ export async function loadAdminInsights(
       markUnavailable('actions'),
     ),
   ])
-  if (activeStudents.error || activeStudents.count === null)
-    unavailable.add('students')
-
-  const revenue = { current: 0, previous: 0, sales: 0 }
-  for (const sale of sales) {
-    const half = periodHalf(range, sale.closed_at)
-    if (!half) continue
-    revenue[half] += sale.amount_kes
-    if (half === 'current') revenue.sales += 1
+  if (metrics.error) {
+    for (const panel of ['revenue', 'students', 'conversion', 'leads'] as const)
+      unavailable.add(panel)
   }
-
-  const newCount = { current: 0, previous: 0 }
-  for (const student of newStudents) {
-    const half = periodHalf(range, student.created_at)
-    if (half) newCount[half] += 1
+  const report = metrics.error ? null : adminReport.parse(metrics.data)
+  const revenue = report?.sales ?? { current: 0, previous: 0, count: 0 }
+  const students = report?.students ?? { active: 0, current: 0, previous: 0 }
+  const trials = report?.trials ?? {
+    current: 0,
+    previous: 0,
+    current_converted: 0,
+    previous_converted: 0,
   }
+  const leads = report?.leads ?? { current: 0, previous: 0 }
+  const conversionCurrent = conversionRate({
+    all: trials.current,
+    converted: trials.current_converted,
+  })
+  const conversionPrevious = conversionRate({
+    all: trials.previous,
+    converted: trials.previous_converted,
+  })
 
-  const trialCount = {
-    current: { all: 0, converted: 0 },
-    previous: { all: 0, converted: 0 },
-  }
-  for (const trial of trials) {
-    const half = periodHalf(range, trial.created_at)
-    if (!half || trial.status === 'cancelled') continue
-    trialCount[half].all += 1
-    if (trial.status === 'converted') trialCount[half].converted += 1
-  }
-  const conversionCurrent = conversionRate(trialCount.current)
-  const conversionPrevious = conversionRate(trialCount.previous)
-
-  const leadCount = { current: 0, previous: 0 }
   const sources = new Map<string, number>()
-  for (const lead of leads) {
-    const half = periodHalf(range, lead.created_at)
-    if (!half) continue
-    leadCount[half] += 1
-    if (half === 'current') {
-      const label = sourceLabel(lead.lead_source)
-      sources.set(label, (sources.get(label) ?? 0) + 1)
-    }
+  for (const { source, count } of report?.leadSources ?? []) {
+    const label = sourceLabel(source)
+    sources.set(label, (sources.get(label) ?? 0) + count)
   }
   const ranked = [...sources.entries()]
     .map(([name, value]) => ({ name, value }))
-    .toSorted((a, b) => b.value - a.value)
+    .toSorted((a, b) => b.value - a.value || a.name.localeCompare(b.name))
   const otherTotal = ranked
     .slice(MAX_SOURCES)
     .reduce((sum, item) => sum + item.value, 0)
@@ -201,12 +158,12 @@ export async function loadAdminInsights(
       revenue: {
         current: revenue.current,
         change: percentChange(revenue.current, revenue.previous),
-        sales: revenue.sales,
+        sales: revenue.count,
       },
       students: {
-        active: activeStudents.count ?? 0,
-        newCurrent: newCount.current,
-        change: percentChange(newCount.current, newCount.previous),
+        active: students.active,
+        newCurrent: students.current,
+        change: percentChange(students.current, students.previous),
       },
       conversion: {
         current: conversionCurrent,
@@ -214,26 +171,24 @@ export async function loadAdminInsights(
           conversionCurrent === null || conversionPrevious === null
             ? null
             : percentChange(conversionCurrent, conversionPrevious),
-        trials: trialCount.current.all,
+        trials: trials.current,
       },
       leads: {
-        current: leadCount.current,
-        change: percentChange(leadCount.current, leadCount.previous),
+        current: leads.current,
+        change: percentChange(leads.current, leads.previous),
       },
     },
     revenueTrend: bucketSeries(
       range,
-      sales.flatMap((sale) =>
-        periodHalf(range, sale.closed_at) === 'current' && sale.closed_at
-          ? [
-              {
-                at: sale.closed_at,
-                key: 'revenue' as const,
-                value: sale.amount_kes,
-              },
-            ]
-          : [],
-      ),
+      (report?.revenueBuckets ?? []).map(({ bucket, amount }) => ({
+        at: new Date(
+          range.start.getTime() +
+            ((bucket + 0.5) * (range.end.getTime() - range.start.getTime())) /
+              buckets,
+        ).toISOString(),
+        key: 'revenue' as const,
+        value: amount,
+      })),
       ['revenue'],
     ),
     leadSources,
@@ -241,11 +196,11 @@ export async function loadAdminInsights(
       ...unassigned.map((trial) => ({
         id: `unassigned-${trial.id}`,
         kind: 'unassigned' as const,
-        student: trial.student_name,
+        student: trial.student_name ?? 'Trial student',
         parent: trial.parent_name,
         createdAt: trial.created_at,
         view: 'global-schedule' as const,
-        targetId: trial.lead_id,
+        targetId: trial.id,
       })),
       ...failedInvites.map((trial) => ({
         id: `invite-${trial.id}`,

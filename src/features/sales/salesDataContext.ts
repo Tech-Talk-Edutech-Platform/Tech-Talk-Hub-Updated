@@ -14,6 +14,16 @@ import type {
   TrialOutcome,
 } from './types'
 
+export type BookingPageRequest = {
+  filter: 'upcoming' | 'needs-update' | 'all' | 'removed'
+  bookingId?: string | null
+  repId: string | null
+  mentorId: string
+  now: number
+  page: number
+  pageSize: number
+}
+
 /**
  * Everything the sales screens read and change. `SupabaseSalesDataProvider`
  * reads and writes the database; `DemoSalesDataProvider` keeps made-up data in
@@ -31,6 +41,15 @@ export type SalesData = SalesSnapshot & {
    * lists and the numbers ignore them.
    */
   removedBookings: TrialBooking[]
+  loadBookingPage?: (
+    request: BookingPageRequest,
+    signal: AbortSignal,
+  ) => Promise<{
+    items: TrialBooking[]
+    total: number
+    page: number
+    pageCount: number
+  }>
   /** Soft-deletes a booking made in error. */
   removeBooking: (
     bookingId: string,

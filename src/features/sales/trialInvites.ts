@@ -5,9 +5,7 @@ import type { InviteEmailStatus, InviteResult, TrialInviteEmail } from './types'
 
 /**
  * Trials run in their own classroom (migration 20261117150000). The slot's
- * meet_link is '/classroom/<room code>'; the family joins as a guest from
- * '/classroom/<room code>?join=1' with no account, and the server emails them
- * that link (server/routes/trialInvites.ts).
+ * meet_link points to the host room. The server signs guest links for families.
  */
 
 const CLASSROOM_LINK = /^\/classroom\/([A-Za-z0-9_-]{4,64})$/
@@ -24,7 +22,7 @@ const siteOrigin = () =>
     ? 'https://www.techtalk-hub.com'
     : window.location.origin
 
-/** The link the family opens; it joins as a guest, no sign-in. */
+/** Placeholder link for demo bookings. */
 export const familyJoinUrl = (roomCode: string) =>
   `${siteOrigin()}${inviteJoinPath(roomCode)}`
 
@@ -135,4 +133,29 @@ export async function requestTrialInvite(
     to: typeof body.to === 'string' ? body.to : null,
     error: typeof body.error === 'string' ? body.error : null,
   }
+}
+
+/** Fetch a share capability only when staff request it. */
+export async function requestTrialGuestLink(
+  bookingId: string,
+): Promise<string> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) throw new Error('Sign in to share this trial.')
+  const response = await fetch(
+    apiUrl(`/api/trials/${encodeURIComponent(bookingId)}/guest-link`),
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  )
+  const result: unknown = await response.json().catch(() => null)
+  if (!response.ok || !isRecord(result) || typeof result.url !== 'string') {
+    throw new Error(
+      isRecord(result) && typeof result.error === 'string'
+        ? result.error
+        : 'Could not create the trial link.',
+    )
+  }
+  return result.url
 }
