@@ -66,6 +66,8 @@ type BookingRow = {
   status: string
   removed_at: string | null
   mentor_id: string
+  /** The sales rep credited with the trial; null for an unassigned one. */
+  marketer_id: string | null
   calendar_event_id: string
   category_id: string
   parent_name: string
@@ -91,7 +93,7 @@ export async function loadBooking(bookingId: string): Promise<BookingRow> {
   const { data, error } = await supabase
     .from('trial_bookings')
     .select(
-      'id, status, removed_at, mentor_id, calendar_event_id, category_id, parent_name, parent_email, student_name, student_grade, notes, uses_classroom, invite_email_status, invite_email_attempts',
+      'id, status, removed_at, mentor_id, marketer_id, calendar_event_id, category_id, parent_name, parent_email, student_name, student_grade, notes, uses_classroom, invite_email_status, invite_email_attempts',
     )
     .eq('id', bookingId)
     .maybeSingle()
