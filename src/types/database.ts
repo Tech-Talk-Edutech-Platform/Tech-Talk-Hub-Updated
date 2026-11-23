@@ -393,28 +393,34 @@ export type Database = {
           alert_type: string
           created_at: string
           id: string
+          message: string | null
           resolved_at: string | null
           resolved_by: string | null
           sent_by: string | null
           session_id: string
+          topic: string | null
         }
         Insert: {
           alert_type: string
           created_at?: string
           id?: string
+          message?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           sent_by?: string | null
           session_id: string
+          topic?: string | null
         }
         Update: {
           alert_type?: string
           created_at?: string
           id?: string
+          message?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           sent_by?: string | null
           session_id?: string
+          topic?: string | null
         }
         Relationships: [
           {
@@ -979,6 +985,74 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      dashboard_receipt_deliveries: {
+        Row: {
+          first_attempt_at: string | null
+          issued_by: string | null
+          payload: Json
+          receipt_id: string
+          receipt_number: string
+          sent_at: string | null
+        }
+        Insert: {
+          first_attempt_at?: string | null
+          issued_by?: string | null
+          payload: Json
+          receipt_id: string
+          receipt_number: string
+          sent_at?: string | null
+        }
+        Update: {
+          first_attempt_at?: string | null
+          issued_by?: string | null
+          payload?: Json
+          receipt_id?: string
+          receipt_number?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'dashboard_receipt_deliveries_issued_by_fkey'
+            columns: ['issued_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'dashboard_receipt_deliveries_receipt_id_fkey'
+            columns: ['receipt_id']
+            isOneToOne: true
+            referencedRelation: 'receipts'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      dashboard_report_shares: {
+        Row: {
+          expires_at: string
+          report_id: string
+          share_token: string
+        }
+        Insert: {
+          expires_at?: string
+          report_id: string
+          share_token?: string
+        }
+        Update: {
+          expires_at?: string
+          report_id?: string
+          share_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'dashboard_report_shares_report_id_fkey'
+            columns: ['report_id']
+            isOneToOne: true
+            referencedRelation: 'student_results'
+            referencedColumns: ['id']
+          },
+        ]
       }
       event_attendance: {
         Row: {
@@ -2217,6 +2291,7 @@ export type Database = {
           created_at: string
           id: string
           links: Json
+          materials: Json
           minutes: number
           module_id: string
           points: string[]
@@ -2229,6 +2304,7 @@ export type Database = {
           created_at?: string
           id?: string
           links?: Json
+          materials?: Json
           minutes?: number
           module_id: string
           points?: string[]
@@ -2241,6 +2317,7 @@ export type Database = {
           created_at?: string
           id?: string
           links?: Json
+          materials?: Json
           minutes?: number
           module_id?: string
           points?: string[]
@@ -2512,6 +2589,7 @@ export type Database = {
       }
     }
     Functions: {
+      assign_dashboard_trial: { Args: { p_lead: string }; Returns: string }
       book_trial: {
         Args: {
           p_category: string
@@ -2565,6 +2643,33 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: string
       }
+      classroom_alert_audience: { Args: never; Returns: string[] }
+      classroom_alert_inbox: {
+        Args: { p_include_resolved?: boolean; p_limit?: number }
+        Returns: {
+          alert_type: string
+          class_type: string
+          created_at: string
+          id: string
+          message: string
+          parent_email: string
+          parent_name: string
+          parent_phone: string
+          resolved_at: string
+          resolved_by_name: string
+          room_code: string
+          scheduled_at: string
+          sender_email: string
+          sender_name: string
+          session_id: string
+          session_status: string
+          session_title: string
+          students: string
+          topic: string
+          tutor_email: string
+          tutor_name: string
+        }[]
+      }
       classroom_badge_entry: { Args: { p_award_id: string }; Returns: Json }
       classroom_can_read_recording: {
         Args: { p_path: string }
@@ -2607,6 +2712,10 @@ export type Database = {
           title: string
         }[]
       }
+      classroom_session_delete_blocker: {
+        Args: { p_session_id: string }
+        Returns: string
+      }
       create_tutor_availability: {
         Args: { p_start: string }
         Returns: {
@@ -2635,7 +2744,43 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      dashboard_actor_active: { Args: never; Returns: boolean }
+      dashboard_admin_metrics: {
+        Args: {
+          p_buckets: number
+          p_end: string
+          p_previous: string
+          p_start: string
+        }
+        Returns: Json
+      }
+      dashboard_can_manage_report: {
+        Args: { p_student: string }
+        Returns: boolean
+      }
+      dashboard_lesson_quiz: { Args: { p_lesson: string }; Returns: Json }
+      dashboard_quiz_result: { Args: { p_quiz: string }; Returns: Json }
+      dashboard_quiz_retake_at: {
+        Args: { p_completed: string }
+        Returns: string
+      }
+      dashboard_sales_metrics: {
+        Args: { p_chart_end: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      dashboard_student_can_complete_lesson: {
+        Args: { p_lesson: string }
+        Returns: boolean
+      }
+      dashboard_student_has_course: {
+        Args: { p_course: string }
+        Returns: boolean
+      }
       delete_calendar_event: { Args: { p_event_id: string }; Returns: string }
+      delete_classroom_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       get_available_tutors: {
         Args: { desired_time: string }
         Returns: {
@@ -2682,6 +2827,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      read_dashboard_report: { Args: { p_reference: string }; Returns: Json }
       record_sale: {
         Args: {
           p_amount_kes: number
@@ -2744,6 +2890,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      reserve_dashboard_receipt: {
+        Args: { p_actor: string; p_payload: Json }
+        Returns: {
+          first_attempt_at: string | null
+          issued_by: string | null
+          payload: Json
+          receipt_id: string
+          receipt_number: string
+          sent_at: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'dashboard_receipt_deliveries'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      resolve_classroom_alert: {
+        Args: { p_alert_id: string; p_resolved?: boolean }
+        Returns: undefined
+      }
       respond_to_class_booking_request: {
         Args: { p_decision: string; p_request_id: string; p_response?: string }
         Returns: {
@@ -2802,6 +2969,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      revoke_dashboard_report_share: {
+        Args: { p_report: string }
+        Returns: undefined
       }
       sales_add_lead: {
         Args: {
@@ -2917,6 +3088,11 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      share_dashboard_report: { Args: { p_report: string }; Returns: string }
+      submit_dashboard_quiz: {
+        Args: { p_answers: Json; p_quiz: string }
+        Returns: Json
       }
       trial_booking_sync_classroom: {
         Args: { p_booking_id: string }

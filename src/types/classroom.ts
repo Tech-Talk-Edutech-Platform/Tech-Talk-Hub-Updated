@@ -205,8 +205,32 @@ export type Reaction = {
 }
 
 /** What tabs of one room send each other (docs/breakdown/12-realtime-sync.md). */
+/**
+ * What a tutor can do to a student's mic and camera. Turning them off happens
+ * straight away; turning them on is a request the student accepts with one
+ * tap (browsers only start a camera or mic for the person at the device).
+ */
+export type MediaControl = 'mute-mic' | 'stop-cam' | 'ask-mic' | 'ask-cam'
+
+export const MEDIA_CONTROLS: readonly MediaControl[] = [
+  'mute-mic',
+  'stop-cam',
+  'ask-mic',
+  'ask-cam',
+]
+
+/** `to` for a control meant for every student. */
+export const EVERYONE = '*'
+
 export type RoomMessage =
   | { type: 'hello' | 'here' | 'state' | 'bye' | 'end'; from: Participant }
+  | {
+      type: 'control'
+      from: Participant
+      /** A participant id, or EVERYONE. */
+      to: string
+      action: MediaControl
+    }
   | { type: 'chat'; from: Participant; message: ChatMessage }
   | { type: 'reaction'; from: Participant; reaction: Reaction }
   | { type: 'badge'; from: Participant; award: BadgeAnnouncement }

@@ -14,6 +14,11 @@ export type AnchoredPosition = {
   caretX: number
   /** CSS transform-origin, so the panel scales out of its trigger. */
   origin: string
+  /**
+   * Set when the panel is taller than the window (a short or zoomed-in
+   * screen): cap it at this height and let it scroll.
+   */
+  maxHeight: number | undefined
 }
 
 type AnchorOptions = {
@@ -54,9 +59,12 @@ export function useAnchoredPosition(
       const floating = floatingRef.current
       if (!anchor || !floating) return
       const w = floating.offsetWidth
-      const h = floating.offsetHeight
       const vw = window.innerWidth
       const vh = window.innerHeight
+      const room = vh - MARGIN * 2
+      // scrollHeight is the full content even while the panel is capped.
+      const maxHeight = floating.scrollHeight > room ? room : undefined
+      const h = Math.min(floating.offsetHeight, room)
       const anchorX = anchor.left + anchor.width / 2
 
       const left = Math.min(
@@ -77,6 +85,7 @@ export function useAnchoredPosition(
         left,
         caretX,
         origin: `${caretX}px ${placement === 'top' ? '100%' : '0%'}`,
+        maxHeight,
       })
     }
     update()

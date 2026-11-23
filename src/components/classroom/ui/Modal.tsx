@@ -11,7 +11,7 @@ type ModalProps = {
   closeLabel?: string
   /**
    * Long forms: sits near the top instead of the centre, so it doesn't jump
-   * as options open, and scrolls inside once it reaches the viewport's foot.
+   * as options open.
    */
   tall?: boolean
   children: ReactNode
@@ -20,6 +20,9 @@ type ModalProps = {
 /**
  * Native <dialog> modal: focus trap, Escape and top layer for free. Stays
  * mounted so the close transition can play; remount it with a `key` to reset.
+ *
+ * Never taller than the window: on a short or zoomed-in screen the modal
+ * scrolls inside, and the close button stays pinned at its top corner.
  */
 export function Modal({
   open,
@@ -52,22 +55,25 @@ export function Modal({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      className={`modal w-[calc(100%-32px)] max-w-none rounded-[8px] bg-white p-0 text-ink shadow-[0_24px_64px_-16px_rgb(0_0_0/0.4)] ${
+      className={`modal w-[calc(100%-32px)] max-w-none [scrollbar-width:thin] [scrollbar-color:var(--color-line-strong)_transparent] overflow-y-auto overscroll-contain rounded-[8px] bg-white p-0 text-ink shadow-[0_24px_64px_-16px_rgb(0_0_0/0.4)] ${
         tall
-          ? 'mx-auto mt-[max(16px,8dvh)] mb-auto max-h-[calc(100dvh_-_max(16px,8dvh)_-_16px)] overflow-y-auto overscroll-contain'
-          : 'm-auto overflow-visible'
+          ? 'mx-auto mt-[max(16px,8dvh)] mb-auto max-h-[calc(100dvh_-_max(16px,8dvh)_-_16px)]'
+          : 'm-auto max-h-[calc(100dvh-32px)]'
       }`}
       style={{ maxWidth: width }}
     >
-      <div className={`relative ${padding} max-sm:px-6 max-sm:py-8`}>
+      {/* Zero height, so it takes no room: just keeps the button in reach. */}
+      <div className="sticky top-0 z-10 flex h-0 justify-end">
         <button
           type="button"
           onClick={onClose}
           aria-label={closeLabel}
-          className="press absolute top-[18px] right-[18px] grid size-9 place-items-center rounded-md text-ink-soft hover:bg-surface-2 hover:text-ink"
+          className="press mt-[18px] mr-[18px] grid size-9 shrink-0 place-items-center rounded-md bg-white/90 text-ink-soft hover:bg-surface-2 hover:text-ink"
         >
           <X size={24} strokeWidth={1.75} />
         </button>
+      </div>
+      <div className={`relative ${padding} max-sm:px-6 max-sm:py-8`}>
         {children}
       </div>
     </dialog>

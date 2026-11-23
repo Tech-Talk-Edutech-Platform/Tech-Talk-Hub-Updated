@@ -45,6 +45,8 @@ export const queryKeys = {
     course: ['training', 'course'] as const,
     progress: (tutorId: string) => ['training', 'progress', tutorId] as const,
     allProgress: ['training', 'progress', 'all'] as const,
+    signedUrls: (paths: readonly string[]) =>
+      ['training', 'signed-urls', ...paths] as const,
   },
   site: {
     program: (slug: string) => ['site', 'program', slug] as const,

@@ -8,12 +8,15 @@ import {
 } from 'react'
 import { uid } from '../../lib/classroom/uid'
 import { toast } from '../../lib/classroom/toast'
-import type {
-  BadgeAnnouncement,
-  ChatMessage,
-  Participant,
-  Reaction,
-  RoomMessage,
+import {
+  EVERYONE,
+  MEDIA_CONTROLS,
+  type BadgeAnnouncement,
+  type ChatMessage,
+  type MediaControl,
+  type Participant,
+  type Reaction,
+  type RoomMessage,
 } from '../../types/classroom'
 
 // LiveKit carries room messages across devices; BroadcastChannel remains the
@@ -29,6 +32,8 @@ type RoomOptions = {
   onRemoteEnd?: (from: Participant) => void
   /** Another tab gave a badge; show it to everyone in the room. */
   onBadge?: (award: BadgeAnnouncement) => void
+  /** The tutor muted this student, or asked them to turn something on. */
+  onControl?: (action: MediaControl, from: Participant) => void
   enabled?: boolean
   connected?: boolean
   sendMessage?: (message: RoomMessage) => Promise<void>
@@ -66,6 +71,12 @@ function isRoomMessage(value: unknown): value is RoomMessage {
     case 'bye':
     case 'end':
       return true
+    case 'control':
+      return (
+        typeof message.to === 'string' &&
+        message.to.length <= 128 &&
+        MEDIA_CONTROLS.some((action) => action === message.action)
+      )
     case 'chat': {
       const item = message.message
       if (!isRecord(item)) return false
@@ -128,6 +139,7 @@ export function useRoom({
   self,
   onRemoteEnd,
   onBadge,
+  onControl,
   enabled = true,
   connected = false,
   sendMessage,
@@ -140,11 +152,13 @@ export function useRoom({
   const selfRef = useRef(self)
   const endRef = useRef(onRemoteEnd)
   const badgeRef = useRef(onBadge)
+  const controlRef = useRef(onControl)
   const transportRef = useRef({ connected, sendMessage, listenOnly })
   useEffect(() => {
     selfRef.current = self
     endRef.current = onRemoteEnd
     badgeRef.current = onBadge
+    controlRef.current = onControl
   })
   useEffect(() => {
     transportRef.current = { connected, sendMessage, listenOnly }
@@ -211,6 +225,15 @@ export function useRoom({
           if (sender && !sender.isHost) break
           endRef.current?.(from)
           break
+        case 'control': {
+          // Only a host (the server says so in their token) controls
+          // someone else's mic and camera, and never another host's.
+          if (sender && !sender.isHost) break
+          const me = selfRef.current
+          if (me.host || (value.to !== EVERYONE && value.to !== me.id)) break
+          controlRef.current?.(value.action, from)
+          break
+        }
       }
     },
     [post],
@@ -315,6 +338,10 @@ export function useRoom({
     void post({ type: 'badge', from: selfRef.current, award })
   }
 
+  /** Tutor only: mute a student, turn off their camera, or ask them to turn one on. */
+  const sendControl = (to: string, action: MediaControl) =>
+    post({ type: 'control', from: selfRef.current, to, action })
+
   const endForAll = () =>
     post({
       type: 'end',
@@ -333,6 +360,7 @@ export function useRoom({
     sendChat,
     sendReaction,
     announceBadge,
+    sendControl,
     endForAll,
   }
 }

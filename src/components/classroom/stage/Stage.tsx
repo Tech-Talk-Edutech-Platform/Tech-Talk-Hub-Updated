@@ -6,6 +6,7 @@ import type {
   RemoteMedia,
 } from '../../../hooks/classroom/useLiveKitRoom'
 import { usePictureInPicture } from '../../../hooks/classroom/usePictureInPicture'
+import { useAutoPip } from '../../../lib/classroom/autoPip'
 import type { Recording } from '../../../hooks/classroom/useRecording'
 import type {
   BadgeAnnouncement,
@@ -81,6 +82,7 @@ export function Stage({
   onOpenSettings,
   moreActions,
 }: StageProps) {
+  const autoPip = useAutoPip()
   const {
     videoRef: pipVideoRef,
     pipWindow,
@@ -92,8 +94,9 @@ export function Stage({
     remote: featuredRemoteVideo(participants, remoteMedia),
     initial: self.initial,
     // Pop out on its own when you switch tabs, as Google Meet does, while the
-    // class is on our own video (not an external platform).
-    auto: platform.builtIn,
+    // class is on our own video (not an external platform). Settings has the
+    // switch.
+    auto: Boolean(platform.builtIn) && autoPip,
   })
   const external = !platform.builtIn
   // Parents watching (the parent link) are listed under People, not given a

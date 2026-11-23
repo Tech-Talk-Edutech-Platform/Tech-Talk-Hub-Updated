@@ -1,5 +1,12 @@
 import { supabase } from '../../supabase'
 import type { Json, Tables } from '../../types/database'
+import {
+  materialPaths,
+  parseMaterials,
+  removeMaterialFiles,
+  serializeMaterials,
+  type TrainingMaterial,
+} from './materials'
 
 /**
  * Tutor training lives in the database so admins can edit it
@@ -9,8 +16,13 @@ import type { Json, Tables } from '../../types/database'
 
 export type TrainingLink = { label: string; href: string }
 
-export type TrainingLesson = Omit<Tables<'tutor_training_lessons'>, 'links'> & {
+export type TrainingLesson = Omit<
+  Tables<'tutor_training_lessons'>,
+  'links' | 'materials'
+> & {
   links: TrainingLink[]
+  /** Videos, pictures and documents (empty until migration 20261124120000). */
+  materials: TrainingMaterial[]
 }
 
 export type TrainingModule = Tables<'tutor_training_modules'> & {
@@ -60,7 +72,10 @@ export async function loadTrainingCourse(): Promise<TrainingModule[]> {
             a.position - b.position || a.created_at.localeCompare(b.created_at),
         )
         .map((lesson) =>
-          Object.assign(lesson, { links: parseLinks(lesson.links) }),
+          Object.assign(lesson, {
+            links: parseLinks(lesson.links),
+            materials: parseMaterials(lesson.materials),
+          }),
         ),
     }),
   )
@@ -170,12 +185,16 @@ export async function saveModule(
   if (error) throw error
 }
 
-export async function deleteModule(id: string): Promise<void> {
+/** Deletes the module, its lessons and their uploaded files. */
+export async function deleteModule(module: TrainingModule): Promise<void> {
   const { error } = await supabase
     .from('tutor_training_modules')
     .delete()
-    .eq('id', id)
+    .eq('id', module.id)
   if (error) throw error
+  await removeMaterialFiles(
+    module.lessons.flatMap((lesson) => materialPaths(lesson.materials)),
+  )
 }
 
 export type LessonDraft = {
@@ -184,39 +203,62 @@ export type LessonDraft = {
   summary: string
   points: string[]
   links: TrainingLink[]
+  materials: TrainingMaterial[]
 }
 
 export async function saveLesson(
   draft: LessonDraft,
   existing: { id: string } | { moduleId: string; position: number },
 ): Promise<void> {
-  const fields = {
+  const base = {
     title: draft.title.trim(),
     minutes: draft.minutes,
     summary: draft.summary.trim(),
     points: draft.points,
     links: draft.links,
   }
-  const { error } =
+  const write = (row: typeof base & { materials?: Json }) =>
     'id' in existing
-      ? await supabase
+      ? supabase
           .from('tutor_training_lessons')
-          .update(fields)
+          .update(row)
           .eq('id', existing.id)
-      : await supabase.from('tutor_training_lessons').insert({
-          ...fields,
+      : supabase.from('tutor_training_lessons').insert({
+          ...row,
           module_id: existing.moduleId,
           position: existing.position,
         })
+  let { error } = await write({
+    ...base,
+    materials: serializeMaterials(draft.materials),
+  })
+  if (error && missingMaterialsColumn(error)) {
+    // Before migration 20261124120000 a lesson with no materials still saves.
+    if (draft.materials.length > 0) {
+      throw new Error(
+        'Lesson materials aren’t set up in the database yet (migration 20261124120000_tutor_training_materials.sql).',
+      )
+    }
+    ;({ error } = await write(base))
+  }
   if (error) throw error
 }
 
-export async function deleteLesson(id: string): Promise<void> {
+function missingMaterialsColumn(error: { code?: string; message: string }) {
+  return (
+    (error.code === 'PGRST204' || error.code === '42703') &&
+    error.message.includes('materials')
+  )
+}
+
+/** Deletes the lesson and its uploaded files. */
+export async function deleteLesson(lesson: TrainingLesson): Promise<void> {
   const { error } = await supabase
     .from('tutor_training_lessons')
     .delete()
-    .eq('id', id)
+    .eq('id', lesson.id)
   if (error) throw error
+  await removeMaterialFiles(materialPaths(lesson.materials))
 }
 
 /**

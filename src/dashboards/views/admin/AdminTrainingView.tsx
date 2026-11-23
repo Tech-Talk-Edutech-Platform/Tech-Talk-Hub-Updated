@@ -33,6 +33,15 @@ import {
   type TrainingLink,
   type TrainingModule,
 } from '../../../features/training/trainingApi'
+import {
+  materialPaths,
+  removeMaterialFiles,
+  type MaterialKind,
+} from '../../../features/training/materials'
+import {
+  MaterialsEditor,
+  type MaterialRow,
+} from '../../../features/training/MaterialsEditor'
 
 /**
  * Admins write the tutor training course here; tutors take it under
@@ -121,21 +130,21 @@ export default function AdminTrainingView() {
   const removeModule = (module: TrainingModule) => {
     if (
       !window.confirm(
-        `Delete “${module.title}” and its ${module.lessons.length} lessons? Tutors’ progress on them is deleted too. To hide it for now, edit it and untick “Published” instead.`,
+        `Delete “${module.title}” and its ${module.lessons.length} lessons, with their uploaded files? Tutors’ progress on them is deleted too. To hide it for now, edit it and untick “Published” instead.`,
       )
     )
       return
-    void run(() => deleteModule(module.id), 'Module deleted.')
+    void run(() => deleteModule(module), 'Module deleted.')
   }
 
   const removeLesson = (lesson: TrainingLesson) => {
     if (
       !window.confirm(
-        `Delete the lesson “${lesson.title}”? Tutors who finished it lose that tick.`,
+        `Delete the lesson “${lesson.title}” and its uploaded files? Tutors who finished it lose that tick.`,
       )
     )
       return
-    void run(() => deleteLesson(lesson.id), 'Lesson deleted.')
+    void run(() => deleteLesson(lesson), 'Lesson deleted.')
   }
 
   const totalLessons = course.reduce((sum, m) => sum + m.lessons.length, 0)
@@ -310,10 +319,7 @@ export default function AdminTrainingView() {
                           </p>
                         )}
                         <p className="mt-1 text-xs text-slate-400">
-                          {lesson.points.length} key{' '}
-                          {lesson.points.length === 1 ? 'point' : 'points'}
-                          {lesson.links.length > 0 &&
-                            ` · ${lesson.links.length} ${lesson.links.length === 1 ? 'link' : 'links'}`}
+                          {lessonContents(lesson)}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
@@ -409,11 +415,11 @@ export default function AdminTrainingView() {
             const target = editing.lesson
               ? { id: editing.lesson.id }
               : { moduleId: editing.moduleId, position: lessonCount + 1 }
-            const saved = await run(
+            // The editor closes itself once its files are tidied up.
+            return run(
               () => saveLesson(draft, target),
               editing.lesson ? 'Lesson saved.' : 'Lesson added.',
             )
-            if (saved) setEditing(null)
           }}
         />
       )}
@@ -656,7 +662,8 @@ function LessonEditor({
   lesson: TrainingLesson | null
   busy: boolean
   onClose: () => void
-  onSave: (draft: LessonDraft) => Promise<void>
+  /** Resolves true once saved. */
+  onSave: (draft: LessonDraft) => Promise<boolean>
 }) {
   const [title, setTitle] = useState(lesson?.title ?? '')
   const [minutes, setMinutes] = useState(String(lesson?.minutes ?? 10))
@@ -665,7 +672,19 @@ function LessonEditor({
   const [links, setLinks] = useState<LinkRow[]>(() =>
     (lesson?.links ?? []).map(linkRow),
   )
+  const [materials, setMaterials] = useState<MaterialRow[]>(
+    () => lesson?.materials ?? [],
+  )
   const [error, setError] = useState<string | null>(null)
+  // Files uploaded while editing: deleted again if the lesson isn't saved.
+  const uploaded = useRef(new Set<string>())
+  const saved = useRef(false)
+  useEffect(() => {
+    const fresh = uploaded.current
+    return () => {
+      if (!saved.current) void removeMaterialFiles([...fresh])
+    }
+  }, [])
 
   const updateLink = (key: number, patch: Partial<TrainingLink>) =>
     setLinks((rows) =>
@@ -697,8 +716,12 @@ function LessonEditor({
       )
       return
     }
+    if (materials.some((row) => row.uploading)) {
+      setError('Wait for the uploads to finish, then save.')
+      return
+    }
     setError(null)
-    void onSave({
+    void saveDraft({
       title,
       minutes: length,
       summary,
@@ -711,7 +734,31 @@ function LessonEditor({
         ),
       ],
       links: cleanLinks,
+      materials: materials.map((row) => ({
+        id: row.id,
+        kind: row.kind,
+        title: row.title,
+        note: row.note,
+        path: row.path,
+        url: row.url,
+        mime: row.mime,
+        size: row.size,
+      })),
     })
+  }
+
+  const saveDraft = async (draft: LessonDraft) => {
+    if (!(await onSave(draft))) return
+    saved.current = true
+    // Files taken out of the lesson (or uploaded, then removed) go too.
+    const keep = new Set(materialPaths(draft.materials))
+    const before = materialPaths(lesson?.materials ?? [])
+    void removeMaterialFiles(
+      [...new Set([...before, ...uploaded.current])].filter(
+        (path) => !keep.has(path),
+      ),
+    )
+    onClose()
   }
 
   return (
@@ -766,8 +813,8 @@ function LessonEditor({
             className={inputClass}
           />
         </label>
-        <fieldset className="space-y-2">
-          <legend className={labelClass}>Links (optional)</legend>
+        <fieldset className="min-w-0 space-y-2">
+          <legend className={labelClass}>Read more links (optional)</legend>
           {links.map((link) => (
             <div key={link.key} className="flex gap-2">
               <input
@@ -777,14 +824,14 @@ function LessonEditor({
                   updateLink(link.key, { label: e.target.value })
                 }
                 placeholder="Label"
-                className={`${inputClass} mt-0 w-1/3`}
+                className={`${inputClass} mt-0 !w-1/3 min-w-0`}
               />
               <input
                 aria-label="Link address"
                 value={link.href}
                 onChange={(e) => updateLink(link.key, { href: e.target.value })}
                 placeholder="/child-safety or https://…"
-                className={`${inputClass} mt-0 flex-1`}
+                className={`${inputClass} mt-0 !w-auto min-w-0 flex-1`}
               />
               <IconButton
                 label="Remove link"
@@ -807,6 +854,12 @@ function LessonEditor({
             <Plus size={14} aria-hidden /> Add link
           </button>
         </fieldset>
+        <MaterialsEditor
+          materials={materials}
+          onChange={setMaterials}
+          onUploaded={(path) => uploaded.current.add(path)}
+          labelClass={labelClass}
+        />
         <EditorFooter error={error} busy={busy} onCancel={onClose} />
       </form>
     </EditorDialog>
@@ -814,6 +867,30 @@ function LessonEditor({
 }
 
 // ── Small pieces ─────────────────────────────────────────────────────────
+
+const KIND_NAMES: Record<MaterialKind, [string, string]> = {
+  video: ['video', 'videos'],
+  image: ['picture', 'pictures'],
+  document: ['document', 'documents'],
+}
+
+const counted = (count: number, [one, many]: [string, string]) =>
+  `${count} ${count === 1 ? one : many}`
+
+/** "3 key points · 1 video · 2 pictures · 1 link". */
+function lessonContents(lesson: TrainingLesson): string {
+  const kinds: MaterialKind[] = ['video', 'image', 'document']
+  return [
+    counted(lesson.points.length, ['key point', 'key points']),
+    ...kinds.flatMap((kind) => {
+      const count = lesson.materials.filter((m) => m.kind === kind).length
+      return count ? [counted(count, KIND_NAMES[kind])] : []
+    }),
+    ...(lesson.links.length
+      ? [counted(lesson.links.length, ['link', 'links'])]
+      : []),
+  ].join(' · ')
+}
 
 /** Native modal dialog: traps focus, closes on Escape or a backdrop click. */
 function EditorDialog({

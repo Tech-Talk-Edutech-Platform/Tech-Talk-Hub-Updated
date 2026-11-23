@@ -26,6 +26,7 @@ import { SwitchPlatformModal } from '../../components/classroom/modals/SwitchPla
 import { ChatPanel } from '../../components/classroom/panels/ChatPanel'
 import { ClassDetailsPanel } from '../../components/classroom/panels/ClassDetailsPanel'
 import { PeoplePanel } from '../../components/classroom/panels/PeoplePanel'
+import { MediaAskPrompt } from '../../components/classroom/stage/MediaAskPrompt'
 import { Stage } from '../../components/classroom/stage/Stage'
 import { ClassToolbar } from '../../components/classroom/toolbar/ClassToolbar'
 import { BrandMark } from '../../components/classroom/brand/BrandMark'
@@ -43,6 +44,7 @@ import {
   useLiveKitRoom,
 } from '../../hooks/classroom/useLiveKitRoom'
 import { useLocalMedia } from '../../hooks/classroom/useLocalMedia'
+import { useTutorMediaControl } from '../../hooks/classroom/useTutorMediaControl'
 import { useRecording } from '../../hooks/classroom/useRecording'
 import { useRoom } from '../../hooks/classroom/useRoom'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
@@ -54,6 +56,7 @@ import {
   linkExpiry,
   scheduledEnd,
 } from '../../lib/classroom/schedule'
+import { autoPipSupported, useAutoPip } from '../../lib/classroom/autoPip'
 import { copyText } from '../../lib/classroom/clipboard'
 import {
   deleteBadgeAward,
@@ -79,12 +82,14 @@ import type {
   ClassModal,
   ClassroomData,
   GivenBadge,
+  MediaControl,
   MenuAction,
   PanelName,
   Participant,
   SubmittedProject,
   ToolbarMenu,
 } from '../../types/classroom'
+import { EVERYONE } from '../../types/classroom'
 
 const CELEBRATION_MS = 3200
 
@@ -341,7 +346,10 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
   const [joinStarted, setJoinStarted] = useState(() => !!name)
   const [selfId] = useState(uid)
 
-  const media = useLocalMedia()
+  const autoPip = useAutoPip()
+  const media = useLocalMedia({
+    holdMicWhenMuted: autoPip && autoPipSupported(),
+  })
   const speaking = useIsSpeaking(media.mic)
   const timer = useClassTimer(classroomId)
 
@@ -455,10 +463,14 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     setModal(null)
     setHelpOpen(false)
     setHand(false)
+    mediaControl.dismiss()
     // The host's "end" message and the server closing the room can both
     // arrive; keep the first, which names who ended it.
     setEnded((current) => current ?? { elapsedMs: timer.elapsedMs, ...info })
   }
+
+  // The tutor's mute / "please turn on" requests, for students.
+  const mediaControl = useTutorMediaControl(media, !teacherMode && !watchOnly)
 
   const liveRoom = useLiveKitRoom({
     roomId: classroomId,
@@ -483,7 +495,21 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
       celebrate(award)
       toast(`${award.studentName} earned “${award.name}”`)
     },
+    onControl: mediaControl.onControl,
   })
+
+  /** Tutor: act on a student's mic or camera from the People panel. */
+  const controlStudent = (person: Participant, action: MediaControl) => {
+    void room.sendControl(person.id, action)
+    toast(
+      {
+        'mute-mic': `Muted ${person.name}.`,
+        'stop-cam': `Turned off ${person.name}’s camera.`,
+        'ask-mic': `Asked ${person.name} to turn on their mic.`,
+        'ask-cam': `Asked ${person.name} to turn on their camera.`,
+      }[action],
+    )
+  }
   const { setMessageHandler } = liveRoom
   const { receiveMessage } = room
   useEffect(() => {
@@ -831,6 +857,15 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
             participants={participants}
             guestLink={watchOnly ? undefined : guestLink}
             parentLink={teacherMode ? parentLink : undefined}
+            onControl={teacherMode ? controlStudent : undefined}
+            onMuteAll={
+              teacherMode
+                ? () => {
+                    void room.sendControl(EVERYONE, 'mute-mic')
+                    toast('Muted all students.')
+                  }
+                : undefined
+            }
             onClose={() => setPanel(null)}
           />
         )}
@@ -899,6 +934,13 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
             onConfirm={endClass}
           />
         </>
+      )}
+      {mediaControl.ask && !ended && (
+        <MediaAskPrompt
+          ask={mediaControl.ask}
+          onAccept={mediaControl.accept}
+          onDismiss={mediaControl.dismiss}
+        />
       )}
       <SettingsModal
         open={modal === 'settings'}

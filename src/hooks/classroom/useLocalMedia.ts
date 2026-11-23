@@ -109,11 +109,24 @@ function useBackgroundProcessing(
   return { stream: ready, starting: !ready }
 }
 
+type LocalMediaOptions = {
+  /**
+   * Keep the microphone connected, silent, while muted (Google Meet does the
+   * same). Chrome only pops a call out into Picture in Picture by itself
+   * while the page is using the camera or mic, so without this a tutor who
+   * is muted with the camera off would lose the floating window. Nothing is
+   * captured into the class: the held track is disabled and never published.
+   */
+  holdMicWhenMuted?: boolean
+}
+
 /**
  * Camera, microphone and screen share for this device. Camera and mic start off,
  * like the reference room (both buttons shown in their "off" colour).
  */
-export function useLocalMedia() {
+export function useLocalMedia({
+  holdMicWhenMuted = false,
+}: LocalMediaOptions = {}) {
   // The camera as captured; `cam` below is what everyone sees (with effects).
   const [rawCam, setCam] = useState<MediaStream | null>(null)
   const [mic, setMic] = useState<MediaStream | null>(null)
@@ -139,20 +152,36 @@ export function useLocalMedia() {
   })
   const cam = processing.stream
 
+  // The muted microphone, held open (see holdMicWhenMuted).
+  const heldMic = useRef<MediaStreamTrack | null>(null)
+  const releaseHeldMic = () => {
+    heldMic.current?.stop()
+    heldMic.current = null
+  }
+
   // Latest streams, so unmounting stops whatever is still live.
   const live = useRef({ cam: rawCam, mic, screen })
   useEffect(() => {
     live.current = { cam: rawCam, mic, screen }
   })
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const held = heldMic
+    return () => {
       const streams = live.current
       stopStream(streams.cam)
       stopStream(streams.mic)
       stopStream(streams.screen)
-    },
-    [],
-  )
+      held.current?.stop()
+      held.current = null
+    }
+  }, [])
+
+  // Turning the setting off lets go of a held microphone straight away.
+  useEffect(() => {
+    if (holdMicWhenMuted) return
+    heldMic.current?.stop()
+    heldMic.current = null
+  }, [holdMicWhenMuted])
 
   useEffect(() => {
     const mediaDevices = getMediaDevices()
@@ -238,11 +267,29 @@ export function useLocalMedia() {
 
   const toggleMic = () => {
     if (mic) {
+      const track = mic.getAudioTracks()[0]
+      releaseHeldMic()
+      if (holdMicWhenMuted && track?.readyState === 'live') {
+        // A disabled copy keeps the device open while the published track stops.
+        const held = track.clone()
+        held.enabled = false
+        heldMic.current = held
+      }
       stopStream(mic)
       setMic(null)
-    } else if (!pending.mic) {
-      void startMic()
+      return
     }
+    if (pending.mic) return
+    const held = heldMic.current
+    heldMic.current = null
+    if (held?.readyState === 'live') {
+      // Unmute instantly on the microphone that was kept open.
+      held.enabled = true
+      setMic(new MediaStream([held]))
+      return
+    }
+    held?.stop()
+    void startMic()
   }
 
   const toggleScreen = () => {
@@ -260,6 +307,7 @@ export function useLocalMedia() {
   }
 
   const stopAll = () => {
+    releaseHeldMic()
     stopStream(rawCam)
     stopStream(mic)
     stopStream(screen)
@@ -276,6 +324,8 @@ export function useLocalMedia() {
       setCam(null)
       void startCam(id)
     }
+    // A held microphone is the old device: the next unmute opens the new one.
+    if (kind === 'audioinput') releaseHeldMic()
     if (kind === 'audioinput' && mic) {
       stopStream(mic)
       setMic(null)

@@ -1,5 +1,11 @@
+import { useState } from 'react'
 import { useAudioMeter } from '../../../hooks/classroom/useAudioMeter'
 import type { LocalMedia } from '../../../hooks/classroom/useLocalMedia'
+import {
+  autoPipSupported,
+  setAutoPip,
+  useAutoPip,
+} from '../../../lib/classroom/autoPip'
 import type { SelectOption } from '../../../types/classroom'
 import { VideoView } from '../stage/VideoView'
 import { BackgroundPicker } from './BackgroundPicker'
@@ -25,7 +31,12 @@ type SettingsModalProps = {
   media: LocalMedia
 }
 
-/** Camera, microphone and background, with a live preview and mic meter. */
+/**
+ * Camera, microphone, background and Picture in Picture, with a live preview
+ * and mic meter. On a short or zoomed-in screen the modal scrolls and the
+ * preview stays pinned (smaller) at the top, so a background can be picked
+ * while watching it apply.
+ */
 export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
   const level = useAudioMeter(open ? media.mic : null)
   const { devices, deviceIds } = media
@@ -41,30 +52,32 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
         Settings
       </h2>
 
-      <div className="mt-5 aspect-video overflow-hidden rounded-[8px] bg-stage">
-        {media.cam ? (
-          <VideoView stream={media.cam} mirror={media.mirror} />
-        ) : media.pending.cam ? (
-          <div className="grid size-full place-items-center text-[14px] text-white/90">
-            Starting your camera…
-          </div>
-        ) : (
-          <div className="grid size-full place-items-center text-center text-[14px] text-white/90">
-            <div>
-              <p>Your camera is off</p>
-              <button
-                type="button"
-                onClick={media.toggleCam}
-                className="press mt-3 h-9 rounded-[8px] bg-white px-3.5 text-[14px] font-medium text-stage hover:bg-white/90"
-              >
-                Turn on camera
-              </button>
+      <div className="sticky top-0 z-[5] -mx-10 mt-2 bg-white px-10 py-3 max-sm:-mx-6 max-sm:px-6">
+        <div className="mx-auto aspect-video w-full max-w-[calc(30dvh*16/9)] overflow-hidden rounded-[8px] bg-stage">
+          {media.cam ? (
+            <VideoView stream={media.cam} mirror={media.mirror} />
+          ) : media.pending.cam ? (
+            <div className="grid size-full place-items-center text-[14px] text-white/90">
+              Starting your camera…
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="grid size-full place-items-center text-center text-[14px] text-white/90">
+              <div>
+                <p>Your camera is off</p>
+                <button
+                  type="button"
+                  onClick={media.toggleCam}
+                  className="press mt-3 h-9 rounded-[8px] bg-white px-3.5 text-[14px] font-medium text-stage hover:bg-white/90"
+                >
+                  Turn on camera
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-5 sm:grid-cols-2">
+      <div className="mt-3 grid gap-5 sm:grid-cols-2">
         <Select
           label="Camera"
           value={deviceIds.videoinput || devices.videoinput[0]?.deviceId || ''}
@@ -123,11 +136,59 @@ export function SettingsModal({ open, onClose, media }: SettingsModalProps) {
         onChange={media.setBackground}
         applying={media.pending.cam && media.background.kind !== 'none'}
       />
+      <PopOutSetting />
       {devices.videoinput.some((device) => !device.label) && (
         <p className="mt-4 text-[12.5px] leading-[18px] text-muted">
           Device names appear after you allow camera and microphone access.
         </p>
       )}
     </Modal>
+  )
+}
+
+/** Automatic Picture in Picture on tab switch (Chrome and Edge). */
+function PopOutSetting() {
+  const on = useAutoPip()
+  const [supported] = useState(autoPipSupported)
+
+  return (
+    <fieldset className="mt-6">
+      <legend className="text-[15px] font-medium text-ink">
+        Picture in Picture
+      </legend>
+      {supported ? (
+        <div className="mt-3 flex items-start gap-3">
+          <input
+            id="auto-pip"
+            type="checkbox"
+            checked={on}
+            onChange={(event) => setAutoPip(event.target.checked)}
+            aria-describedby="auto-pip-hint"
+            className="mt-[3px] size-4 shrink-0 cursor-pointer accent-[var(--color-brand)]"
+          />
+          <div>
+            <label
+              htmlFor="auto-pip"
+              className="block cursor-pointer text-[15px] text-ink"
+            >
+              Pop the class out when I switch tabs
+            </label>
+            <p
+              id="auto-pip-hint"
+              className="mt-1 text-[12.5px] leading-[18px] text-muted"
+            >
+              A small window keeps the class on top while you’re in another tab
+              and tucks away when you come back. While this is on, a muted mic
+              stays connected (nothing is sent) so the window can still open.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-[13px] leading-[19px] text-muted">
+          This browser can’t pop the class out by itself. Use the Picture in
+          Picture button at the top of the room, or join from Chrome or Edge.
+        </p>
+      )}
+    </fieldset>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RemoteVideoTrack } from 'livekit-client'
+import { pipMediaSession } from '../../lib/classroom/autoPip'
 import { toast } from '../../lib/classroom/toast'
 
 /**
@@ -25,31 +26,6 @@ function documentPip(): DocumentPictureInPicture | null {
   if (!('documentPictureInPicture' in window)) return null
   const api = window.documentPictureInPicture
   return isDocumentPip(api) ? api : null
-}
-
-/**
- * Automatic Picture in Picture (Chrome and Edge 120+), what Google Meet
- * does: a page that is using the camera or mic and registers this media
- * session action gets called when the user switches to another tab, and may
- * open its floating window then without a click. Not in the DOM typings yet.
- */
-type PipMediaSession = {
-  setActionHandler: (
-    action: 'enterpictureinpicture',
-    handler: (() => void) | null,
-  ) => void
-}
-
-const isPipMediaSession = (value: unknown): value is PipMediaSession =>
-  typeof value === 'object' &&
-  value !== null &&
-  'setActionHandler' in value &&
-  typeof value.setActionHandler === 'function'
-
-function pipMediaSession(): PipMediaSession | null {
-  if (!('mediaSession' in navigator)) return null
-  const session: unknown = navigator.mediaSession
-  return isPipMediaSession(session) ? session : null
 }
 
 /** Size of the floating window when it first opens; the user can resize it. */

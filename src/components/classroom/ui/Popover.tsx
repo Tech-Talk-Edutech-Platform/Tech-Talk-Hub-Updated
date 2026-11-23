@@ -59,9 +59,18 @@ export function Popover({
         left: pos?.left ?? 0,
         transformOrigin: pos?.origin,
         visibility: pos ? 'visible' : 'hidden',
+        // Taller than the window (zoomed in): scroll inside instead of
+        // running off screen.
+        ...(pos?.maxHeight
+          ? {
+              maxHeight: pos.maxHeight,
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+            }
+          : {}),
       }}
     >
-      {caret && pos && (
+      {caret && pos && !pos.maxHeight && (
         <span
           aria-hidden="true"
           className="absolute size-3.5 rotate-45 rounded-[2px] bg-white"
