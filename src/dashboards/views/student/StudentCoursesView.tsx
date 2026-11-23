@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
   BookOpen,
@@ -86,6 +86,7 @@ interface Syllabus {
 
 interface StudentWorkspace {
   courses: Course[]
+  course: Course | null
   completedIds: Set<string | null>
   syllabus: Syllabus | null
 }
@@ -174,6 +175,7 @@ async function loadAssignedCourses(userId: string): Promise<Course[]> {
     .from('student_enrollments')
     .select('course_id, courses (*)')
     .eq('student_id', userId)
+    .order('enrolled_at', { ascending: false })
 
   if (enrollError) throw enrollError
 
@@ -183,12 +185,13 @@ async function loadAssignedCourses(userId: string): Promise<Course[]> {
   if (enrolledCourses.length > 0) return enrolledCourses
 
   // No enrollments: fall back to the course assigned directly on the user
-  const { data: userData } = await supabase
+  const { data: userData, error: profileError } = await supabase
     .from('users')
     .select('assigned_course_id, courses:assigned_course_id (*)')
     .eq('id', userId)
     .single()
 
+  if (profileError) throw profileError
   return userData?.courses ? [userData.courses] : []
 }
 
@@ -282,21 +285,20 @@ async function loadSyllabus(
   return { phases, openPhases, firstLesson }
 }
 
-async function loadStudentWorkspace(userId: string): Promise<StudentWorkspace> {
+async function loadStudentWorkspace(
+  userId: string,
+  requestedCourseId?: string | null,
+): Promise<StudentWorkspace> {
   const courses = await loadAssignedCourses(userId)
-  const defaultCourse = courses[0]
+  const defaultCourse =
+    courses.find((course) => course.id === requestedCourseId) ?? courses[0]
   if (!defaultCourse) {
-    return { courses, completedIds: new Set(), syllabus: null }
+    return { courses, course: null, completedIds: new Set(), syllabus: null }
   }
 
   const completedIds = await loadCompletedLessonIds(userId)
-  let syllabus: Syllabus | null = null
-  try {
-    syllabus = await loadSyllabus(defaultCourse.id, completedIds)
-  } catch (err) {
-    console.error('Error fetching syllabus:', getErrorMessage(err))
-  }
-  return { courses, completedIds, syllabus }
+  const syllabus = await loadSyllabus(defaultCourse.id, completedIds)
+  return { courses, course: defaultCourse, completedIds, syllabus }
 }
 
 /** Counts the student's homework by status; `null` when it can't be loaded. */
@@ -399,7 +401,18 @@ async function loadLessonQuiz(
   }
 }
 
-export default function StudentCoursesView({ userId }: { userId: string }) {
+export default function StudentCoursesView({
+  userId,
+  requestedCourseId,
+  requestedLessonId,
+}: {
+  userId: string
+  requestedCourseId?: string | null
+  requestedLessonId?: string | null
+}) {
+  const syllabusRequest = useRef(0)
+  const [problem, setProblem] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<Course[]>([])
   const [activeCourse, setActiveCourse] = useState<Course | null>(null)
@@ -442,35 +455,61 @@ export default function StudentCoursesView({ userId }: { userId: string }) {
 
   useEffect(() => {
     if (!userId) return undefined
-    let cancelled = false
+    const controller = new AbortController()
 
-    loadStudentWorkspace(userId).then(
+    loadStudentWorkspace(userId, requestedCourseId).then(
       (workspace) => {
-        if (cancelled) return
+        if (controller.signal.aborted) return
         setCourses(workspace.courses)
-        setActiveCourse(workspace.courses[0] ?? null)
+        setActiveCourse(workspace.course)
         setCompletedLessonIds(workspace.completedIds)
         if (workspace.syllabus) {
           setPhases(workspace.syllabus.phases)
-          setOpenPhases(workspace.syllabus.openPhases)
-          setSelectedLesson(workspace.syllabus.firstLesson)
+          const requestedPhase =
+            workspace.course?.id === requestedCourseId
+              ? workspace.syllabus.phases.find((phase) =>
+                  phase.course_lessons.some(
+                    (lesson) => lesson.id === requestedLessonId,
+                  ),
+                )
+              : undefined
+          const requestedLesson = requestedPhase?.course_lessons.find(
+            (lesson) => lesson.id === requestedLessonId,
+          )
+          const eligibleLesson =
+            requestedLesson &&
+            (workspace.completedIds.has(requestedLesson.id) ||
+              requestedLesson.id === workspace.syllabus.firstLesson?.id)
+          setOpenPhases(
+            eligibleLesson && requestedPhase
+              ? { ...workspace.syllabus.openPhases, [requestedPhase.id]: true }
+              : workspace.syllabus.openPhases,
+          )
+          setSelectedLesson(
+            eligibleLesson ? requestedLesson : workspace.syllabus.firstLesson,
+          )
         }
         setLoading(false)
       },
       (err: unknown) => {
         console.error('Error fetching student data:', getErrorMessage(err))
-        if (!cancelled) setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+          setProblem('Your courses could not be loaded.')
+        }
       },
     )
 
     void loadHomeworkStats(userId).then((stats) => {
-      if (!cancelled && stats) setHomeworkStats(stats)
+      if (!controller.signal.aborted && stats) setHomeworkStats(stats)
     })
 
     return () => {
-      cancelled = true
+      controller.abort()
+      syllabusRequest.current += 1
     }
-  }, [userId])
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the retry counter explicitly reloads the workspace
+  }, [userId, requestedCourseId, requestedLessonId, attempt])
 
   // Load the quiz and homework for the selected lesson
   useEffect(() => {
@@ -552,13 +591,17 @@ export default function StudentCoursesView({ userId }: { userId: string }) {
   }
 
   const showCourseSyllabus = async (targetCourseId: string) => {
+    const request = ++syllabusRequest.current
     try {
       const syllabus = await loadSyllabus(targetCourseId, completedLessonIds)
+      if (request !== syllabusRequest.current) return
       setPhases(syllabus.phases)
       setOpenPhases(syllabus.openPhases)
       setSelectedLesson(syllabus.firstLesson)
     } catch (err) {
+      if (request !== syllabusRequest.current) return
       console.error('Error fetching syllabus:', getErrorMessage(err))
+      setProblem('This course could not be loaded.')
     }
   }
 
@@ -698,6 +741,8 @@ export default function StudentCoursesView({ userId }: { userId: string }) {
   }
 
   const handleSelectCourse = (course: Course) => {
+    setProblem(null)
+    setPhases([])
     setOpenPhases({})
     selectLesson(null)
     setActiveCourse(course)
@@ -715,6 +760,28 @@ export default function StudentCoursesView({ userId }: { userId: string }) {
     if (phase.course_lessons.length === 0) return false
     return phase.course_lessons.every((lesson) =>
       completedLessonIds.has(lesson.id),
+    )
+  }
+
+  if (problem) {
+    return (
+      <div role="alert" className="space-y-3 p-6">
+        <p>{problem}</p>
+        <button
+          type="button"
+          className="rounded-lg bg-purple-700 px-3 py-2 text-white"
+          onClick={() => {
+            setProblem(null)
+            if (activeCourse) void showCourseSyllabus(activeCourse.id)
+            else {
+              setLoading(true)
+              setAttempt((value) => value + 1)
+            }
+          }}
+        >
+          Try again
+        </button>
+      </div>
     )
   }
 

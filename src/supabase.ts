@@ -14,8 +14,8 @@ const clientKey = supabaseKey || 'supabase-not-configured'
 
 export const supabase = createClient<Database>(clientUrl, clientKey, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storage: localStorage,
+    persistSession: !import.meta.env.SSR,
+    autoRefreshToken: !import.meta.env.SSR,
+    detectSessionInUrl: !import.meta.env.SSR,
   },
 })

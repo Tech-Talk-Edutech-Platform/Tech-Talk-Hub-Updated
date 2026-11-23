@@ -1,4 +1,5 @@
 import { gradeCategory } from './gradeCategories'
+import { requestTrialGuestLink } from './trialInvites'
 import type { Mentor, TrialBooking, WhatsAppTemplate } from './types'
 
 /** "Sat 21 Nov, 4:00 PM" in the viewer's time zone. */
@@ -91,4 +92,27 @@ export function whatsappNumber(phone: string) {
  */
 export function whatsappLink(phone: string, message: string) {
   return `https://wa.me/${whatsappNumber(phone)}?text=${encodeURIComponent(message)}`
+}
+
+export async function messageWithTrialLink(bookingId: string, message: string) {
+  const link = await requestTrialGuestLink(bookingId)
+  return message.replace(JOIN_LINK_TO_FOLLOW, () => link)
+}
+
+export async function openTrialWhatsApp(
+  bookingId: string,
+  phone: string,
+  message: string,
+) {
+  const tab = window.open('about:blank', '_blank')
+  if (!tab) throw new Error('Allow pop-ups to open WhatsApp.')
+  tab.opener = null
+  try {
+    tab.location.replace(
+      whatsappLink(phone, await messageWithTrialLink(bookingId, message)),
+    )
+  } catch (error) {
+    tab.close()
+    throw error
+  }
 }

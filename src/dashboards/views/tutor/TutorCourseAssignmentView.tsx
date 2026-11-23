@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
@@ -53,6 +53,8 @@ export default function TutorCourseAssignmentView({
 }: {
   userId: string
 }) {
+  const studentRead = useRef(new AbortController())
+  const courseRead = useRef(new AbortController())
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudent, setSelectedStudent] = useState('')
   const [studentCourses, setStudentCourses] = useState<Course[]>([])
@@ -70,26 +72,32 @@ export default function TutorCourseAssignmentView({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
     loadTutorStudents(userId).then(
       (rows) => {
-        if (!cancelled) setStudents(rows)
+        if (!controller.signal.aborted) setStudents(rows)
       },
       () => {
-        if (!cancelled) toast.error('Failed to load students.')
+        if (!controller.signal.aborted) toast.error('Failed to load students.')
       },
     )
     return () => {
-      cancelled = true
+      controller.abort()
+      studentRead.current.abort()
+      courseRead.current.abort()
     }
   }, [userId])
 
-  const fetchStudentCourses = async (studentId: string) => {
+  const fetchStudentCourses = async (
+    studentId: string,
+    signal: AbortSignal,
+  ) => {
     try {
       const { data: enrollments, error } = await supabase
         .from('student_enrollments')
         .select('course_id, courses(id, title)')
         .eq('student_id', studentId)
+        .abortSignal(signal)
 
       if (error) throw error
 
@@ -106,6 +114,7 @@ export default function TutorCourseAssignmentView({
             .from('courses')
             .select('id, title')
             .eq('id', student.assigned_course_id)
+            .abortSignal(signal)
             .maybeSingle()
 
           if (courseData) {
@@ -114,22 +123,33 @@ export default function TutorCourseAssignmentView({
         }
       }
 
+      if (signal.aborted) return
       setStudentCourses(enrolledCourses)
       if (enrolledCourses.length > 0) {
         const firstCourseId = enrolledCourses[0].id
         setSelectedCourse(firstCourseId)
-        await fetchCourseLessons(firstCourseId, studentId)
+        await fetchCourseLessons(
+          firstCourseId,
+          studentId,
+          courseRead.current.signal,
+        )
       } else {
         setSelectedCourse('')
         setCourseLessons([])
       }
     } catch (err) {
+      if (signal.aborted) return
+      toast.error('Could not load student courses.')
       console.error('Error loading student courses:', getErrorMessage(err))
       setStudentCourses([])
     }
   }
 
-  const fetchCourseLessons = async (courseId: string, studentId: string) => {
+  const fetchCourseLessons = async (
+    courseId: string,
+    studentId: string,
+    signal: AbortSignal,
+  ) => {
     try {
       const { data: phaseData, error: phaseError } = await supabase
         .from('course_phases')
@@ -147,6 +167,7 @@ export default function TutorCourseAssignmentView({
         )
         .eq('course_id', courseId)
         .order('phase_number', { ascending: true })
+        .abortSignal(signal)
 
       if (phaseError) throw phaseError
 
@@ -155,6 +176,7 @@ export default function TutorCourseAssignmentView({
         .select('lesson_id')
         .eq('student_id', studentId)
         .eq('status', 'completed')
+        .abortSignal(signal)
 
       if (progressError) throw progressError
 
@@ -184,52 +206,73 @@ export default function TutorCourseAssignmentView({
         return isUnlocked
       })
 
-      setCourseLessons(eligibleLessons)
+      if (!signal.aborted) setCourseLessons(eligibleLessons)
     } catch (err) {
+      if (signal.aborted) return
+      toast.error('Could not load eligible lessons.')
       console.error('Error loading eligible lessons:', getErrorMessage(err))
       setCourseLessons([])
     }
   }
 
   const handleStudentChange = async (studentId: string) => {
+    studentRead.current.abort()
+    courseRead.current.abort()
+    studentRead.current = new AbortController()
+    courseRead.current = new AbortController()
     setSelectedStudent(studentId)
+    setStudentCourses([])
+    setSelectedCourse('')
+    setCourseLessons([])
     setSelectedLessonId('')
+    setStudentAssignments([])
     setSelectedTaskId(null)
 
-    if (studentId) {
-      await fetchStudentCourses(studentId)
-      await fetchStudentAssignments(studentId)
-    } else {
-      setStudentCourses([])
-      setSelectedCourse('')
-      setCourseLessons([])
-      setStudentAssignments([])
-    }
+    if (!studentId) return
+    const signal = studentRead.current.signal
+    await Promise.all([
+      fetchStudentCourses(studentId, signal),
+      fetchStudentAssignments(studentId, signal),
+    ])
   }
 
   const handleCourseChange = async (courseId: string) => {
+    courseRead.current.abort()
+    courseRead.current = new AbortController()
     setSelectedCourse(courseId)
     setSelectedLessonId('')
+    setCourseLessons([])
     if (selectedStudent && courseId) {
-      await fetchCourseLessons(courseId, selectedStudent)
-    } else {
-      setCourseLessons([])
+      await fetchCourseLessons(
+        courseId,
+        selectedStudent,
+        courseRead.current.signal,
+      )
     }
   }
 
-  const fetchStudentAssignments = async (studentId: string) => {
+  const fetchStudentAssignments = async (
+    studentId: string,
+    signal: AbortSignal,
+  ) => {
     const { data, error } = await supabase
       .from('student_assignments')
       .select('*')
       .eq('student_id', studentId)
       .order('created_at', { ascending: false })
+      .abortSignal(signal)
 
-    if (!error) {
+    if (signal.aborted) return
+    if (error) {
+      toast.error('Could not load student assignments.')
+    } else {
       const tasks = data || []
       setStudentAssignments(tasks)
-      if (tasks.length > 0 && !selectedTaskId) {
-        setSelectedTaskId(tasks[0].id)
-      }
+      setSelectedTaskId((current) =>
+        tasks.some((task) => task.id === current)
+          ? current
+          : (tasks[0]?.id ?? null),
+      )
     }
   }
 
@@ -237,6 +280,7 @@ export default function TutorCourseAssignmentView({
     const task = studentAssignments.find((a) => a.id === taskId)
     if (!task) return
 
+    const signal = studentRead.current.signal
     setLoading(true)
 
     const { error } = await supabase
@@ -261,7 +305,7 @@ export default function TutorCourseAssignmentView({
         ? 'Assignment marked as completed! 🎉'
         : 'Requested revisions from student.',
     )
-    await fetchStudentAssignments(selectedStudent)
+    if (!signal.aborted) await fetchStudentAssignments(selectedStudent, signal)
   }
 
   const handleCreateTask = async (e: FormEvent<HTMLFormElement>) => {
@@ -270,12 +314,14 @@ export default function TutorCourseAssignmentView({
       !selectedStudent ||
       !taskName.trim() ||
       !taskDescription.trim() ||
-      !selectedLessonId
+      !courseLessons.some((lesson) => lesson.id === selectedLessonId)
     ) {
       toast.error('Please fill in all required fields.')
       return
     }
 
+    const signal = studentRead.current.signal
+    const courseSignal = courseRead.current.signal
     setLoading(true)
     const { error } = await supabase.from('student_assignments').insert([
       {
@@ -294,10 +340,13 @@ export default function TutorCourseAssignmentView({
       toast.error('Failed to create assignment task.')
     } else {
       toast.success('Assignment task dispatched successfully! 🚀')
-      setTaskName('')
-      setTaskDescription('')
-      setSelectedLessonId('')
-      await fetchStudentAssignments(selectedStudent)
+      if (!signal.aborted && !courseSignal.aborted) {
+        setTaskName('')
+        setTaskDescription('')
+        setSelectedLessonId('')
+      }
+      if (!signal.aborted)
+        await fetchStudentAssignments(selectedStudent, signal)
     }
   }
 

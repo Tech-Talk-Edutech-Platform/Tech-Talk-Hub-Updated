@@ -1,16 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { supabase } from '../../../supabase'
-import {
-  User,
-  Bell,
-  Save,
-  Loader2,
-  Sun,
-  Moon,
-  LogOut,
-  Camera,
-} from 'lucide-react'
+import { User, Save, Loader2, Sun, Moon, LogOut, Camera } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import type { DashboardIdentity } from '../../../types/dashboardIdentity'
@@ -24,15 +15,11 @@ export default function StudentSettingsView({
 }) {
   const navigate = useNavigate()
   const [fullName, setFullName] = useState(user.full_name || '')
-  const [email] = useState(user.email || '')
+  const email = user.email || ''
   const [avatarUrl, setAvatarUrl] = useState('')
 
   const portal =
     user.role === 'tutor' || user.role === 'marketer' ? user.role : 'student'
-
-  // Notification toggle states
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [examReminders, setExamReminders] = useState(true)
 
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState(() =>
@@ -289,63 +276,6 @@ export default function StudentSettingsView({
       {/* Security & Password Section */}
       <PasswordSettingsCard user={user} />
 
-      {/* Notifications Section */}
-      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="rounded-2xl bg-pink-50 p-3 text-pink-600 dark:bg-pink-500/10">
-            <Bell size={20} />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Notifications
-            </h2>
-            <p className="text-xs text-slate-400">
-              Manage how you receive alerts and coursework updates.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- the label text is a title/description pair nested past the rule's search depth; the whole row is the clickable label for its checkbox */}
-          <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/5">
-            <div>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">
-                Email Alerts
-              </p>
-              <p className="text-xs text-slate-400">
-                Receive announcements regarding classes and homework updates.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={emailNotifications}
-              onChange={() => setEmailNotifications(!emailNotifications)}
-              className="h-5 w-5 cursor-pointer rounded-sm accent-purple-600"
-            />
-          </label>
-
-          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- the label text is a title/description pair nested past the rule's search depth; the whole row is the clickable label for its checkbox */}
-          <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/5">
-            <div>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">
-                Exam Reminders
-              </p>
-              <p className="text-xs text-slate-400">
-                Get notified when new tests or upcoming assessments are
-                published.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={examReminders}
-              onChange={() => setExamReminders(!examReminders)}
-              className="h-5 w-5 cursor-pointer rounded-sm accent-purple-600"
-            />
-          </label>
-        </div>
-      </div>
-
-      {/* Session Logout Action Section */}
       <div className="flex items-center justify-between rounded-3xl border border-red-100 bg-red-50/50 p-8 shadow-xs dark:border-red-500/20 dark:bg-red-500/5">
         <div>
           <h2 className="text-base font-bold text-red-600 dark:text-red-400">

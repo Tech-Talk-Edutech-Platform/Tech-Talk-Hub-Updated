@@ -3,15 +3,21 @@ import { supabase } from '../supabase'
 import { Navigate, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { isAppRole, type AppRole } from '../types/roles'
+import { syncDashboardSession } from './dashboardSession'
 
 interface RoleGateProps {
   children: ReactNode
   allowedRoles: readonly AppRole[]
+  loadingView?: ReactNode
 }
 
 type GateStatus = 'loading' | 'signedOut' | 'unauthorized' | 'authorized'
 
-export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
+export default function RoleGate({
+  children,
+  allowedRoles,
+  loadingView,
+}: RoleGateProps) {
   const [status, setStatus] = useState<GateStatus>('loading')
   const navigate = useNavigate()
 
@@ -79,7 +85,8 @@ export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
   }, [allowedRoles])
 
   const signInWithDifferentAccount = async () => {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (!error) syncDashboardSession(null)
     void navigate('/login', { replace: true })
   }
 
@@ -88,6 +95,7 @@ export default function RoleGate({ children, allowedRoles }: RoleGateProps) {
   }
 
   if (status === 'loading') {
+    if (loadingView) return loadingView
     return (
       <div className="flex h-screen animate-pulse items-center justify-center bg-slate-50 font-black">
         <div className="flex flex-col items-center gap-4">

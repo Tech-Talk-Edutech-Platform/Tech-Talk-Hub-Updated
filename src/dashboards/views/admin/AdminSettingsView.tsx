@@ -4,7 +4,6 @@ import { supabase } from '../../../supabase'
 import {
   Settings,
   User,
-  Bell,
   Save,
   Loader2,
   Sun,
@@ -25,11 +24,8 @@ export default function AdminSettingsView({
 }) {
   const navigate = useNavigate()
   const [fullName, setFullName] = useState(user.full_name || '')
-  const [email] = useState(user.email || '')
+  const email = user.email || ''
   const [avatarUrl, setAvatarUrl] = useState('')
-
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [examReminders, setExamReminders] = useState(true)
 
   const [isDarkMode, setIsDarkMode] = useState(() =>
     document.documentElement.classList.contains('dark'),
@@ -274,98 +270,6 @@ export default function AdminSettingsView({
       </div>
 
       <PasswordSettingsCard user={user} />
-
-      <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="rounded-2xl bg-pink-50 p-3 text-pink-600 dark:bg-pink-500/10">
-            <Bell size={20} />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Notifications
-            </h3>
-            <p className="text-xs text-slate-400">
-              Manage how you receive alerts and system updates.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- the label text is a title/description pair nested past the rule's search depth; the whole row is the clickable label for its checkbox */}
-          <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/5">
-            <div>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">
-                Email Alerts
-              </p>
-              <p className="text-xs text-slate-400">
-                Receive system-wide announcements and reports.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={emailNotifications}
-              onChange={() => setEmailNotifications(!emailNotifications)}
-              className="h-5 w-5 cursor-pointer rounded-sm accent-purple-600"
-            />
-          </label>
-
-          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- the label text is a title/description pair nested past the rule's search depth; the whole row is the clickable label for its checkbox */}
-          <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/5">
-            <div>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">
-                System Reminders
-              </p>
-              <p className="text-xs text-slate-400">
-                Get notified when platform activities or reviews are logged.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={examReminders}
-              onChange={() => setExamReminders(!examReminders)}
-              className="h-5 w-5 cursor-pointer rounded-sm accent-purple-600"
-            />
-          </label>
-        </div>
-      </div>
-
-      <div className="space-y-4 border-t border-slate-100 pt-4 dark:border-white/10">
-        <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/50 p-5 dark:border-white/10 dark:bg-white/5">
-          <div>
-            <h4 className="text-sm font-black text-slate-900 dark:text-white">
-              Automated Attendance Reminders
-            </h4>
-            <p className="mt-0.5 text-xs font-medium text-slate-400">
-              Ping tutors 5 minutes prior to un-logged live sessions.
-            </p>
-          </div>
-          <button
-            onClick={() => toast.success('Settings updated successfully!')}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-black tracking-wider text-white uppercase shadow-xs"
-          >
-            Configure
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between rounded-2xl border border-rose-100 bg-rose-50/30 p-5 dark:border-rose-500/20 dark:bg-rose-500/5">
-          <div>
-            <h4 className="text-sm font-black text-rose-900 dark:text-rose-400">
-              Maintenance Mode
-            </h4>
-            <p className="mt-0.5 text-xs font-medium text-rose-500">
-              Temporarily restrict student login access for system updates.
-            </p>
-          </div>
-          <button
-            onClick={() =>
-              toast.error('Action requires Master Owner privileges.')
-            }
-            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-black tracking-wider text-white uppercase shadow-xs"
-          >
-            Toggle
-          </button>
-        </div>
-      </div>
 
       <div className="flex items-center justify-between rounded-3xl border border-red-100 bg-red-50/50 p-8 shadow-xs dark:border-red-500/20 dark:bg-red-500/5">
         <div>

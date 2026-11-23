@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
-import type { Request, Response } from './types/express'
-import WebPush from 'web-push'
+import type { ErrorRequestHandler } from 'express'
+import dashboardPush from './routes/dashboardPush'
 import { startReminderScheduler } from './reminderScheduler'
 import sendReceiptRoute from './routes/sendReceipt'
 import sendCurriculumRoute from './routes/sendCurriculum'
@@ -14,14 +14,7 @@ import recordingsRoute from './routes/recordings'
 import homeRoute from './routes/home'
 import apiDocsRoute from './routes/apiDocs'
 import { allowOrigins, DEFAULT_CORS_ORIGINS } from './middleware/cors'
-import { requireServerEnv } from './env'
 import { supabase } from './supabase'
-
-interface PushNotificationBody {
-  tutor_id: string
-  title: string
-  body: string
-}
 
 const app = express()
 // When the API sits behind proxies (nginx, a platform router), set TRUST_PROXY
@@ -64,59 +57,38 @@ app.use('/api/admin/users', adminUsersRoute)
 app.use('/api/trials', trialInvitesRoute)
 app.use('/api/recordings', recordingsRoute)
 
-// =========================
-// PUSH SETUP
-// =========================
-WebPush.setVapidDetails(
-  'mailto:admin@techtalk-hub.com',
-  requireServerEnv('VAPID_PUBLIC_KEY'),
-  requireServerEnv('VAPID_PRIVATE_KEY'),
-)
+app.use('/api/push', dashboardPush)
 
-// =========================
-// PUSH ROUTE
-// =========================
-async function sendPush(
-  req: Request<Record<string, string>, unknown, PushNotificationBody>,
-  res: Response,
-): Promise<void> {
-  try {
-    const { tutor_id, title, body } = req.body
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('push_subscription')
-      .eq('id', tutor_id)
-      .single()
-
-    const user: { push_subscription: string | null } | null = data
-
-    if (error || !user?.push_subscription) {
-      res.status(404).json({ error: 'No subscription found' })
-      return
-    }
-
-    await WebPush.sendNotification(
-      JSON.parse(user.push_subscription),
-      JSON.stringify({
-        title,
-        body,
-        url: '/calendar',
-      }),
-    )
-
-    res.json({ success: true })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({
-      error: err instanceof Error ? err.message : 'Unknown server error',
+const handleApiError: ErrorRequestHandler = (
+  error: unknown,
+  req,
+  res,
+  next,
+) => {
+  if (res.headersSent) return next(error)
+  const status =
+    error && typeof error === 'object' && 'status' in error
+      ? error.status
+      : undefined
+  if (status === 400 || status === 413) {
+    res.status(status).json({
+      error: status === 400 ? 'Invalid request body.' : 'Request is too large.',
     })
+    return
   }
+  console.error('API request failed:', {
+    method: req.method,
+    route: req.route?.path,
+    code:
+      error && typeof error === 'object' && 'code' in error
+        ? error.code
+        : undefined,
+  })
+  res
+    .status(500)
+    .json({ error: 'The request could not be completed. Try again.' })
 }
-
-app.post('/api/push', (req, res) => {
-  void sendPush(req, res)
-})
+app.use(handleApiError)
 
 // =========================
 // START SERVER
