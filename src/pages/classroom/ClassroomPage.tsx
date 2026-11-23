@@ -305,10 +305,13 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
   const sessionId = classroom.sessionId
   const [params] = useSearchParams()
   const guestJoin = params.get('join') === '1'
+  // The parent link: watch and listen only. The server gives these a token
+  // that can't publish anything.
+  const watchOnly = params.get('watch') === '1'
   // The host (admin or this class's tutor) runs the class and can end it for
   // everyone; everyone else is a participant who can only leave. A ?join=1
-  // invite always opens the participant view.
-  const teacherMode = viewer.canHost && !guestJoin
+  // invite always opens the participant view, ?watch=1 the watcher view.
+  const teacherMode = viewer.canHost && !guestJoin && !watchOnly
   // Saved to Supabase only for a real session run by staff.
   const persist = data.source === 'live' && teacherMode && !!sessionId
 
@@ -330,6 +333,8 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     if (teacherMode) {
       return params.get('name')?.trim() || viewer.name || classroom.teacher.name
     }
+    // Parents always say who they are, so the tutor knows who's watching.
+    if (watchOnly) return ''
     return viewer.name ?? ''
   })
   const [joinStarted, setJoinStarted] = useState(() => !!name)
@@ -439,6 +444,7 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     hand,
     isSelf: true,
     speaking,
+    watching: watchOnly,
   }
 
   const finish = (info: Omit<ClassEndInfo, 'elapsedMs'>) => {
@@ -456,7 +462,7 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     roomId: classroomId,
     identity: selfId,
     name,
-    role: teacherMode ? 'host' : 'participant',
+    role: teacherMode ? 'host' : watchOnly ? 'viewer' : 'participant',
     onRoomClosed: () => finish({ reason: 'ended', by: null }),
     enabled: !ended && joinStarted,
     camera: media.cam,
@@ -469,6 +475,7 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     enabled: !ended && joinStarted,
     connected: liveRoom.connection === 'connected',
     sendMessage: liveRoom.sendMessage,
+    listenOnly: watchOnly,
     onRemoteEnd: (from) => finish({ reason: 'ended', by: from.name }),
     onBadge: (award) => {
       celebrate(award)
@@ -658,10 +665,11 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
 
   const roomLink = `${window.location.origin}/classroom/${classroomId}`
   const guestLink = `${roomLink}?join=1`
+  const parentLink = `${roomLink}?watch=1`
   const platform =
     PLATFORMS.find((option) => option.id === platformId) ?? BUILT_IN_PLATFORM
 
-  const moreActions: MenuAction[] = [
+  const allActions: MenuAction[] = [
     {
       id: 'fullscreen',
       label: fullscreen ? 'Exit full screen' : 'Full screen',
@@ -701,6 +709,11 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
       onSelect: () => finish({ reason: 'left' }),
     },
   ]
+  // Watchers don't share links or use a camera.
+  const watcherActionIds = new Set(['fullscreen', 'leave'])
+  const moreActions = watchOnly
+    ? allActions.filter((action) => watcherActionIds.has(action.id))
+    : allActions
 
   if (ended) {
     return (
@@ -722,6 +735,7 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
     return (
       <GuestJoinScreen
         roomTitle={classroom.title}
+        watchOnly={watchOnly}
         onJoin={(displayName) => {
           setName(displayName)
           setJoinStarted(true)
@@ -764,7 +778,8 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
           audioPlaybackBlocked={liveRoom.audioPlaybackBlocked}
           onReconnect={liveRoom.reconnect}
           onEnableAudio={() => void liveRoom.enableAudio()}
-          onShareCall={() => openModal('share')}
+          onShareCall={watchOnly ? undefined : () => openModal('share')}
+          watchOnly={watchOnly}
           reactions={room.reactions}
           celebration={celebration}
           recording={recording}
@@ -776,7 +791,7 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
           onTogglePanel={togglePanel}
           platform={platform}
           onSwitchBack={() => setPlatformId(BUILT_IN_PLATFORM.id)}
-          onOpenSettings={() => openModal('settings')}
+          onOpenSettings={watchOnly ? undefined : () => openModal('settings')}
           moreActions={moreActions}
         />
 
@@ -805,13 +820,15 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
             onSend={room.sendChat}
             draft={chatDraft}
             onDraftChange={setChatDraft}
+            readOnly={watchOnly}
             onClose={() => togglePanel('chat')}
           />
         )}
         {panel === 'people' && (
           <PeoplePanel
             participants={participants}
-            guestLink={guestLink}
+            guestLink={watchOnly ? undefined : guestLink}
+            parentLink={teacherMode ? parentLink : undefined}
             onClose={() => setPanel(null)}
           />
         )}
@@ -882,6 +899,7 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
         open={modal === 'share'}
         onClose={() => setModal(null)}
         guestLink={guestLink}
+        parentLink={parentLink}
       />
     </div>
   )

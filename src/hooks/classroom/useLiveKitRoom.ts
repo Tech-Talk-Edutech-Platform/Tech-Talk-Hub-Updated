@@ -14,8 +14,11 @@ import { toast } from '../../lib/classroom/toast'
 import { isSupabaseConfigured, supabase } from '../../supabase'
 import type { Participant, RoomMessage } from '../../types/classroom'
 
-/** host: can end the call for everyone. participant: can only leave. */
-export type LiveRole = 'host' | 'participant'
+/**
+ * host: can end the call for everyone. participant: can only leave.
+ * viewer: the parent link; sees and hears the class, publishes nothing.
+ */
+export type LiveRole = 'host' | 'participant' | 'viewer'
 
 /** Who sent a LiveKit data message, as the server vouched for in their token. */
 export type MessageSender = { identity: string; isHost: boolean }
@@ -168,6 +171,8 @@ function remoteParticipant(peer: RemoteParticipant): {
       hand: false,
       isSelf: false,
       speaking: peer.isSpeaking,
+      // Set by the server in their token.
+      watching: peer.attributes.role === 'viewer',
     },
     media: {
       camera: camera instanceof RemoteVideoTrack ? camera : null,

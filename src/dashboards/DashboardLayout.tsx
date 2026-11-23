@@ -76,6 +76,7 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
     void navigate(dashboardViewUrl(role, dashboardView(role, view), options))
   }
   const isAdmin = isAdminRole(role)
+  const openRecordings = () => setActiveView('recordings')
 
   function renderMainContent() {
     // Role-specific settings
@@ -119,7 +120,13 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
 
         case 'dashboard':
         default:
-          return <StudentHomeView userId={user.id} onNavigate={setActiveView} />
+          return (
+            <StudentHomeView
+              userId={user.id}
+              onNavigate={setActiveView}
+              onOpenRecordings={openRecordings}
+            />
+          )
       }
     }
 
@@ -157,6 +164,7 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
               userId={user.id}
               user={user}
               onNavigate={setActiveView}
+              onOpenRecordings={openRecordings}
             />
           )
       }
@@ -227,7 +235,13 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
           return <AdminPricingPage />
         case 'dashboard':
         default:
-          return <AdminHomeView userId={user.id} onNavigate={setActiveView} />
+          return (
+            <AdminHomeView
+              userId={user.id}
+              onNavigate={setActiveView}
+              onOpenRecordings={openRecordings}
+            />
+          )
       }
     }
 

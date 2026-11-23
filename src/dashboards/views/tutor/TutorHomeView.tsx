@@ -6,11 +6,13 @@ import { supabase } from '../../../supabase'
 import UpcomingClasses from '../../../components/UpcomingClasses'
 import { TutorInsights } from '../../insights/TutorInsights'
 import type { DashboardIdentity } from '../../../types/dashboardIdentity'
+import { RecentRecordingsCard } from '../../../components/recordings/RecentRecordingsCard'
 
 interface TutorHomeViewProps {
   userId: string
   user: DashboardIdentity
   onNavigate?: (view: string) => void
+  onOpenRecordings: () => void
 }
 
 interface TutorClass {
@@ -82,6 +84,7 @@ export default function TutorHomeView({
   userId,
   user,
   onNavigate,
+  onOpenRecordings,
 }: TutorHomeViewProps) {
   const classes = useQuery({
     queryKey: ['dashboard', 'tutor-upcoming-classes', userId],
@@ -163,6 +166,8 @@ export default function TutorHomeView({
           />
         )}
       </div>
+
+      <RecentRecordingsCard onViewAll={onOpenRecordings} showTutor={false} />
     </div>
   )
 }

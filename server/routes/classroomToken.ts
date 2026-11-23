@@ -25,9 +25,16 @@ type TokenRequestBody = {
   roomId?: unknown
   identity?: unknown
   name?: unknown
-  /** What the browser asks to join as; 'host' is only granted if allowed. */
+  /**
+   * What the browser asks to join as. 'host' is only granted if allowed;
+   * 'viewer' (the parent link) is granted to anyone, since it can do less
+   * than a participant.
+   */
   role?: unknown
 }
+
+/** viewer: sees and hears the class, publishes nothing (no cam, mic or chat). */
+type TokenRole = ClassroomRole | 'viewer'
 
 type TokenRequest = Request<Record<string, string>, unknown, TokenRequestBody>
 
@@ -43,6 +50,7 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
   const { roomId, identity } = req.body ?? {}
   const name = cleanName(req.body?.name)
   const wantsHost = req.body?.role === 'host'
+  const wantsViewer = req.body?.role === 'viewer'
 
   if (
     typeof roomId !== 'string' ||
@@ -93,8 +101,14 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
     })
     return
   }
-  // Staff opening the student link join as a participant.
-  const role: ClassroomRole = wantsHost ? 'host' : 'participant'
+  // Staff opening the student link join as a participant, and anyone opening
+  // the parent link as a viewer.
+  const role: TokenRole = wantsHost
+    ? 'host'
+    : wantsViewer
+      ? 'viewer'
+      : 'participant'
+  const canPublish = role !== 'viewer'
 
   const { service, serverUrl, apiKey, apiSecret } = config
   let room = (await service.listRooms([roomId])).find(
@@ -149,9 +163,9 @@ async function issueToken(req: TokenRequest, res: Response): Promise<void> {
     roomJoin: true,
     room: roomId,
     roomAdmin: role === 'host',
-    canPublish: true,
+    canPublish,
     canSubscribe: true,
-    canPublishData: true,
+    canPublishData: canPublish,
     // Participants must not be able to rewrite their own role attribute.
     canUpdateOwnMetadata: false,
   })

@@ -130,7 +130,7 @@ export const TOUR_SECTIONS: TourSection[] = [
       {
         term: 'Send alert',
         description:
-          'Call in an academic counsellor (AC) or support. Each alert can be sent once a minute.',
+          'Flag the class for an academic counsellor (AC) or support. Admins see them under Dashboard › Classroom › Manage, on that class. Each alert can be sent once a minute.',
       },
       {
         term: 'AI tools',
@@ -181,7 +181,7 @@ export const TOUR_SECTIONS: TourSection[] = [
       {
         term: 'People',
         description:
-          'Who is in the room, with their camera, mic and hand status, and a guest link.',
+          'Who is in the room, with their camera, mic and hand status, and the guest and parent links.',
       },
       {
         term: 'Picture in Picture',

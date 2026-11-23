@@ -43,6 +43,7 @@ const studentGroups: NavigationGroup[] = [
       { id: 'classroom', label: 'My Classroom', icon: Presentation },
       { id: 'courses', label: 'My Courses', icon: BookOpen },
       { id: 'schedule', label: 'Schedule', icon: Calendar },
+      { id: 'recordings', label: 'My Recordings', icon: Video },
     ],
   },
 ]

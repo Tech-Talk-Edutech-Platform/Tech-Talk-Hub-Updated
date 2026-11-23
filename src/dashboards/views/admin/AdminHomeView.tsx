@@ -10,6 +10,7 @@ import { AdminInsights } from '../../insights/AdminInsights'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import Messages from '../../../Utils/fetchMessage'
 import { toast } from 'react-hot-toast'
+import { RecentRecordingsCard } from '../../../components/recordings/RecentRecordingsCard'
 
 interface TodayClass {
   id: string
@@ -64,9 +65,11 @@ async function loadTodayClasses(): Promise<TodayClass[]> {
 export default function AdminHomeView({
   userId,
   onNavigate,
+  onOpenRecordings,
 }: {
   userId: string
   onNavigate?: DashboardNavigation
+  onOpenRecordings: () => void
 }) {
   const classes = useQuery({
     queryKey: ['dashboard', 'today-classes', userId],
@@ -87,6 +90,8 @@ export default function AdminHomeView({
           <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-xs md:p-8 dark:border-white/10 dark:bg-white/5">
             <Messages receiverId={userId} />
           </div>
+
+          <RecentRecordingsCard onViewAll={onOpenRecordings} />
         </div>
 
         {/* SIDEBAR COMMAND CENTER */}

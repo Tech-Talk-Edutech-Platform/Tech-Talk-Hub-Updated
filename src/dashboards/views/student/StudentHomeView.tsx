@@ -14,6 +14,7 @@ import {
 import { RecordingLink } from '../../../lib/classroom/recordingLink'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { StudentInsights } from '../../insights/StudentInsights'
+import { CopyRecordingLinkButton } from '../../../components/recordings/CopyRecordingLinkButton'
 import type { Tables } from '../../../types/database'
 import { ClassInvitesCard, StudentBadgesCard } from './StudentClassroomView'
 
@@ -24,9 +25,11 @@ type RecordingWithTutor = Tables<'class_recordings'> & {
 export default function StudentHomeView({
   userId,
   onNavigate,
+  onOpenRecordings,
 }: {
   userId: string
   onNavigate?: DashboardNavigation
+  onOpenRecordings: () => void
 }) {
   const profile = useQuery({
     queryKey: ['dashboard', 'student-home-profile', userId],
@@ -142,6 +145,13 @@ export default function StudentHomeView({
                 Class Recordings
               </h3>
             </div>
+            <button
+              type="button"
+              onClick={onOpenRecordings}
+              className="cursor-pointer text-xs font-bold text-purple-600 hover:underline dark:text-purple-400"
+            >
+              View all
+            </button>
           </div>
 
           {recordings.isError && recordings.data && (
@@ -244,6 +254,11 @@ export default function StudentHomeView({
                         </div>
                       </div>
                     </div>
+
+                    <CopyRecordingLinkButton
+                      recordingId={recording.id}
+                      className="self-start"
+                    />
                   </div>
                 )
               })}

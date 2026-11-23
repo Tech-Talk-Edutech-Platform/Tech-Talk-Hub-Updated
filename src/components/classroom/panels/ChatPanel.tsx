@@ -15,6 +15,8 @@ type ChatPanelProps = {
   onClose: () => void
   draft: string
   onDraftChange: (draft: string) => void
+  /** Parent link: they can read the chat but not send to it. */
+  readOnly?: boolean
 }
 
 /** Room chat (docs/breakdown/05-chat.md). Enter sends, Shift + Enter adds a line. */
@@ -25,6 +27,7 @@ export function ChatPanel({
   onClose,
   draft,
   onDraftChange,
+  readOnly = false,
 }: ChatPanelProps) {
   const listRef = useRef<HTMLOListElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -54,57 +57,64 @@ export function ChatPanel({
       labelId="chat-title"
       onClose={onClose}
       footer={
-        <form
-          className="shrink-0 border-t border-line px-3 pt-3 pb-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            send()
-          }}
-        >
-          <div className="flex items-end gap-2">
-            <label className="sr-only" htmlFor="chat-input">
-              Send a message
-            </label>
-            <textarea
-              id="chat-input"
-              ref={inputRef}
-              rows={2}
-              maxLength={LIMIT}
-              value={draft}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onChange={(event) => onDraftChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (
-                  event.key === 'Enter' &&
-                  !event.shiftKey &&
-                  !event.nativeEvent.isComposing
-                ) {
-                  event.preventDefault()
-                  send()
-                }
-              }}
-              placeholder={'Send a message\nPress Shift + Enter for new line'}
-              className={`[field-sizing:content] max-h-32 min-h-[42px] flex-1 resize-none border-b-2 bg-transparent py-1 text-[14px] leading-[18px] text-ink outline-none placeholder:text-[13px] placeholder:text-muted ${
-                focused ? 'border-brand' : 'border-transparent'
-              }`}
-            />
-            <button
-              type="submit"
-              disabled={!text}
-              className="press mb-1 flex h-[30px] items-center gap-1.5 rounded-[8px] bg-brand px-2.5 text-[14px] font-medium text-white hover:bg-brand-strong disabled:bg-brand-faded"
-            >
-              Send
-              <SendHorizontal size={14} strokeWidth={2} aria-hidden="true" />
-            </button>
-          </div>
-          <p
-            className="mt-0.5 text-right text-[11px] text-muted tabular-nums"
-            aria-live="off"
-          >
-            {draft.length}/{LIMIT}
+        readOnly ? (
+          <p className="shrink-0 border-t border-line px-4 py-3 text-[12.5px] leading-[18px] text-muted">
+            You’re watching from the parent link, so you can read the chat but
+            not send messages.
           </p>
-        </form>
+        ) : (
+          <form
+            className="shrink-0 border-t border-line px-3 pt-3 pb-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              send()
+            }}
+          >
+            <div className="flex items-end gap-2">
+              <label className="sr-only" htmlFor="chat-input">
+                Send a message
+              </label>
+              <textarea
+                id="chat-input"
+                ref={inputRef}
+                rows={2}
+                maxLength={LIMIT}
+                value={draft}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                onChange={(event) => onDraftChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === 'Enter' &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing
+                  ) {
+                    event.preventDefault()
+                    send()
+                  }
+                }}
+                placeholder={'Send a message\nPress Shift + Enter for new line'}
+                className={`[field-sizing:content] max-h-32 min-h-[42px] flex-1 resize-none border-b-2 bg-transparent py-1 text-[14px] leading-[18px] text-ink outline-none placeholder:text-[13px] placeholder:text-muted ${
+                  focused ? 'border-brand' : 'border-transparent'
+                }`}
+              />
+              <button
+                type="submit"
+                disabled={!text}
+                className="press mb-1 flex h-[30px] items-center gap-1.5 rounded-[8px] bg-brand px-2.5 text-[14px] font-medium text-white hover:bg-brand-strong disabled:bg-brand-faded"
+              >
+                Send
+                <SendHorizontal size={14} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </div>
+            <p
+              className="mt-0.5 text-right text-[11px] text-muted tabular-nums"
+              aria-live="off"
+            >
+              {draft.length}/{LIMIT}
+            </p>
+          </form>
+        )
       }
     >
       {messages.length === 0 ? (

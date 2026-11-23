@@ -85,6 +85,8 @@ const sameInstant = (a: string | null, b: string | null) =>
 const teacherLink = (roomCode: string) =>
   `${window.location.origin}/classroom/${roomCode}`
 const studentLink = (roomCode: string) => `${teacherLink(roomCode)}?join=1`
+/** Watch only: parents see and hear the class, no camera, mic or chat. */
+const parentLink = (roomCode: string) => `${teacherLink(roomCode)}?watch=1`
 
 /** Copy button that says "Copied" for a moment. */
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -217,6 +219,10 @@ export function SessionListItem({
           <CopyButton
             text={studentLink(session.room_code)}
             label="Student link"
+          />
+          <CopyButton
+            text={parentLink(session.room_code)}
+            label="Parent link"
           />
           {onReopen && isEndedStatus(session.status) && (
             <Button size="sm" onClick={onReopen} busy={reopening}>
@@ -566,6 +572,10 @@ function SessionForm({
               <CopyButton
                 text={studentLink(session.room_code)}
                 label="Student link"
+              />
+              <CopyButton
+                text={parentLink(session.room_code)}
+                label="Parent link"
               />
             </div>
           )
