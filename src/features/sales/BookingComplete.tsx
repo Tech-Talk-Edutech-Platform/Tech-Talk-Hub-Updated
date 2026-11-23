@@ -32,6 +32,7 @@ import {
   whatsappLink,
   whatsappMessage,
 } from './whatsapp'
+import { copyPendingText } from './clipboard'
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
 const clock = (iso: string) =>
@@ -74,11 +75,11 @@ export function BookingComplete({
 
   const copy = async (what: 'reference' | 'message', text: string) => {
     try {
-      const withLink =
+      await copyPendingText(
         what === 'message' && needsGuestLink
-          ? await messageWithTrialLink(booking.id, text)
-          : text
-      await navigator.clipboard.writeText(withLink)
+          ? messageWithTrialLink(booking.id, text)
+          : Promise.resolve(text),
+      )
       setCopied(what)
       window.setTimeout(
         () => setCopied((current) => (current === what ? null : current)),

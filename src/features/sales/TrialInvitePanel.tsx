@@ -16,6 +16,7 @@ import type { LucideIcon } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 import { problemText, SalesDataContext } from './salesDataContext'
+import { copyPendingText } from './clipboard'
 import {
   InviteRequestError,
   familyJoinUrl,
@@ -133,10 +134,11 @@ function useCopy(target: InviteTarget) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     try {
-      const link = isDemo
-        ? familyJoinUrl(target.roomCode)
-        : await requestTrialGuestLink(target.bookingId)
-      await navigator.clipboard.writeText(link)
+      await copyPendingText(
+        isDemo
+          ? Promise.resolve(familyJoinUrl(target.roomCode))
+          : requestTrialGuestLink(target.bookingId),
+      )
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch (error) {
