@@ -7,7 +7,7 @@ import { parentAlreadyMessaged } from './bookings'
 import { problemText, useSalesData } from './salesDataContext'
 import type { RemovalReason, TrialBooking } from './types'
 import { REMOVAL_REASON_LABEL, REMOVAL_REASONS } from './types'
-import { correctionMessage, trialTime, whatsappLink } from './whatsapp'
+import { correctionMessage, trialTimes, whatsappLink } from './whatsapp'
 
 // The shared Modal is always light, so these skip the dark-mode variants.
 const noteInput =
@@ -93,7 +93,7 @@ export function RemoveBookingDialog({
     >
       <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
         <strong>{booking.studentName}</strong> with{' '}
-        {mentor?.name ?? 'the mentor'} · {trialTime(booking.start)}
+        {mentor?.name ?? 'the mentor'} · {trialTimes(booking)}
         <span className="block text-xs text-slate-500">
           Parent: {booking.parentName}
         </span>

@@ -12,6 +12,7 @@ import type {
   SalesSnapshot,
   TrialBooking,
   TrialOutcome,
+  TutorAvailability,
 } from './types'
 
 export type BookingPageRequest = {
@@ -65,8 +66,16 @@ export type SalesData = SalesSnapshot & {
     status: Exclude<LeadStatus, 'trial_booked'>,
     salesRepId: string | null,
   ) => Promise<void>
-  /** Books a parent's child into a slot; the lead becomes "Trial booked". */
+  /**
+   * Books a parent's child with a tutor at any time (their open slot then, or
+   * a new hour on their calendar); the lead becomes "Trial booked".
+   */
   bookTrial: (input: NewTrialBooking) => Promise<TrialBooking>
+  /**
+   * Every active tutor at `start`: their open slot then, if any, and whether
+   * a class of theirs is within 15 minutes of it.
+   */
+  tutorAvailability: (start: string) => Promise<TutorAvailability[]>
   /**
    * Emails the parent the classroom link. Without `resend`, an invite that
    * already went out isn't sent again.

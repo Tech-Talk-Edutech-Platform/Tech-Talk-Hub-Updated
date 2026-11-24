@@ -259,24 +259,56 @@ function renderText(layout: Layout): string {
 
 const NAIROBI = 'Africa/Nairobi'
 
-/** e.g. "Saturday, 22 November 2026" and "4:00 PM – 5:00 PM (East Africa Time)". */
-export function classTime(start: Date, end: Date) {
+/** The zone if Intl knows it, else Nairobi (where trials used to be booked). */
+export function knownZone(zone: string | null | undefined): string {
+  if (!zone) return NAIROBI
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: zone }).format(0)
+    return zone
+  } catch {
+    return NAIROBI
+  }
+}
+
+/** "East Africa Time" for Nairobi, else "Denver time". */
+const zoneName = (zone: string) =>
+  zone === NAIROBI
+    ? 'East Africa Time'
+    : `${(zone.split('/').pop() ?? zone).replace(/_/g, ' ')} time`
+
+/**
+ * e.g. "Saturday, 22 November 2026" and "4:00 PM – 5:00 PM (East Africa
+ * Time)", in `zone` (the reader's own: the family's, or the tutor's).
+ */
+export function classTime(start: Date, end: Date, zone: string = NAIROBI) {
+  const timeZone = knownZone(zone)
   const day = new Intl.DateTimeFormat('en-GB', {
-    timeZone: NAIROBI,
+    timeZone,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   }).format(start)
   const time = new Intl.DateTimeFormat('en-US', {
-    timeZone: NAIROBI,
+    timeZone,
     hour: 'numeric',
     minute: '2-digit',
   })
   return {
     day,
-    hours: `${time.format(start)} – ${time.format(end)} (East Africa Time)`,
+    hours: `${time.format(start)} – ${time.format(end)} (${zoneName(timeZone)})`,
   }
+}
+
+/** Whether two zones show the same clock at `at`. */
+const sameClock = (at: Date, a: string, b: string) => {
+  const format = (timeZone: string) =>
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(at)
+  return format(knownZone(a)) === format(knownZone(b))
 }
 
 export type TrialEmailData = {
@@ -289,6 +321,10 @@ export type TrialEmailData = {
   end: Date
   joinUrl: string
   roomCode: string
+  /** The family's time zone (their email reads in it). */
+  familyTimeZone: string | null
+  /** The tutor's time zone (their email reads in it). */
+  tutorTimeZone: string | null
 }
 
 const gradeText = (grade: string) =>
@@ -296,7 +332,7 @@ const gradeText = (grade: string) =>
 
 /** To the family: the trial's time and the link to join without an account. */
 export function trialInviteEmail(data: TrialEmailData): RenderedEmail {
-  const when = classTime(data.start, data.end)
+  const when = classTime(data.start, data.end, knownZone(data.familyTimeZone))
   const firstName = data.parentName.split(/\s+/)[0] || 'there'
   const layout: Layout = {
     preheader: `${when.day}, ${when.hours}. Join from this email: no app, no account.`,
@@ -364,7 +400,13 @@ function lengthText(start: Date, end: Date): string {
 export function tutorTrialEmail(
   data: TrialEmailData & { tutorUrl: string; notes: string | null },
 ): RenderedEmail {
-  const when = classTime(data.start, data.end)
+  const tutorZone = knownZone(data.tutorTimeZone)
+  const familyZone = knownZone(data.familyTimeZone)
+  const when = classTime(data.start, data.end, tutorZone)
+  // The family's own time, when their clock differs from the tutor's.
+  const familyTime = sameClock(data.start, tutorZone, familyZone)
+    ? null
+    : classTime(data.start, data.end, familyZone)
   const layout: Layout = {
     preheader: `${data.studentName} (${gradeText(data.studentGrade) || data.programLabel}) on ${when.day}.`,
     heading: `New trial with ${data.studentName}`,
@@ -395,6 +437,14 @@ export function tutorTrialEmail(
       },
       { label: 'Program', value: data.programLabel },
       { label: 'Class ID', value: data.roomCode },
+      ...(familyTime
+        ? [
+            {
+              label: 'Family’s time',
+              value: `${familyTime.hours}, ${familyTime.day}`,
+            },
+          ]
+        : []),
       ...(data.notes ? [{ label: 'Notes from sales', value: data.notes }] : []),
     ],
     steps: {

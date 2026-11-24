@@ -7,6 +7,7 @@ import {
   Link2,
   LoaderCircle,
   PlayCircle,
+  TextCursorInput,
   Upload,
   X,
 } from 'lucide-react'
@@ -55,12 +56,18 @@ export function MaterialsEditor({
   onChange,
   onUploaded,
   labelClass,
+  placedIds,
+  onPlace,
 }: {
   materials: MaterialRow[]
   onChange: Dispatch<SetStateAction<MaterialRow[]>>
   /** Each file stored, so the editor can delete it again if it's not saved. */
   onUploaded: (path: string) => void
   labelClass: string
+  /** Materials already placed in the lesson notes. */
+  placedIds?: ReadonlySet<string>
+  /** Places a material in the lesson notes, at the cursor. */
+  onPlace?: (row: MaterialRow) => void
 }) {
   const [problems, setProblems] = useState<string[]>([])
   const [dragging, setDragging] = useState(false)
@@ -368,7 +375,24 @@ export function MaterialsEditor({
                         : describeMaterial(row)}
                     </span>
                   )}
+                  {placedIds?.has(row.id) && (
+                    <span className="ml-auto shrink-0 rounded-md bg-purple-100 px-1.5 py-0.5 text-[11px] font-bold text-purple-700 dark:bg-purple-500/20 dark:text-purple-200">
+                      In the notes
+                    </span>
+                  )}
                 </p>
+                {onPlace && (
+                  <button
+                    type="button"
+                    onClick={() => onPlace(row)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-purple-700 hover:underline dark:text-purple-300"
+                  >
+                    <TextCursorInput size={13} aria-hidden />
+                    {placedIds?.has(row.id)
+                      ? 'Place in notes again'
+                      : 'Place in notes'}
+                  </button>
+                )}
               </div>
               <div className="flex shrink-0 flex-col">
                 <SmallButton

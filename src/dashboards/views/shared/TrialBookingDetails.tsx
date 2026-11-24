@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CalendarHeart } from 'lucide-react'
 
 import { useNow } from '../../../hooks/useNow'
+import { otherZoneTime } from '../../../lib/timeZones'
 import { supabase } from '../../../supabase'
 import {
   GRADE_CATEGORIES,
@@ -22,7 +23,7 @@ async function loadBooking(eventId: string) {
   const { data, error } = await supabase
     .from('trial_bookings')
     .select(
-      'id, parent_name, parent_email, student_name, student_grade, category_id, notes, status, uses_classroom, invite_email_status, invite_email_sent_at, invite_email_error',
+      'id, parent_name, parent_email, student_name, student_grade, category_id, notes, status, uses_classroom, invite_email_status, invite_email_sent_at, invite_email_error, family_time_zone',
     )
     .eq('calendar_event_id', eventId)
     .is('removed_at', null)
@@ -43,10 +44,13 @@ async function loadBooking(eventId: string) {
 export function TrialBookingDetails({
   eventId,
   meetLink,
+  startTime,
   endTime,
 }: {
   eventId: string
   meetLink: string | null
+  /** For the family's own time; left out, it isn't shown. */
+  startTime?: string
   endTime: string
 }) {
   const now = useNow(60_000)
@@ -80,6 +84,10 @@ export function TrialBookingDetails({
     },
     { label: 'Program', value: programLabel(row.category_id) },
     { label: 'Parent', value: row.parent_name },
+    {
+      label: 'Family’s time',
+      value: startTime ? otherZoneTime(startTime, row.family_time_zone) : null,
+    },
   ].filter((fact): fact is { label: string; value: string } => !!fact.value)
 
   return (

@@ -85,8 +85,35 @@ type TrialInvite = {
   roomCode: string
   start: Date
   end: Date
-  tutor: { name: string; email: string | null }
+  tutor: { name: string; email: string | null; timeZone: string | null }
   programLabel: string
+  /** The family's time zone; null before migration 20261125120000. */
+  familyTimeZone: string | null
+}
+
+/**
+ * The family's and tutor's time zones. Read on their own so invites still
+ * send (in Nairobi time) before migration 20261125120000 adds the columns.
+ */
+async function loadTimeZones(bookingId: string, tutorId: string) {
+  const [family, tutor] = await Promise.all([
+    supabase
+      .from('trial_bookings')
+      .select('family_time_zone')
+      .eq('id', bookingId)
+      .maybeSingle(),
+    supabase.from('users').select('time_zone').eq('id', tutorId).maybeSingle(),
+  ])
+  const familyRow: { family_time_zone: string | null } | null = family.error
+    ? null
+    : family.data
+  const tutorRow: { time_zone: string | null } | null = tutor.error
+    ? null
+    : tutor.data
+  return {
+    family: familyRow?.family_time_zone ?? null,
+    tutor: tutorRow?.time_zone ?? null,
+  }
 }
 
 export async function loadBooking(bookingId: string): Promise<BookingRow> {
@@ -164,6 +191,10 @@ async function loadTrialInvite(booking: BookingRow): Promise<TrialInvite> {
   const tutor: { full_name: string | null; email: string | null } | null =
     tutorRow
   const category: { label: string } | null = categoryRes.data
+  const zones = await loadTimeZones(
+    booking.id,
+    event.tutor_id ?? booking.mentor_id,
+  )
 
   return {
     booking,
@@ -173,8 +204,10 @@ async function loadTrialInvite(booking: BookingRow): Promise<TrialInvite> {
     tutor: {
       name: tutor?.full_name?.trim() || 'your tutor',
       email: tutor?.email?.trim() || null,
+      timeZone: zones.tutor,
     },
     programLabel: category?.label ?? 'Coding & AI',
+    familyTimeZone: zones.family,
   }
 }
 
@@ -267,6 +300,8 @@ export async function sendTrialInvite(
     end: invite.end,
     joinUrl: publicJoinUrl(invite),
     roomCode: invite.roomCode,
+    familyTimeZone: invite.familyTimeZone,
+    tutorTimeZone: invite.tutor.timeZone,
   }
   const calendar = (url: string, title: string) => ({
     filename: 'trial-class.ics',

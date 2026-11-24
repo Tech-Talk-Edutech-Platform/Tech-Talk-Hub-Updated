@@ -3,6 +3,7 @@ import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { createQueryClient } from '../lib/queryClient'
+import { browserTimeZone } from '../lib/timeZones'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import { isAppRole } from '../types/roles'
 import { Button } from '../components/ui/Button'
@@ -46,6 +47,18 @@ function DashboardWorkspace({ user }: { user: DashboardIdentity }) {
       })
     }
   }, [client])
+
+  // Keep the account's time zone in step with this browser, so trials booked
+  // for a family elsewhere show the right time for this person too
+  // (users.time_zone). Fire and forget: nothing waits on it. The workspace is
+  // keyed by user, so this runs once per signed-in person.
+  useEffect(() => {
+    void supabase
+      .rpc('set_my_time_zone', { p_zone: browserTimeZone() })
+      .then(({ error }) => {
+        if (error) console.warn('Couldn’t save the time zone:', error.message)
+      })
+  }, [])
 
   return (
     <QueryClientProvider client={client}>

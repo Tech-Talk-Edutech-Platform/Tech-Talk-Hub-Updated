@@ -5,6 +5,12 @@ import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { supabase } from '../../supabase'
+import {
+  DEFAULT_TIME_ZONE,
+  isTimeZone,
+  zoneOr,
+  zonedTimeToMs,
+} from '../../lib/timeZones'
 import type { Tables } from '../../types/database'
 import { GRADE_CATEGORIES } from './gradeCategories'
 import {
@@ -153,6 +159,9 @@ function mapBooking(
     source: toSource(row.source),
     notes: row.notes ?? '',
     createdAt: row.created_at,
+    familyTimeZone: isTimeZone(row.family_time_zone)
+      ? row.family_time_zone
+      : null,
     removal: row.removed_at
       ? {
           at: row.removed_at,
@@ -171,7 +180,7 @@ function mapBooking(
 function buildSnapshot(rows: {
   tutors: Pick<
     Tables<'users'>,
-    'id' | 'full_name' | 'personal_meet_link' | 'is_active'
+    'id' | 'full_name' | 'personal_meet_link' | 'is_active' | 'time_zone'
   >[]
   programs: Tables<'mentor_grade_categories'>[]
   marketers: Pick<Tables<'users'>, 'id' | 'full_name'>[]
@@ -208,6 +217,7 @@ function buildSnapshot(rows: {
         categories: chosen ?? GRADE_CATEGORY_IDS,
         programsChosen: Boolean(chosen),
         meetLink: tutor.personal_meet_link?.trim() ?? '',
+        timeZone: zoneOr(tutor.time_zone),
       }
     })
     .toSorted((a, b) => a.name.localeCompare(b.name))
@@ -288,6 +298,21 @@ function buildSnapshot(rows: {
     } else if (latest) status = 'trial_booked'
     else if (saved === '' || saved === 'new') status = 'new'
     else status = 'contacted'
+    // The time the family picked on the website (Nairobi wall-clock time in
+    // the database), while no trial holds it.
+    const requestedStart =
+      latest?.status !== 'scheduled' &&
+      !row.assigned_tutor_id &&
+      row.class_date &&
+      row.class_time
+        ? new Date(
+            zonedTimeToMs(
+              row.class_date,
+              row.class_time.slice(0, 5),
+              DEFAULT_TIME_ZONE,
+            ),
+          ).toISOString()
+        : null
     return {
       id: row.id,
       parentName: row.parent_name?.trim() || 'Parent',
@@ -300,6 +325,8 @@ function buildSnapshot(rows: {
       lastContactedAt: row.last_contacted_at,
       notes: row.notes?.trim() ?? '',
       bookingId: latest?.id ?? null,
+      timeZone: isTimeZone(row.time_zone) ? row.time_zone : null,
+      requestedStart,
     }
   })
   const leadById = new Map(leads.map((lead) => [lead.id, lead]))
@@ -385,7 +412,7 @@ async function loadSnapshot(): Promise<SalesSnapshot> {
   ] = await Promise.all([
     supabase
       .from('users')
-      .select('id, full_name, personal_meet_link, is_active')
+      .select('id, full_name, personal_meet_link, is_active, time_zone')
       .eq('role', 'tutor'),
     supabase.from('mentor_grade_categories').select('mentor_id, category_id'),
     supabase
@@ -701,6 +728,8 @@ export function SupabaseSalesDataProvider({
           lastContactedAt: null,
           notes: row.notes ?? '',
           bookingId: null,
+          timeZone: isTimeZone(row.time_zone) ? row.time_zone : null,
+          requestedStart: null,
         }
       },
 
@@ -716,18 +745,19 @@ export function SupabaseSalesDataProvider({
       },
 
       bookTrial: async (input) => {
-        const slot = snapshot.slots.find((s) => s.id === input.slotId)
         const { row, fresh } = await change(
           () =>
-            supabase.rpc('book_trial', {
+            supabase.rpc('book_trial_at', {
               p_lead_id: input.leadId,
-              p_slot_id: input.slotId,
+              p_mentor_id: input.mentorId,
+              p_start: input.start,
+              p_time_zone: input.timeZone,
               p_category: input.category,
               p_student_name: input.studentName,
               p_student_grade: input.studentGrade,
               p_notes: input.notes,
             }),
-          'Couldn’t book that session.',
+          'Couldn’t book that time.',
         )
         const booked = fresh?.bookings.find((booking) => booking.id === row.id)
         if (booked) return booked
@@ -735,10 +765,12 @@ export function SupabaseSalesDataProvider({
         return {
           ...input,
           id: row.id,
+          slotId: row.calendar_event_id,
           mentorId: row.mentor_id,
           salesRepId: row.marketer_id,
-          start: slot?.start ?? row.created_at,
-          end: slot?.end ?? row.created_at,
+          end: new Date(
+            new Date(input.start).getTime() + 3_600_000,
+          ).toISOString(),
           meetLink: '',
           classroomCode: null,
           inviteEmail: { status: 'pending', sentAt: null, error: null },
@@ -746,7 +778,23 @@ export function SupabaseSalesDataProvider({
           source: toSource(row.source),
           createdAt: row.created_at,
           removal: null,
+          familyTimeZone: isTimeZone(row.family_time_zone)
+            ? row.family_time_zone
+            : input.timeZone,
         }
+      },
+
+      tutorAvailability: async (start) => {
+        const { data, error } = await supabase.rpc('trial_tutor_availability', {
+          p_start: start,
+        })
+        if (error) throw failure(error, 'Couldn’t check the tutors’ calendars.')
+        return data.map((row) => ({
+          mentorId: row.mentor_id,
+          slotId: row.slot_id,
+          busy: row.busy,
+          timeZone: zoneOr(row.time_zone),
+        }))
       },
 
       sendInvite: async (bookingId, options) => {

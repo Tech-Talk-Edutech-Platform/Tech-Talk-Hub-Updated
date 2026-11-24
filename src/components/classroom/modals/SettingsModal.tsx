@@ -177,9 +177,11 @@ function PopOutSetting() {
               id="auto-pip-hint"
               className="mt-1 text-[12.5px] leading-[18px] text-muted"
             >
-              A small window keeps the class on top while you’re in another tab
-              and tucks away when you come back. While this is on, a muted mic
-              stays connected (nothing is sent) so the window can still open.
+              Switch to another tab and a small window keeps the class on top,
+              with no button to press. It tucks away when you come back. While
+              this is on, your mic stays connected but muted from the moment you
+              join (nothing is sent): Chrome only pops a class out while the mic
+              or camera is in use.
             </p>
           </div>
         </div>

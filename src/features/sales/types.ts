@@ -27,6 +27,8 @@ export type Mentor = {
   programsChosen?: boolean
   /** The mentor's standing meeting room, reused for every trial they take. */
   meetLink: string
+  /** Where the tutor is (IANA zone, from their browser); Nairobi if unknown. */
+  timeZone: string
 }
 
 export type SalesRep = {
@@ -82,6 +84,13 @@ export type Lead = {
   lastContactedAt: string | null
   notes: string
   bookingId: string | null
+  /** The family's time zone, once someone has said it; null if unknown. */
+  timeZone: string | null
+  /**
+   * The time the family asked for (the website form), while it has no trial
+   * booked; null otherwise.
+   */
+  requestedStart: string | null
 }
 
 export type NewLead = {
@@ -175,6 +184,11 @@ export type TrialBooking = {
   createdAt: string
   /** Set when the booking was removed (soft-deleted). */
   removal: BookingRemoval | null
+  /**
+   * The family's time zone when it was booked; null for trials booked before
+   * zones were kept (they read as Nairobi time).
+   */
+  familyTimeZone: string | null
 }
 
 export type Sale = {
@@ -229,8 +243,28 @@ export type WhatsAppMessage = {
   status: WhatsAppStatus
 }
 
+/** Whether a tutor can take a trial at a given time. */
+export type TutorAvailability = {
+  mentorId: string
+  /** The open slot they have at exactly that time, if any. */
+  slotId: string | null
+  /** A class of theirs is within 15 minutes of it. */
+  busy: boolean
+  timeZone: string
+}
+
+/**
+ * A trial at any time: the tutor's open slot when they have one then, else
+ * the hour is added to their calendar.
+ */
 export type NewTrialBooking = {
-  slotId: string
+  mentorId: string
+  /** When it starts; it runs an hour. */
+  start: string
+  /** The open slot at that time, when there is one. */
+  slotId: string | null
+  /** The family's time zone. */
+  timeZone: string
   leadId: string
   salesRepId: string | null
   category: GradeCategoryId

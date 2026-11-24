@@ -46,7 +46,7 @@ async function loadTrials(tutorId: string): Promise<MentorCalendarItem[]> {
     supabase
       .from('trial_bookings')
       .select(
-        'id, calendar_event_id, parent_name, parent_email, student_name, student_grade, category_id, notes, status, created_at, uses_classroom, invite_email_status, invite_email_sent_at, invite_email_error',
+        'id, calendar_event_id, parent_name, parent_email, student_name, student_grade, category_id, notes, status, created_at, uses_classroom, invite_email_status, invite_email_sent_at, invite_email_error, family_time_zone',
       )
       .eq('mentor_id', tutorId)
       .is('removed_at', null)
@@ -106,6 +106,7 @@ async function loadTrials(tutorId: string): Promise<MentorCalendarItem[]> {
         STATUS_LABEL[event.session_status] ??
         event.session_status,
       cancelled: event.booking_status === 'cancelled',
+      familyTimeZone: booking?.family_time_zone ?? null,
     }
   })
 }

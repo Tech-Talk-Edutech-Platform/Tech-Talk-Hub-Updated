@@ -14,8 +14,45 @@ import type {
   Sale,
   TrialBooking,
   TrialStatus,
+  TutorAvailability,
   WhatsAppMessage,
 } from './types'
+
+const HOUR_MS = 3_600_000
+const GAP_MS = 15 * 60_000
+
+/** Who can take a trial at `startMs`, from the preview's own calendar. */
+function demoAvailability(
+  state: SalesDemoData,
+  startMs: number,
+): TutorAvailability[] {
+  const live = new Set(
+    state.bookings
+      .filter((b) => !b.removal && b.status !== 'cancelled')
+      .map((b) => b.id),
+  )
+  return state.mentors.map((mentor) => {
+    const theirs = state.slots.filter((slot) => slot.mentorId === mentor.id)
+    const open = theirs.find(
+      (slot) =>
+        !(slot.bookingId && live.has(slot.bookingId)) &&
+        new Date(slot.start).getTime() === startMs,
+    )
+    const busy = theirs.some(
+      (slot) =>
+        slot.bookingId !== null &&
+        live.has(slot.bookingId) &&
+        new Date(slot.start).getTime() < startMs + HOUR_MS + GAP_MS &&
+        new Date(slot.end).getTime() > startMs - GAP_MS,
+    )
+    return {
+      mentorId: mentor.id,
+      slotId: open?.id ?? null,
+      busy,
+      timeZone: mentor.timeZone,
+    }
+  })
+}
 
 type Action =
   | { type: 'add-lead'; lead: Lead }
@@ -184,13 +221,29 @@ function reducer(state: SalesDemoData, action: Action): SalesDemoData {
               bookingId: booking.id,
               salesRepId: lead.salesRepId ?? booking.salesRepId,
               lastContactedAt: booking.createdAt,
+              timeZone: booking.familyTimeZone ?? lead.timeZone,
+              requestedStart: null,
             }
           : lead,
       ),
       bookings: [...state.bookings, booking],
-      slots: state.slots.map((slot) =>
-        slot.id === booking.slotId ? { ...slot, bookingId: booking.id } : slot,
-      ),
+      // A time the tutor hadn't opened goes on their calendar as it's booked.
+      slots: state.slots.some((slot) => slot.id === booking.slotId)
+        ? state.slots.map((slot) =>
+            slot.id === booking.slotId
+              ? { ...slot, bookingId: booking.id }
+              : slot,
+          )
+        : [
+            ...state.slots,
+            {
+              id: booking.slotId,
+              mentorId: booking.mentorId,
+              start: booking.start,
+              end: booking.end,
+              bookingId: booking.id,
+            },
+          ].toSorted((a, b) => a.start.localeCompare(b.start)),
       messages: [action.message, ...state.messages],
     }
   }
@@ -267,6 +320,8 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
         lastContactedAt: null,
         bookingId: null,
+        timeZone: null,
+        requestedStart: null,
       }
       dispatch({ type: 'add-lead', lead })
       return lead
@@ -282,30 +337,37 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
       if (current?.status === 'scheduled') {
         throw new Error('This parent already has a trial booked.')
       }
-      const slot = state.slots.find(
-        (candidate) => candidate.id === input.slotId,
-      )
-      if (!slot) throw new Error('That slot no longer exists.')
-      if (slot.bookingId) throw new Error('That slot was just taken.')
-      if (new Date(slot.start).getTime() <= Date.now()) {
-        throw new Error('That slot has already started.')
+      const startMs = new Date(input.start).getTime()
+      if (!(startMs > Date.now())) {
+        throw new Error('That time has already passed. Pick a later time.')
       }
-      const mentor = state.mentors.find((m) => m.id === slot.mentorId)
-      if (!mentor) throw new Error('The mentor for this slot was not found.')
+      const mentor = state.mentors.find((m) => m.id === input.mentorId)
+      if (!mentor) throw new Error('That tutor isn’t taking trials.')
+      const availability = demoAvailability(state, startMs).find(
+        (row) => row.mentorId === mentor.id,
+      )
+      if (!availability?.slotId && availability?.busy) {
+        throw new Error(
+          `${mentor.name.split(' ')[0]} already has a class around then. Pick another time or tutor.`,
+        )
+      }
+      const slotId = availability?.slotId ?? newId('slot')
       const roomCode = demoRoomCode(state.bookings.length + 1)
 
       const booking: TrialBooking = {
         ...input,
         id: newId('booking'),
+        slotId,
         mentorId: mentor.id,
-        start: slot.start,
-        end: slot.end,
+        start: new Date(startMs).toISOString(),
+        end: new Date(startMs + HOUR_MS).toISOString(),
         meetLink: familyJoinUrl(roomCode),
         classroomCode: roomCode,
         inviteEmail: { status: 'pending', sentAt: null, error: null },
         status: 'scheduled',
         createdAt: new Date().toISOString(),
         removal: null,
+        familyTimeZone: input.timeZone,
       }
       const message: WhatsAppMessage = {
         id: newId('wa'),
@@ -364,6 +426,8 @@ export function DemoSalesDataProvider({ children }: { children: ReactNode }) {
           at: new Date().toISOString(),
         }),
       bookTrial,
+      tutorAvailability: async (start) =>
+        demoAvailability(latest.current, new Date(start).getTime()),
       // Nothing is really emailed in the preview.
       sendInvite: async (bookingId) => {
         const booking = latest.current.bookings.find((b) => b.id === bookingId)

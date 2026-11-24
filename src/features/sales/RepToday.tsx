@@ -19,7 +19,7 @@ import { created, start, workQueue } from './workQueue'
 import {
   introMessage,
   openTrialWhatsApp,
-  trialTime,
+  trialTimes,
   whatsappLink,
   whatsappMessage,
 } from './whatsapp'
@@ -108,7 +108,7 @@ export function RepToday({
       rows: queue.soon.map((booking) => ({
         key: booking.id,
         primary: booking.studentName,
-        secondary: `${trialTime(booking.start)} · ${mentorFor(booking.mentorId)?.name ?? 'Mentor'} · ${booking.parentName}`,
+        secondary: `${trialTimes(booking)} · ${mentorFor(booking.mentorId)?.name ?? 'Mentor'} · ${booking.parentName}`,
         overdue: false,
         actions: (
           <button

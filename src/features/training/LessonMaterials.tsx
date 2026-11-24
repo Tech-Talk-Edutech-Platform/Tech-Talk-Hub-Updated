@@ -157,7 +157,91 @@ export function LessonVideos({
   )
 }
 
+/** One video placed in the lesson notes, with its title and caption. */
+export function LessonVideo({
+  video,
+  urlOf,
+}: {
+  video: TrainingMaterial
+  urlOf: UrlOf
+}) {
+  return (
+    <figure className="not-prose">
+      <div className="aspect-video w-full overflow-hidden rounded-xl bg-slate-950">
+        <VideoFrame key={video.id} video={video} src={urlOf(video)} />
+      </div>
+      <figcaption className="mt-2 text-sm">
+        <span className="font-bold text-slate-900 dark:text-white">
+          {video.title}
+        </span>
+        {video.note && (
+          <span className="text-slate-500 dark:text-slate-400">
+            {' '}
+            · {video.note}
+          </span>
+        )}
+      </figcaption>
+    </figure>
+  )
+}
+
 // ── Pictures ─────────────────────────────────────────────────────────────
+
+/**
+ * One picture placed in the lesson notes: shown whole (screenshots and
+ * diagrams aren't cropped), full size on a click.
+ */
+export function LessonPicture({
+  image,
+  urlOf,
+}: {
+  image: TrainingMaterial
+  urlOf: UrlOf
+}) {
+  const [viewing, setViewing] = useState(false)
+  const src = urlOf(image)
+  return (
+    <figure className="not-prose">
+      <button
+        type="button"
+        onClick={() => setViewing(true)}
+        aria-label={`View “${image.title}” full size`}
+        className="group block w-full overflow-hidden rounded-xl bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-purple-500 dark:bg-white/5"
+      >
+        {src ? (
+          <img
+            src={src}
+            alt={image.note || image.title}
+            loading="lazy"
+            className="mx-auto max-h-[70dvh] w-auto max-w-full object-contain transition-opacity group-hover:opacity-95"
+          />
+        ) : (
+          <span className="block aspect-video animate-pulse" />
+        )}
+      </button>
+      <figcaption className="mt-2 text-sm">
+        <span className="font-bold text-slate-900 dark:text-white">
+          {image.title}
+        </span>
+        {image.note && (
+          <span className="text-slate-500 dark:text-slate-400">
+            {' '}
+            · {image.note}
+          </span>
+        )}
+      </figcaption>
+      {viewing && (
+        <Lightbox
+          images={[image]}
+          index={0}
+          onIndex={() => undefined}
+          onClose={() => setViewing(false)}
+          urlOf={urlOf}
+        />
+      )}
+    </figure>
+  )
+}
 
 export function LessonImages({
   images,

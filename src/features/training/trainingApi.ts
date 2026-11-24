@@ -73,6 +73,8 @@ export async function loadTrainingCourse(): Promise<TrainingModule[]> {
         )
         .map((lesson) =>
           Object.assign(lesson, {
+            // Empty until migration 20261125130000.
+            body: lesson.body ?? '',
             links: parseLinks(lesson.links),
             materials: parseMaterials(lesson.materials),
           }),
@@ -201,6 +203,8 @@ export type LessonDraft = {
   title: string
   minutes: number
   summary: string
+  /** The lesson notes (Markdown). */
+  body: string
   points: string[]
   links: TrainingLink[]
   materials: TrainingMaterial[]
@@ -217,7 +221,8 @@ export async function saveLesson(
     points: draft.points,
     links: draft.links,
   }
-  const write = (row: typeof base & { materials?: Json }) =>
+  const notes = draft.body.trim()
+  const write = (row: typeof base & { materials?: Json; body?: string }) =>
     'id' in existing
       ? supabase
           .from('tutor_training_lessons')
@@ -230,9 +235,22 @@ export async function saveLesson(
         })
   let { error } = await write({
     ...base,
+    body: notes,
     materials: serializeMaterials(draft.materials),
   })
-  if (error && missingMaterialsColumn(error)) {
+  if (error && missingColumn(error, 'body')) {
+    // Before migration 20261125130000 a lesson without notes still saves.
+    if (notes) {
+      throw new Error(
+        'Lesson notes aren’t set up in the database yet (migration 20261125130000_training_lesson_notes.sql).',
+      )
+    }
+    ;({ error } = await write({
+      ...base,
+      materials: serializeMaterials(draft.materials),
+    }))
+  }
+  if (error && missingColumn(error, 'materials')) {
     // Before migration 20261124120000 a lesson with no materials still saves.
     if (draft.materials.length > 0) {
       throw new Error(
@@ -244,10 +262,13 @@ export async function saveLesson(
   if (error) throw error
 }
 
-function missingMaterialsColumn(error: { code?: string; message: string }) {
+function missingColumn(
+  error: { code?: string; message: string },
+  column: string,
+) {
   return (
     (error.code === 'PGRST204' || error.code === '42703') &&
-    error.message.includes('materials')
+    error.message.includes(column)
   )
 }
 

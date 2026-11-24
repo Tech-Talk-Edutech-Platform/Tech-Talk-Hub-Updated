@@ -29,30 +29,35 @@ export const DEMO_MENTORS: readonly Mentor[] = [
     name: 'Brian Otieno',
     categories: ['junior-coders', 'future-developers'],
     meetLink: 'https://meet.google.com/demo-brn-001',
+    timeZone: 'Africa/Nairobi',
   },
   {
     id: 'mentor-2',
     name: 'Faith Wanjiru',
     categories: ['junior-coders'],
     meetLink: 'https://meet.google.com/demo-fth-002',
+    timeZone: 'Africa/Nairobi',
   },
   {
     id: 'mentor-3',
     name: 'Kevin Mutua',
     categories: ['future-developers', 'tech-professionals'],
     meetLink: 'https://meet.google.com/demo-kvn-003',
+    timeZone: 'Africa/Nairobi',
   },
   {
     id: 'mentor-4',
     name: 'Aisha Hassan',
     categories: ['tech-professionals'],
     meetLink: 'https://meet.google.com/demo-ash-004',
+    timeZone: 'Africa/Nairobi',
   },
   {
     id: 'mentor-5',
     name: 'Daniel Kiprop',
     categories: ['junior-coders', 'future-developers', 'tech-professionals'],
     meetLink: 'https://meet.google.com/demo-dnl-005',
+    timeZone: 'Africa/Nairobi',
   },
 ]
 
@@ -288,6 +293,7 @@ export function buildDemoData(now = new Date()): SalesDemoData {
           source,
           notes: '',
           removal: null,
+          familyTimeZone: 'Africa/Nairobi',
           // Booked one to five days ahead, and never later than now.
           createdAt: new Date(
             Math.min(
@@ -337,6 +343,8 @@ export function buildDemoData(now = new Date()): SalesDemoData {
           lastContactedAt: booking.createdAt,
           notes: '',
           bookingId: booking.id,
+          timeZone: 'Africa/Nairobi',
+          requestedStart: null,
         })
 
         const confirmationAt = booking.createdAt
@@ -435,6 +443,8 @@ export function buildDemoData(now = new Date()): SalesDemoData {
             ).toISOString(),
       notes: pick(LEAD_NOTES),
       bookingId: null,
+      timeZone: null,
+      requestedStart: null,
     })
   }
 

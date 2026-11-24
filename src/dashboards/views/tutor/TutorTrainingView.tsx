@@ -20,7 +20,11 @@ import {
   LessonImages,
   LessonVideos,
 } from '../../../features/training/LessonMaterials'
-import { useMaterialUrls } from '../../../features/training/materials'
+import { LessonNotes } from '../../../features/training/LessonNotes'
+import {
+  placedMaterialIds,
+  useMaterialUrls,
+} from '../../../features/training/materials'
 import {
   importBrowserProgress,
   loadTrainingCourse,
@@ -443,9 +447,13 @@ function LessonView({
 }) {
   const { lesson, module, index } = entry
   const { urlOf, error: filesError } = useMaterialUrls(lesson.materials)
-  const videos = lesson.materials.filter((m) => m.kind === 'video')
-  const images = lesson.materials.filter((m) => m.kind === 'image')
-  const documents = lesson.materials.filter((m) => m.kind === 'document')
+  // Materials the notes place show there; the rest keep their own sections.
+  const placed = placedMaterialIds(lesson.body)
+  const rest = lesson.materials.filter((m) => !placed.has(m.id))
+  const videos = rest.filter((m) => m.kind === 'video')
+  const images = rest.filter((m) => m.kind === 'image')
+  const documents = rest.filter((m) => m.kind === 'document')
+  const hasNotes = lesson.body.trim() !== ''
 
   const finishAndContinue = () => {
     if (!complete) onToggleDone()
@@ -498,10 +506,23 @@ function LessonView({
           </p>
         )}
 
+        {hasNotes && (
+          <section className="mt-8" aria-label="Lesson notes">
+            <LessonNotes
+              body={lesson.body}
+              materials={lesson.materials}
+              urlOf={urlOf}
+            />
+          </section>
+        )}
+
         {lesson.points.length > 0 && (
-          <section className="mt-9" aria-labelledby="training-points">
+          <section
+            className={`mt-9 ${hasNotes ? 'rounded-2xl bg-purple-50/70 p-5 md:p-6 dark:bg-purple-500/10' : ''}`}
+            aria-labelledby="training-points"
+          >
             <h3 id="training-points" className={sectionHeading}>
-              Key points
+              {hasNotes ? 'Remember' : 'Key points'}
             </h3>
             <ul className="mt-3.5 max-w-[65ch] space-y-3">
               {lesson.points.map((point) => (

@@ -1,3 +1,10 @@
+import {
+  dateTimeIn,
+  DEFAULT_TIME_ZONE,
+  otherZoneTime,
+  zoneOr,
+  zonePlace,
+} from '../../lib/timeZones'
 import { gradeCategory } from './gradeCategories'
 import { requestTrialGuestLink } from './trialInvites'
 import type { Mentor, TrialBooking, WhatsAppTemplate } from './types'
@@ -11,6 +18,27 @@ export function trialTime(iso: string) {
     hour: 'numeric',
     minute: '2-digit',
   })
+}
+
+/**
+ * For staff: "Sat 21 Nov, 4:00 PM", plus the family's own time when their
+ * clock differs ("· 8:00 AM in Denver").
+ */
+export function trialTimes(
+  booking: Pick<TrialBooking, 'start' | 'familyTimeZone'>,
+) {
+  const family = otherZoneTime(booking.start, booking.familyTimeZone)
+  return family
+    ? `${trialTime(booking.start)} · ${family}`
+    : trialTime(booking.start)
+}
+
+/** For the family: "Sat 21 Nov, 8:00 AM (Denver time)", in their own zone. */
+export function familyTrialTime(
+  booking: Pick<TrialBooking, 'start' | 'familyTimeZone'>,
+) {
+  const zone = zoneOr(booking.familyTimeZone ?? DEFAULT_TIME_ZONE)
+  return `${dateTimeIn(booking.start, zone)} (${zonePlace(zone)} time)`
 }
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
@@ -31,7 +59,8 @@ export function whatsappMessage(
   const parent = firstName(booking.parentName)
   const student = firstName(booking.studentName)
   const program = gradeCategory(booking.category).label
-  const when = trialTime(booking.start)
+  // Parents read their own time, wherever the rep or tutor is.
+  const when = familyTrialTime(booking)
   const tutor = mentor?.name ?? 'your tutor'
   const link = booking.meetLink || JOIN_LINK_TO_FOLLOW
 
@@ -60,7 +89,7 @@ export function whatsappMessage(
  * (booked by mistake, duplicate, wrong time).
  */
 export function correctionMessage(booking: TrialBooking) {
-  return `Hi ${firstName(booking.parentName)}, apologies: the free trial for ${firstName(booking.studentName)} on ${trialTime(booking.start)} was booked by mistake and has been removed. Please ignore that confirmation. We'll be in touch shortly to agree the right time 🙏`
+  return `Hi ${firstName(booking.parentName)}, apologies: the free trial for ${firstName(booking.studentName)} on ${familyTrialTime(booking)} was booked by mistake and has been removed. Please ignore that confirmation. We'll be in touch shortly to agree the right time 🙏`
 }
 
 /**

@@ -34,10 +34,15 @@ import {
   type TrainingModule,
 } from '../../../features/training/trainingApi'
 import {
+  dropMissingMaterials,
   materialPaths,
+  materialToken,
+  placedMaterialIds,
   removeMaterialFiles,
+  useMaterialUrls,
   type MaterialKind,
 } from '../../../features/training/materials'
+import { LessonNotes } from '../../../features/training/LessonNotes'
 import {
   MaterialsEditor,
   type MaterialRow,
@@ -668,6 +673,10 @@ function LessonEditor({
   const [title, setTitle] = useState(lesson?.title ?? '')
   const [minutes, setMinutes] = useState(String(lesson?.minutes ?? 10))
   const [summary, setSummary] = useState(lesson?.summary ?? '')
+  const [body, setBody] = useState(lesson?.body ?? '')
+  const [notesTab, setNotesTab] = useState<'write' | 'preview'>('write')
+  const notesRef = useRef<HTMLTextAreaElement>(null)
+  const notesId = useId()
   const [points, setPoints] = useState((lesson?.points ?? []).join('\n'))
   const [links, setLinks] = useState<LinkRow[]>(() =>
     (lesson?.links ?? []).map(linkRow),
@@ -685,6 +694,24 @@ function LessonEditor({
       if (!saved.current) void removeMaterialFiles([...fresh])
     }
   }, [])
+
+  const { urlOf } = useMaterialUrls(materials)
+  const placed = placedMaterialIds(body)
+
+  /** Puts the material in the notes where the cursor is (else at the end). */
+  const placeInNotes = (row: MaterialRow) => {
+    const token = materialToken(row)
+    const at = notesRef.current?.selectionEnd ?? body.length
+    const before = body.slice(0, at).trimEnd()
+    const after = body.slice(at).trimStart()
+    setBody([before, token, after].filter(Boolean).join('\n\n'))
+    setNotesTab('write')
+    const caret = (before ? before.length + 2 : 0) + token.length
+    requestAnimationFrame(() => {
+      notesRef.current?.focus()
+      notesRef.current?.setSelectionRange(caret, caret)
+    })
+  }
 
   const updateLink = (key: number, patch: Partial<TrainingLink>) =>
     setLinks((rows) =>
@@ -725,6 +752,7 @@ function LessonEditor({
       title,
       minutes: length,
       summary,
+      body: dropMissingMaterials(body, new Set(materials.map((row) => row.id))),
       points: [
         ...new Set(
           points
@@ -801,6 +829,64 @@ function LessonEditor({
             className={inputClass}
           />
         </label>
+        <div>
+          <div className="flex items-end justify-between gap-3">
+            <label htmlFor={notesId} className={labelClass}>
+              Lesson notes
+            </label>
+            <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-bold dark:bg-white/10">
+              {(['write', 'preview'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  aria-pressed={notesTab === tab}
+                  onClick={() => setNotesTab(tab)}
+                  className="rounded-md px-2.5 py-1 text-slate-500 capitalize aria-pressed:bg-white aria-pressed:text-slate-900 aria-pressed:shadow-sm dark:text-slate-300 dark:aria-pressed:bg-slate-800 dark:aria-pressed:text-white"
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+          {notesTab === 'write' ? (
+            <textarea
+              id={notesId}
+              ref={notesRef}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={10}
+              maxLength={60000}
+              aria-describedby={`${notesId}-hint`}
+              placeholder={
+                '## What to do\nWrite the lesson here, step by step.\n\n- Lists, **bold** and [links](https://…) work.'
+              }
+              className={`${inputClass} leading-6`}
+            />
+          ) : (
+            <div className="mt-1.5 max-h-[60dvh] overflow-y-auto rounded-xl border border-slate-200 p-4 dark:border-white/10">
+              {body.trim() ? (
+                <LessonNotes
+                  body={body}
+                  materials={materials}
+                  urlOf={urlOf}
+                  preview
+                />
+              ) : (
+                <p className="text-sm text-slate-400">No notes yet.</p>
+              )}
+            </div>
+          )}
+          <p
+            id={`${notesId}-hint`}
+            className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400"
+          >
+            The lesson itself, shown under the summary. Use ## for a heading, -
+            for a list, **bold**. To show a picture, video or document at a
+            point in the text, click there, then press{' '}
+            <span className="font-bold">Place in notes</span> on the material
+            below.
+          </p>
+        </div>
         <label className={labelClass}>
           Key points <span className="normal-case">(one per line)</span>
           <textarea
@@ -859,6 +945,8 @@ function LessonEditor({
           onChange={setMaterials}
           onUploaded={(path) => uploaded.current.add(path)}
           labelClass={labelClass}
+          placedIds={placed}
+          onPlace={placeInNotes}
         />
         <EditorFooter error={error} busy={busy} onCancel={onClose} />
       </form>
@@ -881,6 +969,7 @@ const counted = (count: number, [one, many]: [string, string]) =>
 function lessonContents(lesson: TrainingLesson): string {
   const kinds: MaterialKind[] = ['video', 'image', 'document']
   return [
+    ...(lesson.body.trim() ? ['notes'] : []),
     counted(lesson.points.length, ['key point', 'key points']),
     ...kinds.flatMap((kind) => {
       const count = lesson.materials.filter((m) => m.kind === kind).length

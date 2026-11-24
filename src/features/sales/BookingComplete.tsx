@@ -33,6 +33,13 @@ import {
   whatsappMessage,
 } from './whatsapp'
 import { copyPendingText } from './clipboard'
+import {
+  browserTimeZone,
+  clockIn,
+  dayIn,
+  sameClock,
+  zonePlace,
+} from '../../lib/timeZones'
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
 const clock = (iso: string) =>
@@ -107,6 +114,7 @@ export function BookingComplete({
       }),
     ],
     ['Time', `${clock(booking.start)} – ${clock(booking.end)}`],
+    ...otherClocks(booking, mentor?.timeZone ?? null, tutorName),
     ['Parent', `${booking.parentName} · ${formatPhone(booking.parentPhone)}`],
     ['Booked by', booker],
     ['Status', <StatusBadge key="status" status={booking.status} />],
@@ -299,4 +307,32 @@ export function BookingComplete({
       </div>
     </div>
   )
+}
+
+/**
+ * The same hour for the family and the tutor, when their clocks differ from
+ * yours: "Family's time · 8:00 AM – 9:00 AM Thu 26 Nov (Denver)".
+ */
+function otherClocks(
+  booking: TrialBooking,
+  tutorZone: string | null,
+  tutorName: string,
+): [string, ReactNode][] {
+  const viewer = browserTimeZone()
+  const at = new Date(booking.start).getTime()
+  const line = (zone: string) =>
+    `${clockIn(booking.start, zone)} – ${clockIn(booking.end, zone)} · ${dayIn(booking.start, zone)} (${zonePlace(zone)})`
+  const rows: [string, ReactNode][] = []
+  const family = booking.familyTimeZone
+  if (family && !sameClock(at, family, viewer)) {
+    rows.push(['Family’s time', line(family)])
+  }
+  if (
+    tutorZone &&
+    !sameClock(at, tutorZone, viewer) &&
+    !(family && sameClock(at, tutorZone, family))
+  ) {
+    rows.push([`${firstName(tutorName)}’s time`, line(tutorZone)])
+  }
+  return rows
 }

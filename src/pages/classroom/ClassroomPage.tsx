@@ -347,9 +347,9 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
   const [selfId] = useState(uid)
 
   const autoPip = useAutoPip()
-  const media = useLocalMedia({
-    holdMicWhenMuted: autoPip && autoPipSupported(),
-  })
+  // Parents watching have no mic to hold.
+  const holdMicForPip = autoPip && autoPipSupported() && !watchOnly
+  const media = useLocalMedia({ holdMicWhenMuted: holdMicForPip })
   const speaking = useIsSpeaking(media.mic)
   const timer = useClassTimer(classroomId)
 
@@ -417,6 +417,18 @@ function LiveClassroom({ data }: { data: ClassroomData }) {
   }, [persist, sessionId, joinStarted])
 
   useEffect(() => () => clearTimeout(celebrationTimer.current), [])
+
+  // Chrome pops a call out by itself on a tab switch only while the page is
+  // using the mic or camera. Everyone joins muted with the camera off, so
+  // open the mic muted on arrival (Google Meet does the same); otherwise the
+  // class would only float for people who had unmuted at least once.
+  const holdMicRef = useRef(media.holdMic)
+  useEffect(() => {
+    holdMicRef.current = media.holdMic
+  })
+  useEffect(() => {
+    if (joinStarted && !ended && holdMicForPip) void holdMicRef.current()
+  }, [joinStarted, ended, holdMicForPip])
 
   // Past the scheduled end the call keeps going; tell everyone once, so they
   // wrap up and leave when they're done.

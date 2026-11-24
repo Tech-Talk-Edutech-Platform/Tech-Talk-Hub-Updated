@@ -1,109 +1,62 @@
 import type { LucideIcon } from 'lucide-react'
-import { CloudSun, Moon, Palette, Sun, Sunrise, Sunset } from 'lucide-react'
-
-export type ShiftId =
-  'early' | 'morning' | 'midday' | 'afternoon' | 'evening' | 'late'
+import { Sun, Sunrise, Sunset } from 'lucide-react'
 
 export type ShiftTone = 'peach' | 'lavender' | 'pink'
 
-export type Shift = {
-  id: ShiftId
+export type DayPartId = 'morning' | 'afternoon' | 'evening'
+
+/**
+ * A part of the family's day. Booking offers half-hour start times from 6 AM
+ * to 9:30 PM in the family's own time zone, grouped by these.
+ */
+export type DayPart = {
+  id: DayPartId
   label: string
-  /** Local hours. A session belongs to the shift its start hour falls in. */
+  /** Family-local hours; a time belongs to the part its hour falls in. */
   startHour: number
   endHour: number
   icon: LucideIcon
   tone: ShiftTone
 }
 
-/**
- * The teaching day in two-hour shifts, as on the booking portal. A rep picks a
- * shift first, then one of the tutors' one-hour sessions inside it.
- */
-export const SHIFTS: readonly Shift[] = [
-  {
-    id: 'early',
-    label: 'Early birds',
-    startHour: 8,
-    endHour: 10,
-    icon: Sunrise,
-    tone: 'peach',
-  },
-  {
-    id: 'morning',
-    label: 'Morning',
-    startHour: 10,
-    endHour: 12,
-    icon: Sun,
-    tone: 'lavender',
-  },
-  {
-    id: 'midday',
-    label: 'Midday',
-    startHour: 12,
-    endHour: 14,
-    icon: CloudSun,
-    tone: 'pink',
-  },
-  {
-    id: 'afternoon',
-    label: 'Afternoon',
-    startHour: 14,
-    endHour: 16,
-    icon: Palette,
-    tone: 'peach',
-  },
-  {
-    id: 'evening',
-    label: 'Evening',
-    startHour: 16,
-    endHour: 18,
-    icon: Sunset,
-    tone: 'lavender',
-  },
-  {
-    id: 'late',
-    label: 'Late evening',
-    startHour: 18,
-    endHour: 20,
-    icon: Moon,
-    tone: 'pink',
-  },
-]
-
-/** The shift a session starts in; undefined outside 8 AM – 8 PM. */
-export function shiftOf(iso: string): Shift | undefined {
-  const hour = new Date(iso).getHours()
-  return SHIFTS.find((shift) => hour >= shift.startHour && hour < shift.endHour)
+const MORNING: DayPart = {
+  id: 'morning',
+  label: 'Morning',
+  startHour: 6,
+  endHour: 12,
+  icon: Sunrise,
+  tone: 'peach',
+}
+const AFTERNOON: DayPart = {
+  id: 'afternoon',
+  label: 'Afternoon',
+  startHour: 12,
+  endHour: 17,
+  icon: Sun,
+  tone: 'lavender',
+}
+const EVENING: DayPart = {
+  id: 'evening',
+  label: 'Evening',
+  startHour: 17,
+  endHour: 22,
+  icon: Sunset,
+  tone: 'pink',
 }
 
-const hourLabel = (hour: number) => {
-  const at = new Date()
-  at.setHours(hour, 0, 0, 0)
-  return at.toLocaleTimeString([], { hour: 'numeric' })
-}
+export const DAY_PARTS: readonly DayPart[] = [MORNING, AFTERNOON, EVENING]
 
-/** "8 AM – 10 AM" in the viewer's locale. */
-export const shiftHours = (shift: Shift) =>
-  `${hourLabel(shift.startHour)} – ${hourLabel(shift.endHour)}`
+/** "06:00", "06:30" … "21:30". */
+export const BOOKABLE_TIMES: readonly string[] = DAY_PARTS.flatMap((part) =>
+  Array.from({ length: (part.endHour - part.startHour) * 2 }, (_, index) => {
+    const minutes = part.startHour * 60 + index * 30
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+  }),
+)
 
-/** Local midnight of the day `ms` falls in. */
-export function startOfDay(ms: number) {
-  const day = new Date(ms)
-  day.setHours(0, 0, 0, 0)
-  return day.getTime()
-}
-
-/** Midnight `days` later; safe across daylight-saving changes. */
-export function addDays(dayStart: number, days: number) {
-  const day = new Date(dayStart)
-  day.setDate(day.getDate() + days)
-  return day.getTime()
-}
-
-/** When the shift ends on the given day. */
-export function shiftEnd(shift: Shift, dayStart: number) {
-  const end = new Date(dayStart)
-  end.setHours(shift.endHour, 0, 0, 0)
-  return end.getTime()
+/** The part a family-local "HH:MM" falls in (early times count as morning). */
+export function dayPartOf(time: string): DayPart {
+  const hour = Number(time.slice(0, 2))
+  if (hour < AFTERNOON.startHour) return MORNING
+  return hour < EVENING.startHour ? AFTERNOON : EVENING
 }

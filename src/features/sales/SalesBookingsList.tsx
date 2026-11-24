@@ -23,6 +23,7 @@ import { inlineSelectClass, inputClass, selectClass } from './styles'
 import {
   openTrialWhatsApp,
   trialTime,
+  trialTimes,
   whatsappLink,
   whatsappMessage,
 } from './whatsapp'
@@ -268,7 +269,7 @@ export function SalesBookingsList({
                       <StatusBadge status={booking.status} />
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      {trialTime(booking.start)} ·{' '}
+                      {trialTimes(booking)} ·{' '}
                       {gradeCategory(booking.category).label},{' '}
                       {gradeLabel(booking.studentGrade)} · Mentor{' '}
                       {mentorName(booking.mentorId)}
@@ -487,7 +488,7 @@ function RemovedRow({
           </span>
         </p>
         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-          {trialTime(booking.start)} · {gradeCategory(booking.category).label}
+          {trialTimes(booking)} · {gradeCategory(booking.category).label}
           {' · '}Mentor {mentorName} · Parent {booking.parentName}
         </p>
         {removal && (

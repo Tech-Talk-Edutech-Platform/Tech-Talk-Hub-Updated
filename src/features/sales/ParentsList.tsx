@@ -20,7 +20,7 @@ import {
   Panel,
   StatusBadge,
 } from './ui'
-import { introMessage, trialTime } from './whatsapp'
+import { introMessage, trialTimes } from './whatsapp'
 
 type Filter = 'to-contact' | 'booked' | 'not-interested' | 'all'
 
@@ -317,7 +317,7 @@ function ParentRow({
           </p>
           {booking && lead.status === 'trial_booked' && (
             <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-              Trial for {booking.studentName} · {trialTime(booking.start)}
+              Trial for {booking.studentName} · {trialTimes(booking)}
               {mentor && ` · ${mentor.name}`}
             </p>
           )}

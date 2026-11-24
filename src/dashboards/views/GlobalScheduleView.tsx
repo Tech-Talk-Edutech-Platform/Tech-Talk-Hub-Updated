@@ -37,6 +37,8 @@ import type { User } from '@supabase/supabase-js'
 import { isAdminRole } from '../../types/roles'
 import { sendWaitingInvites } from '../../lib/sendWaitingInvites'
 import { TrialBookingDetails } from './shared/TrialBookingDetails'
+import { TrialQueueTutorPicker } from './shared/TrialQueueTutorPicker'
+import { requestedTimeLabel } from './shared/trialQueueTimes'
 
 type AppUser = Tables<'users'>
 type Lead = Tables<'leads'>
@@ -1225,8 +1227,8 @@ export default function GlobalScheduleView({
                 id="dashboard-trial-queue"
                 className="mb-3 text-xs text-slate-500"
               >
-                No available slot? These trials stay unassigned until a tutor
-                slot is available.
+                Families pick any time. Book the tutor who has an open slot, or
+                any tutor who is free then.
               </p>
               {leadId && (
                 <button
@@ -1263,6 +1265,11 @@ export default function GlobalScheduleView({
                             lead.phone ||
                             'No parent contact'}
                         </p>
+                        {requestedTimeLabel(lead) && (
+                          <p className="mt-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            Asked for {requestedTimeLabel(lead)}
+                          </p>
+                        )}
                         <button
                           disabled={
                             saving ||
@@ -1278,6 +1285,12 @@ export default function GlobalScheduleView({
                           <UserRoundCheck size={13} className="mr-1 inline" />{' '}
                           Auto-assign next available slot
                         </button>
+                        <TrialQueueTutorPicker
+                          lead={lead}
+                          tutors={tutors}
+                          disabled={saving}
+                          run={runAction}
+                        />
                       </div>
                     ))}
                 </div>
@@ -1382,6 +1395,7 @@ export default function GlobalScheduleView({
               <TrialBookingDetails
                 eventId={selectedEvent.id}
                 meetLink={selectedEvent.meet_link}
+                startTime={selectedEvent.start_time}
                 endTime={selectedEvent.end_time}
               />
             )}

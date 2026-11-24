@@ -154,7 +154,13 @@ export function useLocalMedia({
 
   // The muted microphone, held open (see holdMicWhenMuted).
   const heldMic = useRef<MediaStreamTrack | null>(null)
+  // Bumped whenever the held mic is let go, so a hold still waiting for
+  // access (holdMic) knows to drop what it gets.
+  const holdGeneration = useRef(0)
+  // Read through a function: the ref changes while access is pending.
+  const holding = () => heldMic.current?.readyState === 'live'
   const releaseHeldMic = () => {
+    holdGeneration.current += 1
     heldMic.current?.stop()
     heldMic.current = null
   }
@@ -166,11 +172,13 @@ export function useLocalMedia({
   })
   useEffect(() => {
     const held = heldMic
+    const generation = holdGeneration
     return () => {
       const streams = live.current
       stopStream(streams.cam)
       stopStream(streams.mic)
       stopStream(streams.screen)
+      generation.current += 1
       held.current?.stop()
       held.current = null
     }
@@ -179,6 +187,7 @@ export function useLocalMedia({
   // Turning the setting off lets go of a held microphone straight away.
   useEffect(() => {
     if (holdMicWhenMuted) return
+    holdGeneration.current += 1
     heldMic.current?.stop()
     heldMic.current = null
   }, [holdMicWhenMuted])
@@ -292,6 +301,47 @@ export function useLocalMedia({
     void startMic()
   }
 
+  /**
+   * Opens the microphone muted, so Chrome will pop the class out when you
+   * switch tabs even if you never unmute (see holdMicWhenMuted). Nothing is
+   * sent: the track is disabled and never published. Does nothing while the
+   * mic is live or already held, or if access is refused.
+   */
+  const holdMic = async () => {
+    const mediaDevices = getMediaDevices()
+    if (!holdMicWhenMuted || !mediaDevices || mic || pending.mic) return
+    if (holding()) return
+    const generation = holdGeneration.current
+    try {
+      const stream = await mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          ...(deviceIds.audioinput
+            ? { deviceId: { exact: deviceIds.audioinput } }
+            : {}),
+        },
+      })
+      const [track] = stream.getAudioTracks()
+      if (!track) return
+      track.enabled = false
+      // While access was pending the person unmuted, left the class or turned
+      // the setting off, or another hold won.
+      if (
+        generation !== holdGeneration.current ||
+        live.current.mic ||
+        holding()
+      ) {
+        track.stop()
+        return
+      }
+      heldMic.current = track
+      refreshDevices()
+    } catch {
+      // Refused or no microphone: the class just won't pop out by itself.
+    }
+  }
+
   const toggleScreen = () => {
     if (screen) {
       stopStream(screen)
@@ -358,6 +408,7 @@ export function useLocalMedia({
     toggleCam,
     toggleMic,
     toggleScreen,
+    holdMic,
     chooseDevice,
     stopAll,
   }

@@ -1134,6 +1134,7 @@ export type Database = {
           status: string | null
           student_name: string | null
           student_user_id: string | null
+          time_zone: string | null
         }
         Insert: {
           assigned_tutor_id?: string | null
@@ -1157,6 +1158,7 @@ export type Database = {
           status?: string | null
           student_name?: string | null
           student_user_id?: string | null
+          time_zone?: string | null
         }
         Update: {
           assigned_tutor_id?: string | null
@@ -1180,6 +1182,7 @@ export type Database = {
           status?: string | null
           student_name?: string | null
           student_user_id?: string | null
+          time_zone?: string | null
         }
         Relationships: [
           {
@@ -2145,6 +2148,7 @@ export type Database = {
           calendar_event_id: string
           category_id: string
           created_at: string
+          family_time_zone: string | null
           id: string
           invite_email_attempts: number
           invite_email_error: string | null
@@ -2174,6 +2178,7 @@ export type Database = {
           calendar_event_id: string
           category_id: string
           created_at?: string
+          family_time_zone?: string | null
           id?: string
           invite_email_attempts?: number
           invite_email_error?: string | null
@@ -2203,6 +2208,7 @@ export type Database = {
           calendar_event_id?: string
           category_id?: string
           created_at?: string
+          family_time_zone?: string | null
           id?: string
           invite_email_attempts?: number
           invite_email_error?: string | null
@@ -2288,6 +2294,7 @@ export type Database = {
       }
       tutor_training_lessons: {
         Row: {
+          body: string
           created_at: string
           id: string
           links: Json
@@ -2301,6 +2308,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          body?: string
           created_at?: string
           id?: string
           links?: Json
@@ -2314,6 +2322,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          body?: string
           created_at?: string
           id?: string
           links?: Json
@@ -2451,6 +2460,7 @@ export type Database = {
           role: Database['public']['Enums']['user_role'] | null
           skills: string[] | null
           subscription_tier: string | null
+          time_zone: string | null
           total_classes: number | null
         }
         Insert: {
@@ -2472,6 +2482,7 @@ export type Database = {
           role?: Database['public']['Enums']['user_role'] | null
           skills?: string[] | null
           subscription_tier?: string | null
+          time_zone?: string | null
           total_classes?: number | null
         }
         Update: {
@@ -2493,6 +2504,7 @@ export type Database = {
           role?: Database['public']['Enums']['user_role'] | null
           skills?: string[] | null
           subscription_tier?: string | null
+          time_zone?: string | null
           total_classes?: number | null
         }
         Relationships: [
@@ -2604,6 +2616,55 @@ export type Database = {
           calendar_event_id: string
           category_id: string
           created_at: string
+          family_time_zone: string | null
+          id: string
+          invite_email_attempts: number
+          invite_email_error: string | null
+          invite_email_sent_at: string | null
+          invite_email_status: string
+          lead_id: string | null
+          marketer_id: string | null
+          mentor_id: string
+          notes: string | null
+          parent_email: string | null
+          parent_name: string
+          parent_phone: string
+          privyr_lead_id: string | null
+          removal_note: string | null
+          removal_reason: string | null
+          removed_at: string | null
+          removed_by: string | null
+          source: string
+          status: string
+          student_grade: string
+          student_name: string
+          updated_at: string
+          uses_classroom: boolean
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'trial_bookings'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      book_trial_at: {
+        Args: {
+          p_category: string
+          p_lead_id: string
+          p_mentor_id: string
+          p_notes?: string
+          p_start: string
+          p_student_grade: string
+          p_student_name: string
+          p_time_zone: string
+        }
+        Returns: {
+          booked_by: string | null
+          calendar_event_id: string
+          category_id: string
+          created_at: string
+          family_time_zone: string | null
           id: string
           invite_email_attempts: number
           invite_email_error: string | null
@@ -2794,6 +2855,7 @@ export type Database = {
         Returns: boolean
       }
       is_student: { Args: never; Returns: boolean }
+      known_time_zone: { Args: { p_zone: string }; Returns: string }
       mark_whatsapp_sent: {
         Args: { p_message_id: string }
         Returns: {
@@ -2859,6 +2921,7 @@ export type Database = {
           calendar_event_id: string
           category_id: string
           created_at: string
+          family_time_zone: string | null
           id: string
           invite_email_attempts: number
           invite_email_error: string | null
@@ -2939,6 +3002,7 @@ export type Database = {
           calendar_event_id: string
           category_id: string
           created_at: string
+          family_time_zone: string | null
           id: string
           invite_email_attempts: number
           invite_email_error: string | null
@@ -3004,6 +3068,7 @@ export type Database = {
           status: string | null
           student_name: string | null
           student_user_id: string | null
+          time_zone: string | null
         }
         SetofOptions: {
           from: '*'
@@ -3013,15 +3078,15 @@ export type Database = {
         }
       }
       sales_can_work: { Args: { p_marketer_id: string }; Returns: boolean }
-      sales_rep_standing: {
-        Args: { p_from: string; p_to: string }
-        Returns: Json
-      }
       sales_release_slot: {
         Args: {
           p_booking: Database['public']['Tables']['trial_bookings']['Row']
         }
         Returns: undefined
+      }
+      sales_rep_standing: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
       }
       sales_set_lead_status: {
         Args: { p_lead_id: string; p_status: string }
@@ -3047,6 +3112,7 @@ export type Database = {
           status: string | null
           student_name: string | null
           student_user_id: string | null
+          time_zone: string | null
         }
         SetofOptions: {
           from: '*'
@@ -3055,6 +3121,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_my_time_zone: { Args: { p_zone: string }; Returns: undefined }
       set_trial_status: {
         Args: { p_booking_id: string; p_status: string }
         Returns: {
@@ -3062,6 +3129,7 @@ export type Database = {
           calendar_event_id: string
           category_id: string
           created_at: string
+          family_time_zone: string | null
           id: string
           invite_email_attempts: number
           invite_email_error: string | null
@@ -3101,6 +3169,32 @@ export type Database = {
       trial_booking_sync_classroom: {
         Args: { p_booking_id: string }
         Returns: undefined
+      }
+      trial_clear_overlapping_slots: {
+        Args: {
+          p_end: string
+          p_keep: string
+          p_start: string
+          p_tutor: string
+        }
+        Returns: undefined
+      }
+      trial_time_text: {
+        Args: { p_at: string; p_zone: string }
+        Returns: string
+      }
+      trial_times_for_tutor: {
+        Args: { p_at: string; p_family_zone: string; p_tutor_zone: string }
+        Returns: string
+      }
+      trial_tutor_availability: {
+        Args: { p_minutes?: number; p_start: string }
+        Returns: {
+          busy: boolean
+          mentor_id: string
+          slot_id: string
+          time_zone: string
+        }[]
       }
     }
     Enums: {

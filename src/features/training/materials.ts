@@ -422,3 +422,42 @@ export function useMaterialUrls(materials: readonly TrainingMaterial[]) {
     error: query.error,
   }
 }
+
+// ── Materials placed in the lesson notes ─────────────────────────────────
+
+/** Notes place a material with `![Title](material:<id>)` on its own line. */
+export const MATERIAL_SCHEME = 'material:'
+
+const PLACED_LINE = /^[ \t]*!\[[^\]\n]*\]\(material:([^\s)]+)\)[ \t]*$/gm
+const ANY_TOKEN = /!\[[^\]\n]*\]\(material:([^\s)]+)\)/g
+
+/** The Markdown that puts `material` at a point in the notes. */
+export function materialToken(
+  material: Pick<TrainingMaterial, 'id' | 'title'>,
+) {
+  const title = material.title.replace(/[[\]\\n]/g, '').trim() || 'Material'
+  return `![${title}](${MATERIAL_SCHEME}${material.id})`
+}
+
+/**
+ * Materials the notes show as their own block (the token alone on a line).
+ * They're left out of the sections after the notes, so nothing shows twice.
+ */
+export function placedMaterialIds(body: string): Set<string> {
+  return new Set(
+    [...body.matchAll(PLACED_LINE)].flatMap((match) =>
+      match[1] ? [match[1]] : [],
+    ),
+  )
+}
+
+/** Drops tokens for materials no longer in the lesson. */
+export function dropMissingMaterials(
+  body: string,
+  ids: ReadonlySet<string>,
+): string {
+  return body
+    .replace(ANY_TOKEN, (token, id: string) => (ids.has(id) ? token : ''))
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}

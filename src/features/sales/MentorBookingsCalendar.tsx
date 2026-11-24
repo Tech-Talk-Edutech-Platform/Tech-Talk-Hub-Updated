@@ -14,6 +14,7 @@ import {
 
 import { Modal } from '../../components/ui/Modal'
 import { useNow } from '../../hooks/useNow'
+import { otherZoneTime } from '../../lib/timeZones'
 import { classroomCodeOf } from './trialInvites'
 import { TrialInvitePanel, type InviteTarget } from './TrialInvitePanel'
 import type { InviteResult } from './types'
@@ -36,6 +37,14 @@ export type MentorCalendarItem = {
   /** Shown as a small label, e.g. "Scheduled" or "Completed". */
   statusLabel?: string | null
   cancelled?: boolean
+  /** The family's time zone, so their own time shows beside yours. */
+  familyTimeZone?: string | null
+}
+
+/** " · 8:00 AM in Denver for the family", when their clock differs. */
+const familySuffix = (item: MentorCalendarItem) => {
+  const family = otherZoneTime(item.start, item.familyTimeZone)
+  return family ? ` · ${family} for the family` : ''
 }
 
 const JOIN_WINDOW_MS = 15 * 60_000
@@ -152,6 +161,7 @@ export function MentorBookingsCalendar({
                     </span>
                     <span className="block text-xs text-slate-500">
                       {fullTime(item.start)}
+                      {familySuffix(item)}
                       {item.detail ? ` · ${item.detail}` : ''}
                     </span>
                   </button>
@@ -193,7 +203,16 @@ export function MentorBookingsCalendar({
         >
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="text-slate-500">When</dt>
-            <dd className="font-bold">{fullTime(selected.start)}</dd>
+            <dd className="font-bold">
+              {fullTime(selected.start)}
+              {selected.familyTimeZone &&
+                otherZoneTime(selected.start, selected.familyTimeZone) && (
+                  <span className="block text-xs font-semibold text-slate-500">
+                    {otherZoneTime(selected.start, selected.familyTimeZone)} for
+                    the family
+                  </span>
+                )}
+            </dd>
             <dt className="text-slate-500">Student</dt>
             <dd className="font-bold">
               {selected.studentName}

@@ -1,9 +1,62 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { supabase } from '../supabase'
 import type { ChangeEvent, FormEvent } from 'react'
 import { staticPageMeta } from '../data/seo'
 import { sendWaitingInvites } from '../lib/sendWaitingInvites'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { TimeZoneSelect } from '../components/TimeZoneSelect'
+import { BOOKABLE_TIMES } from '../features/sales/shifts'
+import {
+  browserTimeZone,
+  dateKeyIn,
+  dateTimeIn,
+  DEFAULT_TIME_ZONE,
+  sameClock,
+  timeKeyIn,
+  zonedTimeToMs,
+  zonePlace,
+} from '../lib/timeZones'
+
+/** Families can book from an hour from now. */
+const NOTICE_MS = 60 * 60_000
+
+const noSubscription = () => () => undefined
+
+/**
+ * A value only the browser knows (its time zone, today's date). The page is
+ * pre-rendered at build time, so the server's value is used until it
+ * hydrates, then the browser's.
+ */
+const useBrowserValue = (read: () => string, server: string) =>
+  useSyncExternalStore(noSubscription, read, () => server)
+
+/** "8:00 AM" for "08:00". */
+const timeLabel = (time: string) => {
+  const [hour = 0, minute = 0] = time.split(':').map(Number)
+  return new Date(Date.UTC(2000, 0, 1, hour, minute)).toLocaleTimeString(
+    'en-US',
+    {
+      timeZone: 'UTC',
+      hour: 'numeric',
+      minute: '2-digit',
+    },
+  )
+}
+
+const countryOptions = [
+  { name: 'Kenya', code: '+254', flag: '🇰🇪' },
+  { name: 'Uganda', code: '+256', flag: '🇺🇬' },
+  { name: 'Tanzania', code: '+255', flag: '🇹🇿' },
+  { name: 'Rwanda', code: '+250', flag: '🇷🇼' },
+  { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
+  { name: 'Ghana', code: '+233', flag: '🇬🇭' },
+  { name: 'South Africa', code: '+27', flag: '🇿🇦' },
+  { name: 'United States', code: '+1', flag: '🇺🇸' },
+  { name: 'Canada', code: '+1', flag: '🇨🇦' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+  { name: 'United Arab Emirates', code: '+971', flag: '🇦🇪' },
+  { name: 'Other', code: '+', flag: '🌍' },
+]
 
 interface LeadForm {
   parent_name: string
@@ -23,16 +76,23 @@ type LeadErrors = Partial<Record<LeadField, boolean>>
 
 export default function LandingPage() {
   usePageMeta(staticPageMeta('/book'))
-  // Read once; the date picker's minimum doesn't need to tick past midnight.
-  const [today] = useState(() => new Date().toISOString().split('T')[0])
+  // The family picks a date and time on their own clock; tutors see the
+  // same moment on theirs.
+  const detectedZone = useBrowserValue(browserTimeZone, DEFAULT_TIME_ZONE)
+  const [chosenZone, setChosenZone] = useState<string | null>(null)
+  const zone = chosenZone ?? detectedZone
+  const today = useBrowserValue(() => dateKeyIn(Date.now(), zone), '')
+  const [booked, setBooked] = useState<{ start: number; zone: string } | null>(
+    null,
+  )
   const [form, setForm] = useState<LeadForm>({
     parent_name: '',
     parent_email: '',
     student_name: '',
     phone: '',
     grade: '',
-    preferred_date: today,
-    preferred_time: '00:00',
+    preferred_date: '',
+    preferred_time: '',
     country: '',
     lead_source: 'landing_page',
     referral_code: '',
@@ -52,11 +112,7 @@ export default function LandingPage() {
   const handleCountryChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const country = e.target.value
     let code = ''
-    if (country === 'Kenya') code = '+254'
-    else if (country === 'Uganda') code = '+256'
-    else if (country === 'Tanzania') code = '+255'
-    else if (country === 'Nigeria') code = '+234'
-    else if (country === 'South Africa') code = '+27'
+    code = countryOptions.find((option) => option.name === country)?.code ?? ''
 
     setForm({ ...form, country, phone: code })
     setErrors({ ...errors, country: false })
@@ -80,38 +136,54 @@ export default function LandingPage() {
     requiredFields.forEach((f) => {
       if (!form[f]) newErrors[f] = true
     })
+    // The moment they picked, on their own clock.
+    const start =
+      form.preferred_date && form.preferred_time
+        ? zonedTimeToMs(form.preferred_date, form.preferred_time, zone)
+        : null
+    if (start !== null && start < Date.now() + NOTICE_MS) {
+      newErrors.preferred_date = true
+      newErrors.preferred_time = true
+    }
     if (Object.keys(newErrors).length) {
       setErrors(newErrors)
       return
     }
+    if (start === null) return
 
     setLoading(true)
 
     try {
-      const { error } = await supabase.from('leads').insert([
-        {
-          parent_name: form.parent_name,
-          student_name: form.student_name,
-          email: form.parent_email,
-          phone: form.phone,
-          grade: form.grade,
-          country: form.country,
-          class_date: form.preferred_date,
-          class_time:
-            form.preferred_time.length === 5
-              ? form.preferred_time + ':00'
-              : form.preferred_time,
-          lead_source: form.lead_source || 'landing_page',
-          referal_code: form.referral_code,
-          status: 'new',
-        },
-      ])
+      const lead = {
+        parent_name: form.parent_name,
+        student_name: form.student_name,
+        email: form.parent_email,
+        phone: form.phone,
+        grade: form.grade,
+        country: form.country,
+        // Saved as Nairobi time, which tutors' slots and the schedule use.
+        class_date: dateKeyIn(start, DEFAULT_TIME_ZONE),
+        class_time: `${timeKeyIn(start, DEFAULT_TIME_ZONE)}:00`,
+        lead_source: form.lead_source || 'landing_page',
+        referal_code: form.referral_code,
+        status: 'new',
+      }
+      let { error } = await supabase
+        .from('leads')
+        .insert([{ ...lead, time_zone: zone }])
+      // Until the time zone column exists (migration 20261125120000), the
+      // booking still goes through, in Nairobi time.
+      if (error && error.message.includes('time_zone')) {
+        const retry = await supabase.from('leads').insert([lead])
+        error = retry.error
+      }
 
       setLoading(false)
 
       if (!error) {
         // A trial booked into a tutor's slot gets its class link by email.
         sendWaitingInvites()
+        setBooked({ start, zone })
         setSuccess(true)
         setForm({
           parent_name: '',
@@ -119,8 +191,8 @@ export default function LandingPage() {
           student_name: '',
           phone: '',
           grade: '',
-          preferred_date: today,
-          preferred_time: '00:00',
+          preferred_date: '',
+          preferred_time: '',
           country: '',
           lead_source: 'landing_page',
           referral_code: '',
@@ -141,13 +213,17 @@ export default function LandingPage() {
     ...Array.from({ length: 12 }, (_, i) => (i + 1).toString()),
   ]
 
-  const countryOptions = [
-    { name: 'Kenya', code: '+254', flag: '🇰🇪' },
-    { name: 'Uganda', code: '+256', flag: '🇺🇬' },
-    { name: 'Tanzania', code: '+255', flag: '🇹🇿' },
-    { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
-    { name: 'South Africa', code: '+27', flag: '🇿🇦' },
-  ]
+  // What the picked time is in Nairobi, where the tutors are.
+  const picked =
+    form.preferred_date && form.preferred_time
+      ? zonedTimeToMs(form.preferred_date, form.preferred_time, zone)
+      : null
+  const tutorTime =
+    picked !== null && !sameClock(picked, zone, DEFAULT_TIME_ZONE)
+      ? dateTimeIn(picked, DEFAULT_TIME_ZONE)
+      : null
+  // Both marked by submit when the time was too soon (or missing).
+  const timeProblem = Boolean(errors.preferred_date && errors.preferred_time)
 
   const baseInputClass =
     'w-full border rounded-xl px-4 py-3 outline-hidden transition-all duration-300 focus:ring-2 focus:ring-purple-400 focus:shadow-lg focus:shadow-purple-300/30'
@@ -193,8 +269,15 @@ export default function LandingPage() {
               <h3 className="text-2xl font-bold text-green-800">
                 Booking Confirmed!
               </h3>
+              {booked && (
+                <p className="mt-3 font-semibold text-green-800">
+                  {dateTimeIn(booked.start, booked.zone)} (
+                  {zonePlace(booked.zone)} time)
+                </p>
+              )}
               <p className="mt-2 text-green-700">
-                We’ll contact you shortly with trial details.
+                We’ll match a tutor to that time and email you the class link.
+                We may also reach out on WhatsApp.
               </p>
             </div>
           ) : (
@@ -276,24 +359,61 @@ export default function LandingPage() {
                 </select>
               </div>
 
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  min={today}
-                  name="preferred_date"
-                  value={form.preferred_date}
-                  onChange={handleChange}
-                  className={`${baseInputClass} ${errors.preferred_date ? 'border-red-500' : 'border-purple-400'}`}
+              <fieldset className="space-y-2">
+                <legend className="mb-1 text-sm font-semibold text-gray-700">
+                  When suits you? Pick any day and time.
+                </legend>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    min={today || undefined}
+                    name="preferred_date"
+                    aria-label="Trial date"
+                    value={form.preferred_date}
+                    onChange={handleChange}
+                    className={`${baseInputClass} ${errors.preferred_date ? 'border-red-500' : 'border-purple-400'}`}
+                  />
+                  <select
+                    name="preferred_time"
+                    aria-label="Trial time"
+                    value={form.preferred_time}
+                    onChange={handleChange}
+                    className={`${baseInputClass} bg-white ${errors.preferred_time ? 'border-red-500' : 'border-purple-400'}`}
+                  >
+                    <option value="" disabled>
+                      Time
+                    </option>
+                    {BOOKABLE_TIMES.map((time) => (
+                      <option key={time} value={time}>
+                        {timeLabel(time)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <label
+                  htmlFor="book-time-zone"
+                  className="block text-xs font-semibold text-gray-500"
+                >
+                  Your time zone
+                </label>
+                <TimeZoneSelect
+                  id="book-time-zone"
+                  value={zone}
+                  onChange={setChosenZone}
+                  aria-describedby="book-time-note"
+                  className={`${baseInputClass} border-purple-400 bg-white text-sm`}
                 />
-                <input
-                  type="time"
-                  step="3600" // ⏱️ 1 hour
-                  name="preferred_time"
-                  value={form.preferred_time}
-                  onChange={handleChange}
-                  className={`${baseInputClass} ${errors.preferred_time ? 'border-red-500' : 'border-purple-400'}`}
-                />
-              </div>
+                <p
+                  id="book-time-note"
+                  className={`text-xs ${timeProblem ? 'font-semibold text-red-600' : 'text-gray-500'}`}
+                >
+                  {timeProblem
+                    ? 'Pick a day and a time at least an hour from now.'
+                    : tutorTime
+                      ? `That’s ${tutorTime} in Nairobi, where our tutors are.`
+                      : 'Times are in your own time zone.'}
+                </p>
+              </fieldset>
 
               <button
                 type="submit"

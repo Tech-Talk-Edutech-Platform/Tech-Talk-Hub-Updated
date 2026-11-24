@@ -15,28 +15,32 @@ import { formatPhone } from './phone'
 import { problemText, useSalesData } from './salesDataContext'
 import { inputClass, searchInputClass, selectClass } from './styles'
 import { draftFor, type StudentDraft } from './studentDraft'
-import type {
-  GradeCategoryId,
-  Lead,
-  Mentor,
-  TrialBooking,
-  TrialSlot,
-} from './types'
+import {
+  browserTimeZone,
+  clockIn,
+  dayIn,
+  otherZoneTime,
+  sameClock,
+  zonePlace,
+} from '../../lib/timeZones'
+import type { GradeCategoryId, Lead, Mentor, TrialBooking } from './types'
 import { Field, Initials, LeadStatusBadge, TutorAvatar } from './ui'
 import { introMessage, whatsappLink } from './whatsapp'
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
 
-const clock = (iso: string) =>
-  new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+/** The hour being booked, in the family's time zone. */
+export type BookingSession = {
+  start: string
+  end: string
+  /** The tutor's open slot at that time, when they have one. */
+  slotId: string | null
+  timeZone: string
+}
 
-/** "Mon 16 November · 4:00 PM – 5:00 PM" */
-const sessionLabel = (slot: TrialSlot) =>
-  `${new Date(slot.start).toLocaleDateString([], {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-  })} · ${clock(slot.start)} – ${clock(slot.end)}`
+/** "Thu 26 Nov · 8:00 AM – 9:00 AM" in `zone`. */
+const sessionLabel = (session: BookingSession, zone: string) =>
+  `${dayIn(session.start, zone)} · ${clockIn(session.start, zone)} – ${clockIn(session.end, zone)}`
 
 const sectionLabel =
   'mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300'
@@ -47,7 +51,7 @@ const sectionLabel =
  * trial on the tutor's calendar and queues the parent's WhatsApp confirmation.
  */
 export function StudentDetailsDialog({
-  slot,
+  session,
   mentor,
   draft,
   onDraftChange,
@@ -55,7 +59,7 @@ export function StudentDetailsDialog({
   onClose,
   onBooked,
 }: {
-  slot: TrialSlot
+  session: BookingSession
   mentor: Mentor
   draft: StudentDraft
   onDraftChange: (draft: StudentDraft) => void
@@ -137,7 +141,10 @@ export function StudentDetailsDialog({
     setProblem(null)
     try {
       const booked = await data.bookTrial({
-        slotId: slot.id,
+        mentorId: mentor.id,
+        start: session.start,
+        slotId: session.slotId,
+        timeZone: session.timeZone,
         leadId: lead.id,
         salesRepId: salesRepId ?? lead.salesRepId,
         category: program,
@@ -200,9 +207,13 @@ export function StudentDetailsDialog({
         />
         <div className="min-w-0">
           <p className="font-extrabold">{mentor.name}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
-            {sessionLabel(slot)}
+          <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+            {sessionLabel(session, session.timeZone)}{' '}
+            <span className="font-medium text-slate-500 dark:text-slate-400">
+              ({zonePlace(session.timeZone)} time)
+            </span>
           </p>
+          <SessionClocks session={session} mentor={mentor} />
         </div>
       </div>
 
@@ -544,5 +555,32 @@ function ProgramChoice({
         })}
       </div>
     </fieldset>
+  )
+}
+
+/** The same hour for the tutor and for you, when your clocks differ from the family's. */
+function SessionClocks({
+  session,
+  mentor,
+}: {
+  session: BookingSession
+  mentor: Mentor
+}) {
+  const viewer = browserTimeZone()
+  const at = new Date(session.start).getTime()
+  const lines = [
+    sameClock(at, mentor.timeZone, session.timeZone)
+      ? null
+      : `${clockIn(session.start, mentor.timeZone)} for ${firstName(mentor.name)} (${zonePlace(mentor.timeZone)})`,
+    sameClock(at, viewer, session.timeZone) ||
+    sameClock(at, viewer, mentor.timeZone)
+      ? null
+      : `${otherZoneTime(session.start, viewer, session.timeZone) ?? ''} for you`,
+  ].filter((line): line is string => Boolean(line))
+  if (lines.length === 0) return null
+  return (
+    <p className="text-xs text-slate-500 dark:text-slate-400">
+      {lines.join(' · ')}
+    </p>
   )
 }
