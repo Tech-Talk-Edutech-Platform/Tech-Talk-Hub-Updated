@@ -92,7 +92,7 @@ export function DashboardFrame({
   return (
     <div className="min-h-dvh bg-dashboard-canvas text-gray-900 lg:flex dark:bg-dashboard-night dark:text-white">
       <aside
-        className={`hidden shrink-0 border-r border-slate-200 bg-white p-4 lg:block dark:border-white/10 dark:bg-white/5 ${collapsed ? 'w-20' : 'w-64'}`}
+        className={`hidden shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4 lg:sticky lg:top-0 lg:block lg:h-dvh lg:self-start dark:border-white/10 dark:bg-white/5 ${collapsed ? 'w-20' : 'w-64'}`}
       >
         <div className="mb-5 flex min-h-11 items-center justify-between gap-2">
           {!collapsed && <p className="text-sm font-bold">{label}</p>}
