@@ -1,12 +1,15 @@
-import { supabase } from '../supabase'
 import { saveMyProfile } from './profile'
 
 /**
- * Dashboard light/dark mode. The choice lives in two places:
+ * Dashboard light/dark mode. The account is the source of truth: the choice
+ * is saved on `users.theme` and comes back with the profile when the
+ * dashboard opens (see `loadDashboardIdentity`), so it follows the person,
+ * not the browser.
  *
- * - this browser (`localStorage`), so a refresh or sign-in paints the right
- *   theme at once; `index.html` reads the same key before the app loads;
- * - the account (`users.theme`), so it follows the person to other devices.
+ * This browser also keeps a copy, tagged with whose choice it is, only so a
+ * refresh paints the right theme before the profile arrives (`index.html`
+ * reads the same key). Signing out forgets it, so the next person to sign in
+ * on this browser starts from their own setting.
  *
  * Only dashboards have dark styles, so the public site always stays light.
  */
@@ -15,50 +18,71 @@ export type Theme = 'light' | 'dark'
 /** Also read by the inline script in `index.html`; keep the two in step. */
 export const THEME_STORAGE_KEY = 'tth-theme'
 
+type StoredTheme = { user: string; theme: Theme }
+
 export function isTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark'
 }
 
-export function readStoredTheme(): Theme | null {
+/** This browser's copy, if it belongs to this person. */
+function readStoredTheme(userId: string): Theme | null {
   try {
-    const value = localStorage.getItem(THEME_STORAGE_KEY)
-    return isTheme(value) ? value : null
+    const raw = localStorage.getItem(THEME_STORAGE_KEY)
+    const stored: unknown = raw ? JSON.parse(raw) : null
+    if (
+      typeof stored === 'object' &&
+      stored !== null &&
+      'user' in stored &&
+      stored.user === userId &&
+      'theme' in stored &&
+      isTheme(stored.theme)
+    ) {
+      return stored.theme
+    }
   } catch {
-    return null
+    // Storage blocked, or an old untagged value: not this person's.
   }
+  return null
 }
 
-/** Paints the theme on the page and remembers it in this browser. */
-export function applyTheme(theme: Theme) {
+/**
+ * The theme to show this person: what their account says, else what they
+ * last picked in this browser (a save that hadn't reached the account),
+ * else light. Another person's choice in this browser never counts.
+ */
+export function resolveTheme(userId: string, accountTheme: unknown): Theme {
+  if (isTheme(accountTheme)) return accountTheme
+  return readStoredTheme(userId) ?? 'light'
+}
+
+/** Paints the theme on the page and remembers it for this person here. */
+export function applyTheme(theme: Theme, userId: string) {
   document.documentElement.classList.toggle('dark', theme === 'dark')
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, theme)
+    const stored: StoredTheme = { user: userId, theme }
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(stored))
   } catch {
     // Storage blocked: the theme still applies for this visit.
   }
 }
 
-/** Back to the light public site, keeping the saved choice for next time. */
+/** Back to the light public site. */
 export function clearPaintedTheme() {
   document.documentElement.classList.remove('dark')
 }
 
-export function currentTheme(): Theme {
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+/** On sign-out: forget this browser's copy so it can't carry to the next account. */
+export function forgetStoredTheme() {
+  clearPaintedTheme()
+  try {
+    localStorage.removeItem(THEME_STORAGE_KEY)
+  } catch {
+    // Storage blocked: nothing was stored.
+  }
 }
 
-/**
- * The theme saved on the account, or null when none is saved yet (or the
- * `users.theme` column isn't there because its migration hasn't run).
- */
-export async function loadAccountTheme(userId: string): Promise<Theme | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('theme')
-    .eq('id', userId)
-    .maybeSingle()
-  if (error) return null
-  return isTheme(data?.theme) ? data.theme : null
+export function currentTheme(): Theme {
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
 }
 
 export async function saveAccountTheme(userId: string, theme: Theme) {

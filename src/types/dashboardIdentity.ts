@@ -7,4 +7,6 @@ export type DashboardIdentity = User & {
   full_name?: string | null
   assigned_course_id?: string | null
   assigned_tutor_id?: string | null
+  /** Saved dashboard theme ('light' | 'dark'); null until the person picks one. */
+  theme?: string | null
 }

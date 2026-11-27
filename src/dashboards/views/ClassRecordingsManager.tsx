@@ -141,6 +141,7 @@ export default function ClassRecordingsManager({
       {library.isError ? (
         <InsightsError
           title="Recordings could not be loaded"
+          error={library.error}
           onRetry={() => void library.refetch()}
         />
       ) : library.isPending ? (

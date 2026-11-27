@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
+import { isWorthRetrying } from './loadErrors'
 
 // App-wide defaults. Resources override staleTime where their data changes
 // more or less often (e.g. course/topic lists are long-lived).
@@ -8,7 +9,9 @@ export const createQueryClient = () =>
       queries: {
         staleTime: 30_000,
         gcTime: 5 * 60_000,
-        retry: 1,
+        // One retry for blips; none for a 404 or a refusal, which a retry
+        // can't fix (the error card says what's wrong straight away).
+        retry: (failures, error) => failures < 1 && isWorthRetrying(error),
         // Admin/tutor screens stay open in background tabs; refetching every
         // query on each tab switch would multiply Supabase requests.
         refetchOnWindowFocus: false,

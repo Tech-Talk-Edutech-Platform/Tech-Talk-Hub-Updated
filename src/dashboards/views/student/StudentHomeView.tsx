@@ -147,6 +147,7 @@ export default function StudentHomeView({
           ) : recordings.isError && !recordings.data ? (
             <InsightsError
               title="Recordings could not be loaded"
+              error={recordings.error}
               onRetry={() => void recordings.refetch()}
             />
           ) : latestRecordings.length > 0 ? (

@@ -63,6 +63,7 @@ export function ExamSubmissionsPanel({
     return (
       <InsightsError
         title="Submissions couldn’t be loaded"
+        error={submissions.error ?? questions.error}
         onRetry={() => {
           void submissions.refetch()
           void questions.refetch()

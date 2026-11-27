@@ -1,15 +1,16 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { createQueryClient } from '../lib/queryClient'
 import { browserTimeZone } from '../lib/timeZones'
-import {
-  applyTheme,
-  clearPaintedTheme,
-  loadAccountTheme,
-  readStoredTheme,
-} from '../lib/theme'
+import { applyTheme, clearPaintedTheme, resolveTheme } from '../lib/theme'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import { isAppRole } from '../types/roles'
 import { Button } from '../components/ui/Button'
@@ -28,7 +29,9 @@ async function loadDashboardIdentity(
 
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('role, assigned_course_id, assigned_tutor_id, full_name, email')
+    .select(
+      'role, assigned_course_id, assigned_tutor_id, full_name, email, theme',
+    )
     .eq('id', user.id)
     .abortSignal(signal)
     .maybeSingle()
@@ -72,21 +75,16 @@ function DashboardWorkspace({
       })
   }, [])
 
-  // Dark mode: this browser's copy paints at once (index.html already did on
-  // a full load), then the account's choice wins so it follows the person
-  // between devices. Leaving the dashboard returns to the light public site.
-  useEffect(() => {
-    const stored = readStoredTheme()
-    if (stored) applyTheme(stored)
-    let current = true
-    void loadAccountTheme(user.id).then((saved) => {
-      if (current && saved) applyTheme(saved)
-    })
-    return () => {
-      current = false
-      clearPaintedTheme()
-    }
-  }, [user.id])
+  // Dark mode comes with the profile (users.theme), so each account opens in
+  // its own theme whoever used this browser before. Applied before the first
+  // paint; the workspace is keyed by user, so this runs once per person and a
+  // background refetch never flips a theme the person just changed.
+  // Leaving the dashboard returns to the light public site.
+  const [openingTheme] = useState(() => resolveTheme(user.id, user.theme))
+  useLayoutEffect(() => {
+    applyTheme(openingTheme, user.id)
+    return clearPaintedTheme
+  }, [openingTheme, user.id])
 
   return (
     <QueryClientProvider client={client}>

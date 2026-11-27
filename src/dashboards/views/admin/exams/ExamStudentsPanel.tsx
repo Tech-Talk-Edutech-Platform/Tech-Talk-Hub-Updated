@@ -60,6 +60,7 @@ export function ExamStudentsPanel({
     return (
       <InsightsError
         title="Students couldn’t be loaded"
+        error={saved.error}
         onRetry={() => void saved.refetch()}
       />
     )

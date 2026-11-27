@@ -89,6 +89,7 @@ export default function StudentExamsView({
       {exams.isError ? (
         <InsightsError
           title="Your exams couldn’t be loaded"
+          error={exams.error}
           onRetry={() => void exams.refetch()}
         />
       ) : exams.isPending ? (

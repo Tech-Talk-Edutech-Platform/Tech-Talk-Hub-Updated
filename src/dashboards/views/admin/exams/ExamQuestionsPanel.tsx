@@ -63,6 +63,7 @@ export function ExamQuestionsPanel({
     return (
       <InsightsError
         title="Questions couldn’t be loaded"
+        error={questions.error}
         onRetry={() => void questions.refetch()}
       />
     )

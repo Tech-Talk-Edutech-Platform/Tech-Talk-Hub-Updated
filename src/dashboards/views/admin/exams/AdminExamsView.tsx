@@ -74,6 +74,7 @@ export default function AdminExamsView({
       {exams.isError ? (
         <InsightsError
           title="Exams couldn’t be loaded"
+          error={exams.error}
           onRetry={() => void exams.refetch()}
         />
       ) : exams.isPending ? (

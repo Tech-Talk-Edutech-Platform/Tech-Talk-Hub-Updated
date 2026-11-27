@@ -62,6 +62,7 @@ export function StudentInsights({
   ].toSorted((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
   const classesUnavailable = missingClassSource && classes.length === 0
   const classRefreshFailed = schedule.isError || invites.isError
+  const classesError = schedule.error ?? invites.error
   const retryClasses = () => {
     void schedule.refetch()
     void invites.refetch()
@@ -82,7 +83,10 @@ export function StudentInsights({
   return (
     <section aria-label="My learning" className="space-y-6">
       {query.isError && !data ? (
-        <InsightsError onRetry={() => void query.refetch()} />
+        <InsightsError
+          error={query.error}
+          onRetry={() => void query.refetch()}
+        />
       ) : (
         <>
           {query.isError && (
@@ -211,6 +215,7 @@ export function StudentInsights({
             {classesUnavailable ? (
               <InsightsError
                 title="Upcoming classes could not be loaded"
+                error={classesError}
                 onRetry={retryClasses}
               />
             ) : (
@@ -320,6 +325,7 @@ export function StudentInsights({
         (classesUnavailable ? (
           <InsightsError
             title="Upcoming classes could not be loaded"
+            error={classesError}
             onRetry={retryClasses}
           />
         ) : (

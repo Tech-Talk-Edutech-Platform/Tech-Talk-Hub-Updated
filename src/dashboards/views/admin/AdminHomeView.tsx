@@ -132,6 +132,7 @@ export default function AdminHomeView({
               ) : classes.isError && !classes.data ? (
                 <InsightsError
                   title="Today’s classes could not load"
+                  error={classes.error}
                   onRetry={() => void classes.refetch()}
                 />
               ) : null}

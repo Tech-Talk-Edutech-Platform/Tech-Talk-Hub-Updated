@@ -24,8 +24,8 @@ export function SignOutCard({ portal }: { portal: string }) {
           Sign out
         </h2>
         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-          Sign out of your {portal} account on this device. Your theme stays as
-          you left it.
+          Sign out of your {portal} account on this device. Your theme is saved
+          to your account and comes back when you sign in.
         </p>
       </div>
       <button

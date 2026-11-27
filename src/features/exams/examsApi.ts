@@ -1,4 +1,5 @@
 import { supabase } from '../../supabase'
+import { DataError } from '../../lib/loadErrors'
 import type { Json, Tables } from '../../types/database'
 
 /*
@@ -55,18 +56,20 @@ export const examKeys = {
 export type Exam = Tables<'exams'>
 export type ExamQuestion = Tables<'questions'>
 
-/** "How a database error should read", with a hint when exams aren't set up. */
+/**
+ * "How a database error should read", with a hint when exams aren't set up.
+ * Keeps the status and code, so error cards can say "404 Not Found" rather
+ * than a generic "couldn't load".
+ */
 function examError(error: { message: string; code?: string }) {
-  if (
-    error.code === '42P01' ||
-    error.code === 'PGRST202' ||
-    error.code === 'PGRST205'
-  ) {
-    return new Error(
-      'Exams aren’t set up yet. Ask an admin to run the exams migration.',
+  const code = error.code || null
+  if (code === '42P01' || code === 'PGRST202' || code === 'PGRST205') {
+    return new DataError(
+      'Exams aren’t set up on the database yet. Ask an admin to run the exams migration.',
+      { status: 404, code },
     )
   }
-  return new Error(error.message)
+  return new DataError(error.message, { code })
 }
 
 export function isQuestionType(value: unknown): value is QuestionType {

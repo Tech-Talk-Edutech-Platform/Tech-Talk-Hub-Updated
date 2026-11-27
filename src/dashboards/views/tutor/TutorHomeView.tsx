@@ -155,6 +155,7 @@ export default function TutorHomeView({
         {classes.isError && !classes.data ? (
           <InsightsError
             title="Upcoming classes could not load"
+            error={classes.error}
             onRetry={() => void classes.refetch()}
           />
         ) : (

@@ -9,13 +9,19 @@
     <link rel="apple-touch-icon" href="/icon.png" />
     <script>
       // Dashboards remember dark mode (src/lib/theme.ts). Paint it before the
-      // app loads so a refresh doesn't flash light first.
+      // app loads so a refresh doesn't flash light first. The stored copy is
+      // { user, theme } and is cleared on sign-out; the account's own setting
+      // takes over once the profile loads.
       try {
+        var storedTheme = JSON.parse(
+          localStorage.getItem('tth-theme') || 'null',
+        )
         if (
           /^\/(student|tutor|owner|operations_admin|tech_admin|marketer)\/?$/.test(
             location.pathname,
           ) &&
-          localStorage.getItem('tth-theme') === 'dark'
+          storedTheme &&
+          storedTheme.theme === 'dark'
         ) {
           document.documentElement.classList.add('dark')
         }

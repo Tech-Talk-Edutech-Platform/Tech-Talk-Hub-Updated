@@ -105,6 +105,13 @@ export type Database = {
             referencedColumns: ['id']
           },
           {
+            foreignKeyName: 'attempts_marked_by_fkey'
+            columns: ['marked_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
             foreignKeyName: 'attempts_student_id_fkey'
             columns: ['student_id']
             isOneToOne: false
@@ -1274,6 +1281,13 @@ export type Database = {
             columns: ['course_id']
             isOneToOne: false
             referencedRelation: 'courses'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'exams_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
             referencedColumns: ['id']
           },
         ]
@@ -3080,6 +3094,19 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: undefined
       }
+      exam_attempt_deadline: {
+        Args: { p_closes: string; p_duration: number; p_start: string }
+        Returns: string
+      }
+      exam_attempt_open_for_me: {
+        Args: { p_attempt_id: string }
+        Returns: boolean
+      }
+      exam_finish_attempt: {
+        Args: { p_attempt_id: string }
+        Returns: undefined
+      }
+      exam_is_for_me: { Args: { p_exam_id: string }; Returns: boolean }
       get_available_tutors: {
         Args: { desired_time: string }
         Returns: {
@@ -3125,22 +3152,22 @@ export type Database = {
       my_exams: {
         Args: never
         Returns: {
-          attempt_id: string | null
-          closes_at: string | null
-          course_title: string | null
-          deadline: string | null
-          description: string | null
+          attempt_id: string
+          closes_at: string
+          course_title: string
+          deadline: string
+          description: string
           duration_minutes: number
           exam_id: string
           exam_status: string
-          feedback: string | null
+          feedback: string
           marked: boolean
-          opens_at: string | null
+          opens_at: string
           question_count: number
           results_published: boolean
-          score: number | null
-          started_at: string | null
-          submitted_at: string | null
+          score: number
+          started_at: string
+          submitted_at: string
           title: string
           total_marks: number
         }[]
@@ -3386,7 +3413,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_exam_answer: {
+        Args: {
+          p_answer: string
+          p_attempt_id: string
+          p_file_path?: string
+          p_question_id: string
+        }
+        Returns: undefined
+      }
       set_my_time_zone: { Args: { p_zone: string }; Returns: undefined }
+      set_my_username: { Args: { p_username: string }; Returns: string }
       set_trial_status: {
         Args: { p_booking_id: string; p_status: string }
         Returns: {
@@ -3427,29 +3464,23 @@ export type Database = {
         }
       }
       share_dashboard_report: { Args: { p_report: string }; Returns: string }
+      start_exam: { Args: { p_exam_id: string }; Returns: Json }
+      student_can_see_recording: {
+        Args: {
+          p_classroom_session_id: string
+          p_student_id: string
+          p_tutor_id: string
+        }
+        Returns: boolean
+      }
       submit_dashboard_quiz: {
         Args: { p_answers: Json; p_quiz: string }
         Returns: Json
       }
+      submit_exam: { Args: { p_attempt_id: string }; Returns: undefined }
       trial_booking_sync_classroom: {
         Args: { p_booking_id: string }
         Returns: undefined
-      }
-      save_exam_answer: {
-        Args: {
-          p_answer: string
-          p_attempt_id: string
-          p_file_path?: string
-          p_question_id: string
-        }
-        Returns: undefined
-      }
-      set_my_username: { Args: { p_username: string }; Returns: string }
-      start_exam: { Args: { p_exam_id: string }; Returns: Json }
-      submit_exam: { Args: { p_attempt_id: string }; Returns: undefined }
-      update_my_profile: {
-        Args: { p_avatar_url?: string; p_full_name?: string; p_theme?: string }
-        Returns: Json
       }
       trial_clear_overlapping_slots: {
         Args: {
@@ -3476,6 +3507,10 @@ export type Database = {
           slot_id: string
           time_zone: string
         }[]
+      }
+      update_my_profile: {
+        Args: { p_avatar_url?: string; p_full_name?: string; p_theme?: string }
+        Returns: Json
       }
     }
     Enums: {

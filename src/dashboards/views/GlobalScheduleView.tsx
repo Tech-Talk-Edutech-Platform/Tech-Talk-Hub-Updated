@@ -977,6 +977,7 @@ export default function GlobalScheduleView({
         </button>
         <InsightsError
           title="Schedule could not be loaded"
+          error={scheduleQuery.error}
           onRetry={() => void reload()}
         />
       </div>

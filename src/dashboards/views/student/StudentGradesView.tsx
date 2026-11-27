@@ -52,6 +52,7 @@ export default function StudentGradesView({ userId }: StudentGradesViewProps) {
       {exams.isError ? (
         <InsightsError
           title="Your grades couldn’t be loaded"
+          error={exams.error}
           onRetry={() => void exams.refetch()}
         />
       ) : exams.isPending ? (

@@ -17,7 +17,7 @@ export function ThemeSettingsCard({ userId }: { userId: string }) {
   const toggle = () => {
     const next: Theme = dark ? 'light' : 'dark'
     setTheme(next)
-    applyTheme(next)
+    applyTheme(next, userId)
     void saveAccountTheme(userId, next)
     toast.success(next === 'dark' ? 'Dark mode on' : 'Light mode on')
   }
@@ -33,7 +33,7 @@ export function ThemeSettingsCard({ userId }: { userId: string }) {
             Interface theme
           </h2>
           <p className="text-xs text-slate-400">
-            Remembered on this device and on your account.
+            Saved to your account, so it follows you to any device.
           </p>
         </div>
       </div>
