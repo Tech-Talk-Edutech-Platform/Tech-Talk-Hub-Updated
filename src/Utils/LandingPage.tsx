@@ -73,36 +73,42 @@ const COUNTRIES = [
     name: 'Kenya',
     region: 'KE',
     code: '+254',
+    example: '712 345 678',
     zone: 'Africa/Nairobi',
   },
   {
     name: 'Uganda',
     region: 'UG',
     code: '+256',
+    example: '772 123 456',
     zone: 'Africa/Kampala',
   },
   {
     name: 'Tanzania',
     region: 'TZ',
     code: '+255',
+    example: '712 345 678',
     zone: 'Africa/Dar_es_Salaam',
   },
   {
     name: 'Ghana',
     region: 'GH',
     code: '+233',
+    example: '24 123 4567',
     zone: 'Africa/Accra',
   },
   {
     name: 'Nigeria',
     region: 'NG',
     code: '+234',
+    example: '803 123 4567',
     zone: 'Africa/Lagos',
   },
   {
     name: 'South Africa',
     region: 'ZA',
     code: '+27',
+    example: '82 123 4567',
     zone: 'Africa/Johannesburg',
   },
 ] as const
@@ -318,45 +324,46 @@ export default function LandingPage() {
       : null
 
   const selected = COUNTRIES.find((c) => c.name === country)
-  const ring =
-    'transition-all duration-300 focus:ring-2 focus:ring-purple-400 focus:shadow-lg focus:shadow-purple-300/30'
-  const fieldClass = `w-full min-w-0 rounded-xl border bg-white px-4 py-2.5 outline-hidden ${ring}`
+  const fieldClass =
+    'block w-full min-w-0 rounded-xl border bg-white py-2.5 text-base outline-hidden transition-all duration-300 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-400 focus:shadow-lg focus:shadow-purple-300/30 lg:py-2'
   const border = (name: LeadField) =>
     errors[name] ? 'border-red-500' : 'border-purple-400'
-  const inputClass = (name: LeadField) => `${fieldClass} ${border(name)}`
-  const contactBorder =
-    errors.phone || errors.country ? 'border-red-500' : 'border-purple-400'
+  const inputClass = (name: LeadField, extra = 'px-4 text-gray-900') =>
+    `${fieldClass} ${border(name)} ${extra}`
+  const contactError = Boolean(errors.phone || errors.country)
+  const labelClass = 'mb-1 block text-sm font-semibold text-gray-700 lg:mb-0.5'
 
   return (
-    <section className="relative min-h-dvh overflow-hidden bg-gray-50 px-4 py-5 sm:px-6 lg:flex lg:items-center lg:px-12 lg:py-12">
+    <section className="relative min-h-dvh overflow-hidden bg-gray-50 px-4 py-5 sm:px-6 lg:flex lg:items-center lg:px-12 lg:py-6">
       <img
         src="/TechTalkBrand.png"
         alt="Tech Talk Hub"
         className="h-10 lg:absolute lg:top-4 lg:left-8 lg:z-20 lg:h-12"
       />
 
-      <div className="mx-auto mt-5 flex w-full max-w-6xl items-center gap-12 lg:mt-0 xl:gap-16">
-        {/* Picture: large screens only, so the form leads everywhere else. */}
-        <div className="relative hidden w-1/2 justify-center lg:flex">
-          <div className="animate-rotate-slow absolute -top-20 -left-20 h-80 w-80 rounded-full bg-linear-to-tr from-blue-400 via-purple-400 to-pink-400 opacity-60" />
-          <div className="animate-rotate-slow reverse absolute -right-12 -bottom-12 h-64 w-64 rounded-full bg-linear-to-br from-purple-300 via-pink-300 to-yellow-200 opacity-50" />
+      {/* Phones: heading, then form. Large screens: heading over the
+          picture on the left, form on the right. */}
+      <div className="mx-auto mt-5 grid w-full max-w-xl grid-cols-1 gap-5 lg:mt-0 lg:max-w-6xl lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-x-12 lg:gap-y-6 xl:gap-x-16">
+        <div className="relative z-20 text-center lg:col-start-1 lg:row-start-1 lg:pt-10 lg:text-left">
+          <h1 className="text-2xl leading-tight font-extrabold text-balance text-gray-900 sm:text-3xl xl:text-4xl">
+            Give Your Child a Confident Start in Coding 🚀
+          </h1>
+          <p className="mt-1.5 text-gray-600">
+            Book a free 1-on-1 coding trial with a certified tutor.
+          </p>
+        </div>
+
+        <div className="relative hidden items-start justify-start lg:col-start-1 lg:row-start-2 lg:flex">
+          <div className="animate-rotate-slow absolute -top-16 -left-16 h-72 w-72 rounded-full bg-linear-to-tr from-blue-400 via-purple-400 to-pink-400 opacity-60" />
+          <div className="animate-rotate-slow reverse absolute -right-10 -bottom-10 h-56 w-56 rounded-full bg-linear-to-br from-purple-300 via-pink-300 to-yellow-200 opacity-50" />
           <img
             src="/girl-code.png"
             alt="Child coding"
-            className="relative z-10 max-h-[calc(100dvh-7rem)] w-full max-w-lg rounded-3xl object-cover shadow-2xl"
+            className="relative z-10 h-auto max-h-[calc(100dvh-16rem)] w-auto max-w-full rounded-3xl shadow-2xl xl:max-w-lg"
           />
         </div>
 
-        <div className="relative mx-auto w-full max-w-xl lg:w-1/2">
-          <div className="mb-5 text-center lg:mb-4 lg:text-left">
-            <h1 className="text-2xl leading-tight font-extrabold text-balance text-gray-900 sm:text-3xl">
-              Give Your Child a Confident Start in Coding 🚀
-            </h1>
-            <p className="mt-1.5 text-gray-600">
-              Book a free 1-on-1 coding trial with a certified tutor.
-            </p>
-          </div>
-
+        <div className="relative w-full lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
           {booked ? (
             <div className="rounded-3xl border border-green-200 bg-green-50 p-6 text-center sm:p-8">
               <h2 className="text-2xl font-bold text-green-800">
@@ -375,51 +382,76 @@ export default function LandingPage() {
             <form
               noValidate
               onSubmit={(event) => void submitForm(event)}
-              className="space-y-3 rounded-3xl border border-gray-100 bg-white p-5 shadow-lg sm:p-6"
+              className="space-y-3 rounded-3xl border border-gray-100 bg-white p-4 shadow-lg sm:p-6 lg:space-y-2 lg:p-5"
             >
-              {/* Parent */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="book-parent-name" className={labelClass}>
+                  Parent name
+                </label>
                 <input
+                  id="book-parent-name"
                   name="parent_name"
-                  placeholder="Parent name"
-                  aria-label="Parent name"
+                  placeholder="Your full name"
                   autoComplete="name"
+                  enterKeyHint="next"
                   value={form.parent_name}
                   onChange={handleChange}
                   className={inputClass('parent_name')}
                 />
+              </div>
+
+              <div>
+                <label htmlFor="book-parent-email" className={labelClass}>
+                  Parent email
+                </label>
                 <input
+                  id="book-parent-email"
                   name="parent_email"
                   type="email"
-                  placeholder="Parent email"
-                  aria-label="Parent email"
+                  inputMode="email"
+                  placeholder="you@example.com"
                   autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  enterKeyHint="next"
                   value={form.parent_email}
                   onChange={handleChange}
                   className={inputClass('parent_email')}
                 />
               </div>
 
-              {/* Student */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+              <div>
+                <label htmlFor="book-student-name" className={labelClass}>
+                  Student name
+                </label>
                 <input
+                  id="book-student-name"
                   name="student_name"
-                  placeholder="Student name"
-                  aria-label="Student name"
+                  placeholder="Your child’s name"
                   autoComplete="off"
+                  enterKeyHint="next"
                   value={form.student_name}
                   onChange={handleChange}
                   className={inputClass('student_name')}
                 />
+              </div>
+
+              <div>
+                <label htmlFor="book-grade" className={labelClass}>
+                  Grade
+                </label>
                 <select
+                  id="book-grade"
                   name="grade"
-                  aria-label="Student grade"
                   value={form.grade}
                   onChange={handleChange}
-                  className={`${inputClass('grade')} ${form.grade ? '' : 'text-gray-500'}`}
+                  className={inputClass(
+                    'grade',
+                    `px-4 ${form.grade ? 'text-gray-900' : 'text-gray-400'}`,
+                  )}
                 >
                   <option value="" disabled>
-                    Grade
+                    Choose a grade
                   </option>
                   {GRADES.map((grade) => (
                     <option key={grade} value={grade} className="text-gray-900">
@@ -431,10 +463,13 @@ export default function LandingPage() {
 
               {/* Phone: the flag opens the country list, which sets the code. */}
               <div>
+                <label htmlFor="book-phone" className={labelClass}>
+                  Phone number
+                </label>
                 <div
-                  className={`flex min-w-0 items-stretch rounded-xl border bg-white transition-all duration-300 focus-within:shadow-lg focus-within:ring-2 focus-within:shadow-purple-300/30 focus-within:ring-purple-400 ${contactBorder}`}
+                  className={`flex min-w-0 items-stretch rounded-xl border bg-white transition-all duration-300 focus-within:shadow-lg focus-within:ring-2 focus-within:shadow-purple-300/30 focus-within:ring-purple-400 ${contactError ? 'border-red-500' : 'border-purple-400'}`}
                 >
-                  <div className="relative flex shrink-0 items-center gap-1.5 rounded-l-xl pr-1 pl-4 hover:bg-gray-50">
+                  <div className="relative flex shrink-0 items-center gap-1.5 rounded-l-xl pr-1 pl-3.5 hover:bg-gray-50">
                     {selected ? (
                       <CountryFlag region={selected.region} />
                     ) : (
@@ -474,29 +509,29 @@ export default function LandingPage() {
                       ))}
                     </select>
                   </div>
-                  <label className="flex min-w-0 flex-1 items-center">
-                    <span className="pl-2.5 text-gray-900 tabular-nums">
-                      {dialCode}
-                    </span>
-                    <input
-                      name="phone"
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel-national"
-                      placeholder="Phone number"
-                      aria-label={`Phone number${dialCode ? ` after ${dialCode}` : ''}`}
-                      aria-describedby={
-                        errors.phone || errors.country
-                          ? 'book-phone-note'
-                          : undefined
-                      }
-                      value={form.phone}
-                      onChange={handleChange}
-                      className="w-full min-w-0 rounded-r-xl bg-transparent py-2.5 pr-4 pl-2 outline-hidden"
-                    />
-                  </label>
+                  <span
+                    className="flex items-center pl-2.5 text-base text-gray-900 tabular-nums"
+                    aria-hidden="true"
+                  >
+                    {dialCode}
+                  </span>
+                  <input
+                    id="book-phone"
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel-national"
+                    enterKeyHint="next"
+                    placeholder={selected?.example ?? 'Phone number'}
+                    aria-describedby={
+                      contactError ? 'book-phone-note' : undefined
+                    }
+                    value={form.phone}
+                    onChange={handleChange}
+                    className="w-full min-w-0 rounded-r-xl bg-transparent py-2.5 pr-4 pl-2 text-base text-gray-900 outline-hidden placeholder:text-gray-400 lg:py-2"
+                  />
                 </div>
-                {(errors.phone || errors.country) && (
+                {contactError && (
                   <p
                     id="book-phone-note"
                     className="mt-1 text-xs font-semibold text-red-600"
@@ -508,34 +543,42 @@ export default function LandingPage() {
                 )}
               </div>
 
-              {/* When */}
+              {/* When: the one row with two fields side by side. */}
               <fieldset>
                 <legend className="sr-only">When suits you?</legend>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-gray-600">
+                <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+                  <div className="min-w-0">
+                    <label htmlFor="book-date" className={labelClass}>
                       Trial day
-                    </span>
+                    </label>
                     <input
+                      id="book-date"
                       type="date"
                       min={minDate || undefined}
                       name="preferred_date"
                       value={form.preferred_date}
                       onChange={handleDateChange}
                       aria-describedby="book-time-note"
-                      className={`${inputClass('preferred_date')} min-h-11 [&::-webkit-date-and-time-value]:text-left`}
+                      className={inputClass(
+                        'preferred_date',
+                        'min-h-11 px-2.5 text-gray-900 sm:px-4 lg:min-h-10 [&::-webkit-date-and-time-value]:text-left',
+                      )}
                     />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-gray-600">
+                  </div>
+                  <div className="min-w-0">
+                    <label htmlFor="book-time" className={labelClass}>
                       Trial time
-                    </span>
+                    </label>
                     <select
+                      id="book-time"
                       name="preferred_time"
                       value={time}
                       onChange={handleTimeChange}
                       aria-describedby="book-time-note"
-                      className={`${inputClass('preferred_time')} min-h-11 ${time ? '' : 'text-gray-500'}`}
+                      className={inputClass(
+                        'preferred_time',
+                        `min-h-11 px-2.5 sm:px-4 lg:min-h-10 ${time ? 'text-gray-900' : 'text-gray-400'}`,
+                      )}
                     >
                       <option value="" disabled>
                         Pick a time
@@ -550,9 +593,9 @@ export default function LandingPage() {
                         </option>
                       ))}
                     </select>
-                  </label>
+                  </div>
                 </div>
-                {/* <p
+                <p
                   id="book-time-note"
                   className={`mt-1.5 text-xs ${tooSoon ? 'font-semibold text-red-600' : 'text-gray-500'}`}
                 >
@@ -561,13 +604,13 @@ export default function LandingPage() {
                     : tutorTime
                       ? `Times are in your time zone (${zonePlace(zone)}). That’s ${tutorTime} in Nairobi, where our tutors are.`
                       : `Times are in your time zone (${zonePlace(zone)}), from ${NOTICE_HOURS} hours ahead.`}
-                </p> */}
+                </p>
               </fieldset>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-xl bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50 lg:py-2.5"
               >
                 {loading ? 'Booking...' : 'Book Free Trial'}
               </button>
