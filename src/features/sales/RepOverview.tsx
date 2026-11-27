@@ -238,6 +238,7 @@ export function RepOverview({
         {failed ? (
           <InsightsError
             title="Your sales totals could not load"
+            error={current.error}
             onRetry={() => void current.refetch()}
           />
         ) : (

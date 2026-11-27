@@ -1,317 +1,343 @@
-import { useEffect, useState, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle,
   Clock,
   Flag,
-  CheckCircle,
-  ArrowLeft,
   Loader2,
-  AlertTriangle,
+  Paperclip,
   RefreshCw,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import type { User } from '@supabase/supabase-js'
+
 import { getErrorMessage } from '../../../lib/getErrorMessage'
 import {
+  EXAM_FILE_TYPES,
+  examKeys,
   examOptions,
-  loadExamSession,
-  saveExamAnswer,
-  submitExamAttempt,
-} from '../../../features/assessments/exams/examSession'
-import type {
-  Exam,
-  ExamAttempt,
-  ExamQuestion,
-} from '../../../features/assessments/exams/examSession'
+  saveAnswer,
+  startExam,
+  submitExam,
+  uploadExamFile,
+  type ExamSitting,
+} from '../../../features/exams/examsApi'
 
-interface ExamPageProps {
-  user: User | null
+type StudentExamProps = {
+  userId: string
+  examId: string
+  onExit: () => void
 }
 
-export default function ExamPage({ user }: ExamPageProps) {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const userId = user?.id
+/** Typed answers wait this long after the last key before saving. */
+const SAVE_DELAY_MS = 800
 
-  // Core Data States
-  const [exam, setExam] = useState<Exam | null>(null)
-  const [questions, setQuestions] = useState<ExamQuestion[]>([])
-  const [attempt, setAttempt] = useState<ExamAttempt | null>(null)
+function clock(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(safe / 3600)
+  const minutes = Math.floor((safe % 3600) / 60)
+  const rest = String(safe % 60).padStart(2, '0')
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}`
+    : `${minutes}:${rest}`
+}
 
-  // UI Engine States
+function initialAnswers(sitting: ExamSitting) {
+  const answers: Record<string, string> = {}
+  for (const [questionId, saved] of Object.entries(sitting.answers)) {
+    if (saved) answers[questionId] = saved.answer
+  }
+  return answers
+}
+
+function CenteredMessage({
+  title,
+  body,
+  children,
+}: {
+  title: string
+  body: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 p-6 text-center">
+      <AlertTriangle className="text-amber-500" size={44} aria-hidden="true" />
+      <div>
+        <p className="text-lg font-black text-slate-800 dark:text-white">
+          {title}
+        </p>
+        <p className="mx-auto mt-1 max-w-sm text-sm font-medium text-slate-500 dark:text-slate-400">
+          {body}
+        </p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-3">{children}</div>
+    </div>
+  )
+}
+
+/**
+ * Sitting an exam. The deadline comes from the database (start time plus the
+ * exam's length, or when the exam closes), answers save as the student works,
+ * and time running out hands the exam in.
+ */
+export default function StudentExam({
+  userId,
+  examId,
+  onExit,
+}: StudentExamProps) {
+  const client = useQueryClient()
+  const sitting = useQuery({
+    queryKey: ['exams', 'sitting', examId],
+    queryFn: () => startExam(examId),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string | undefined>>({})
+  const [edited, setEdited] = useState<Record<string, string>>({})
   const [flags, setFlags] = useState<Record<string, boolean | undefined>>({})
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>(
+    'idle',
+  )
+  const [confirming, setConfirming] = useState(false)
+  const [handedIn, setHandedIn] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  const pending = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  const unsaved = useRef(new Map<string, string>())
 
-  const [timeLeft, setTimeLeft] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isEmpty, setIsEmpty] = useState(false)
-  const [timedOut, setTimedOut] = useState(false)
-  // Bumped by the Retry button to run the loader again
-  const [loadRequest, setLoadRequest] = useState(0)
+  const data = sitting.data
+  const attemptId = data?.attempt.id ?? ''
+  const answers = data ? { ...initialAnswers(data), ...edited } : edited
+  const deadline = data ? Date.parse(data.attempt.deadline) : Number.NaN
+  const secondsLeft = data
+    ? (deadline - (now + data.clockOffsetMs)) / 1000
+    : Number.POSITIVE_INFINITY
+  const finished = handedIn || Boolean(data?.attempt.end_time)
 
-  // 1. Core Fetcher Framework
-  useEffect(() => {
-    if (!id || !userId) return undefined
-
-    let cancelled = false
-    // A 10-second safety timeout so a stalled network doesn't hang the page
-    const timeout = setTimeout(() => {
-      if (cancelled) return
-      setTimedOut(true)
-      setLoading(false)
-      toast.error('Network synchronization took too long.')
-    }, 10000)
-
-    loadExamSession(id, userId).then(
-      (session) => {
-        if (cancelled) return
-        clearTimeout(timeout)
-        setTimedOut(false)
-        setExam(session.exam)
-        setTimeLeft(session.exam.duration_minutes * 60)
-        setQuestions(session.questions)
-        setIsEmpty(session.questions.length === 0)
-        setAttempt(session.attempt)
-        setAnswers(session.answers)
-        setLoading(false)
-      },
-      (err: unknown) => {
-        if (cancelled) return
-        clearTimeout(timeout)
-        setTimedOut(false)
-        console.error(err)
-        toast.error(getErrorMessage(err, 'Initialization error occurred.'))
-        setLoading(false)
-      },
-    )
-
-    return () => {
-      cancelled = true
-      clearTimeout(timeout)
-    }
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- loadRequest is the Retry trigger: bumping it re-runs this load
-  }, [id, userId, loadRequest])
-
-  // 2. Evaluation Engine & Submission Handler
-  const submitExam = useCallback(async () => {
-    if (!attempt || isSubmitting) return
-    setIsSubmitting(true)
-
+  const persist = async (questionId: string, value: string) => {
+    setSaveState('saving')
     try {
-      const computedScore = await submitExamAttempt(attempt.id, questions)
-
-      toast.success('Exam submitted safely!')
-      alert(`Exam complete! Your recorded score is: ${computedScore}`)
-      void navigate(-1)
-    } catch (err) {
-      toast.error(`Submission failed: ${getErrorMessage(err, 'Unknown error')}`)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [attempt, questions, isSubmitting, navigate])
-
-  // 3. Timer Heartbeat Hook
-  useEffect(() => {
-    if (!attempt || !exam || isSubmitting || questions.length === 0) {
-      return undefined
-    }
-
-    const interval = setInterval(() => {
-      const elapsedSeconds =
-        (Date.now() - new Date(attempt.start_time).getTime()) / 1000
-      const remainingTime = exam.duration_minutes * 60 - elapsedSeconds
-
-      setTimeLeft(Math.max(0, remainingTime))
-
-      if (remainingTime <= 0) {
-        clearInterval(interval)
-        toast.error('Time is up! Submitting answers immediately...', {
-          duration: 5000,
-        })
-        void submitExam()
+      await saveAnswer(attemptId, questionId, value)
+      if (unsaved.current.get(questionId) === value) {
+        unsaved.current.delete(questionId)
       }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [attempt, exam, submitExam, isSubmitting, questions.length])
-
-  // 4. Persistence Mutator for Database State Upserts
-  const saveAnswerToDB = async (questionId: string, responseValue: string) => {
-    if (!attempt) return
-
-    setAnswers((prev) => ({ ...prev, [questionId]: responseValue }))
-
-    try {
-      await saveExamAnswer(attempt.id, questionId, responseValue)
+      setSaveState(unsaved.current.size > 0 ? 'saving' : 'idle')
     } catch (error) {
-      console.error('Answer failed to sync: ', error)
-      toast.error('Network sync lag detected.')
+      setSaveState('error')
+      toast.error(getErrorMessage(error, 'Your answer didn’t save.'))
     }
   }
 
-  const toggleFlag = (qId: string) =>
-    setFlags((prev) => ({ ...prev, [qId]: !prev[qId] }))
-
-  const retryLoad = () => {
-    setTimedOut(false)
-    setLoading(true)
-    setLoadRequest((n) => n + 1)
+  /** Saves every answer still waiting on its timer. */
+  const flush = async () => {
+    for (const timer of pending.current.values()) clearTimeout(timer)
+    pending.current.clear()
+    await Promise.all(
+      [...unsaved.current].map(([questionId, value]) =>
+        persist(questionId, value),
+      ),
+    )
   }
 
-  // Guard: Handle missing ID
-  if (!id)
+  const handIn = useMutation({
+    mutationFn: async () => {
+      await flush()
+      await submitExam(attemptId)
+    },
+    onSuccess: () => {
+      setHandedIn(true)
+      setConfirming(false)
+      void client.invalidateQueries({ queryKey: examKeys.mine(userId) })
+    },
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'The exam couldn’t be handed in.')),
+  })
+
+  const upload = useMutation({
+    mutationFn: ({ questionId, file }: { questionId: string; file: File }) =>
+      uploadExamFile(userId, attemptId, questionId, file),
+    onSuccess: (_path, { questionId, file }) => {
+      setEdited((current) => ({ ...current, [questionId]: file.name }))
+      toast.success('File uploaded.')
+    },
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'The file didn’t upload.')),
+  })
+
+  // The countdown.
+  useEffect(() => {
+    if (!data || finished) return undefined
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [data, finished])
+
+  // Time's up: hand in what's saved.
+  const timeUp = Boolean(data) && !finished && secondsLeft <= 0
+  useEffect(() => {
+    if (timeUp && !handIn.isPending && !handIn.isError) {
+      toast.error('Time is up. Handing in your exam…', { duration: 5000 })
+      handIn.mutate()
+    }
+  }, [timeUp, handIn])
+
+  // Typed answers still waiting on their timer save even after the student
+  // leaves this page: the timers aren't cancelled on unmount.
+
+  const answerTyped = (questionId: string, value: string) => {
+    setEdited((current) => ({ ...current, [questionId]: value }))
+    unsaved.current.set(questionId, value)
+    const waiting = pending.current.get(questionId)
+    if (waiting) clearTimeout(waiting)
+    pending.current.set(
+      questionId,
+      setTimeout(() => {
+        pending.current.delete(questionId)
+        void persist(questionId, value)
+      }, SAVE_DELAY_MS),
+    )
+  }
+
+  const answerChosen = (questionId: string, value: string) => {
+    setEdited((current) => ({ ...current, [questionId]: value }))
+    unsaved.current.set(questionId, value)
+    void persist(questionId, value)
+  }
+
+  if (sitting.isPending) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-dashboard-night">
-        <AlertTriangle className="text-amber-500" size={48} />
-        <div className="text-center">
-          <p className="text-lg font-black text-slate-800 dark:text-white">
-            No Exam Selected
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3">
+        <Loader2
+          className="animate-spin text-indigo-600"
+          size={36}
+          aria-hidden="true"
+        />
+        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
+          Opening your exam…
+        </span>
+      </div>
+    )
+  }
+
+  if (sitting.isError) {
+    return (
+      <CenteredMessage
+        title="This exam can’t be opened"
+        body={getErrorMessage(sitting.error, 'Something went wrong.')}
+      >
+        <button
+          type="button"
+          onClick={() => void sitting.refetch()}
+          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+        >
+          <RefreshCw size={16} aria-hidden="true" /> Try again
+        </button>
+        <button
+          type="button"
+          onClick={onExit}
+          className="rounded-xl bg-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-300 dark:bg-white/10 dark:text-white"
+        >
+          Back to exams
+        </button>
+      </CenteredMessage>
+    )
+  }
+
+  const { exam, questions } = sitting.data
+
+  if (finished) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 p-6 text-center">
+        <CheckCircle
+          className="text-emerald-500"
+          size={48}
+          aria-hidden="true"
+        />
+        <div>
+          <p className="text-xl font-black text-slate-900 dark:text-white">
+            {exam.title} is handed in
           </p>
-          <p className="mt-1 max-w-xs text-sm font-medium text-slate-400">
-            Please select an assessment to view and start taking it.
+          <p className="mx-auto mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
+            Your answers are saved. Your score shows under Grades once your
+            teachers have marked it and published the results.
           </p>
         </div>
         <button
-          onClick={() => void navigate(-1)}
+          type="button"
+          onClick={onExit}
           className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
         >
-          Go Back
+          Back to exams
         </button>
       </div>
     )
+  }
 
-  // Guard: Make sure user actually exists
-  if (!user)
+  if (questions.length === 0) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-slate-50 dark:bg-dashboard-night">
-        <Loader2 className="animate-spin text-indigo-600" size={36} />
-        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
-          Authenticating user credentials...
-        </span>
-      </div>
-    )
-
-  // Timeout Fallback View
-  if (timedOut)
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-dashboard-night">
-        <AlertTriangle className="text-amber-500" size={48} />
-        <div className="text-center">
-          <p className="text-lg font-black text-slate-800 dark:text-white">
-            Connection Timed Out
-          </p>
-          <p className="mt-1 max-w-xs text-sm font-medium text-slate-400">
-            We couldn't connect to the assessment server in time.
-          </p>
-        </div>
-        <div className="mt-2 flex gap-3">
-          <button
-            onClick={retryLoad}
-            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
-          >
-            <RefreshCw size={16} /> Retry
-          </button>
-          <button
-            onClick={() => void navigate(-1)}
-            className="rounded-xl bg-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-300 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    )
-
-  // Absolute fallback layer handling empty DB configurations cleanly
-  if (isEmpty || (!loading && questions.length === 0))
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-dashboard-night">
-        <AlertTriangle className="text-amber-500" size={48} />
-        <div className="text-center">
-          <p className="text-lg font-black text-slate-800 dark:text-white">
-            Exam Is Empty
-          </p>
-          <p className="mt-1 max-w-xs text-sm font-medium text-slate-400">
-            This assessment doesn't contain any questions yet. Please contact
-            your administrator.
-          </p>
-        </div>
+      <CenteredMessage
+        title="This exam is empty"
+        body="It has no questions yet. Ask your teacher."
+      >
         <button
-          onClick={() => void navigate(-1)}
-          className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white/10 dark:hover:bg-white/20"
+          type="button"
+          onClick={onExit}
+          className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white dark:bg-white/10"
         >
-          Go Back
+          Back to exams
         </button>
-      </div>
+      </CenteredMessage>
     )
+  }
 
-  // Loading Screen Fallback Barrier
-  if (loading)
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-slate-50 dark:bg-dashboard-night">
-        <Loader2 className="animate-spin text-indigo-600" size={36} />
-        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
-          Synchronizing assessment nodes...
-        </span>
-      </div>
-    )
-
-  // Extra guard check in case configuration records are missing altogether
-  if (!exam)
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-dashboard-night">
-        <AlertTriangle className="text-amber-500" size={48} />
-        <div className="text-center">
-          <p className="text-lg font-black text-slate-800 dark:text-white">
-            Configuration Error
-          </p>
-          <p className="mt-1 max-w-xs text-sm font-medium text-slate-400">
-            Failed to gather exam details.
-          </p>
-        </div>
-      </div>
-    )
-
-  const currentQuestion = questions[currentIdx]
+  const question = questions[Math.min(currentIdx, questions.length - 1)]
+  const answeredCount = questions.filter(
+    (q) => (answers[q.id] ?? '').trim() !== '',
+  ).length
 
   return (
-    <div className="flex h-screen bg-slate-50 text-gray-900 dark:bg-dashboard-night dark:text-white">
-      {/* ===== SIDEBAR COMPONENT MATRIX ===== */}
-      <aside className="flex w-80 flex-col justify-between overflow-y-auto border-r border-slate-100 bg-white p-6 dark:border-white/10 dark:bg-white/5">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-slate-50 text-gray-900 md:flex-row dark:bg-dashboard-night dark:text-white">
+      <aside className="flex flex-col justify-between border-b border-slate-100 bg-white p-6 md:w-72 md:border-r md:border-b-0 dark:border-white/10 dark:bg-white/5">
         <div>
           <button
+            type="button"
             onClick={() => {
               if (
-                confirm('Abandon exam? Progress saves but timer keeps running!')
-              )
-                void navigate(-1)
+                window.confirm(
+                  'Leave the exam? Your answers are saved, but the timer keeps running.',
+                )
+              ) {
+                void flush().then(onExit)
+              }
             }}
             className="mb-6 flex items-center gap-2 text-xs font-bold text-slate-500 uppercase hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
           >
-            <ArrowLeft size={14} /> Exit Room
+            <ArrowLeft size={14} aria-hidden="true" /> Leave exam
           </button>
 
-          <h3 className="mb-4 text-xs font-black tracking-wider text-slate-900 uppercase dark:text-white">
-            Navigation Tree
-          </h3>
-          <div className="grid grid-cols-4 gap-2">
+          <h2 className="mb-4 text-xs font-black tracking-wider text-slate-900 uppercase dark:text-white">
+            Questions
+          </h2>
+          <div className="grid grid-cols-6 gap-2 md:grid-cols-4">
             {questions.map((q, idx) => {
-              const isFlagged = flags[q.id]
-              const isAnswered =
-                answers[q.id] !== undefined && answers[q.id] !== ''
-              const isCurrent = idx === currentIdx
-
+              const isAnswered = (answers[q.id] ?? '').trim() !== ''
+              const isCurrent = q.id === question.id
               return (
                 <button
                   key={q.id}
+                  type="button"
+                  aria-label={`Question ${idx + 1}${isAnswered ? ', answered' : ''}${flags[q.id] ? ', flagged' : ''}`}
+                  aria-current={isCurrent ? 'step' : undefined}
                   onClick={() => setCurrentIdx(idx)}
                   className={`flex h-11 w-11 items-center justify-center rounded-xl border text-sm font-black transition active:scale-95 ${
                     isCurrent
                       ? 'ring-2 ring-indigo-600 ring-offset-2 dark:ring-offset-slate-900'
                       : ''
                   } ${
-                    isFlagged
+                    flags[q.id]
                       ? 'border-amber-500 bg-amber-400 text-white shadow-xs'
                       : isAnswered
                         ? 'border-emerald-600 bg-emerald-500 text-white'
@@ -327,144 +353,245 @@ export default function ExamPage({ user }: ExamPageProps) {
 
         <div className="mt-6 space-y-2 rounded-2xl bg-slate-50 p-4 text-[11px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-emerald-500" /> Saved Response
+            <div className="h-3 w-3 rounded-sm bg-emerald-500" /> Answered
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-amber-400" /> Flagged For
-            Review
+            <div className="h-3 w-3 rounded-sm bg-amber-400" /> Flagged to check
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm border bg-slate-50 dark:border-white/20 dark:bg-white/10" />{' '}
-            Not Attempted
+            Not answered
           </div>
         </div>
       </aside>
 
-      {/* ===== MAIN WORKSPACE ===== */}
       <main className="flex flex-1 flex-col">
-        {/* Header Block */}
-        <header className="flex items-center justify-between border-b border-slate-100 bg-white px-8 py-5 shadow-xs dark:border-white/10 dark:bg-white/5">
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white px-6 py-5 shadow-xs md:px-8 dark:border-white/10 dark:bg-white/5">
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-black tracking-tight text-slate-900 dark:text-white">
               {exam.title}
             </h1>
-            <p className="text-xs font-bold text-slate-400">
-              Targeted Assessment Sandbox
+            <p className="text-xs font-bold text-slate-400" aria-live="polite">
+              {saveState === 'saving'
+                ? 'Saving…'
+                : saveState === 'error'
+                  ? 'Last answer didn’t save. Keep going; it retries when you change it.'
+                  : `All answers saved · ${answeredCount} of ${questions.length} answered`}
             </p>
           </div>
-
           <div
+            role="timer"
+            aria-label="Time left"
             className={`flex items-center gap-2 rounded-2xl border px-5 py-2 font-mono text-sm font-black shadow-xs transition-all ${
-              timeLeft < 120
+              secondsLeft < 120
                 ? 'animate-pulse border-red-100 bg-red-50 text-red-600'
                 : 'border-transparent bg-slate-900 text-white dark:bg-white/10'
             }`}
           >
-            <Clock size={16} />
-            {Math.floor(timeLeft / 60)}:
-            {('0' + Math.floor(timeLeft % 60)).slice(-2)}
+            <Clock size={16} aria-hidden="true" />
+            {clock(secondsLeft)}
           </div>
         </header>
 
-        {/* Interactive Workspace Area */}
-        <section className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-8">
-          <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-xs dark:border-white/10 dark:bg-white/5">
+        <section className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-6 md:p-8">
+          <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-xs md:p-8 dark:border-white/10 dark:bg-white/5">
             <span className="rounded-lg bg-indigo-50 px-3 py-1 text-[10px] font-black tracking-widest text-indigo-600 uppercase dark:bg-indigo-500/10">
-              Question {currentIdx + 1} of {questions.length} (
-              {currentQuestion.marks || 1} Marks)
+              Question {questions.indexOf(question) + 1} of {questions.length} ·{' '}
+              {question.marks} {question.marks === 1 ? 'mark' : 'marks'}
             </span>
-            <h2 className="mt-4 mb-8 text-xl leading-relaxed font-bold text-slate-800 dark:text-white">
-              {currentQuestion.question_text}
+            <h2 className="mt-4 mb-8 text-xl leading-relaxed font-bold whitespace-pre-wrap text-slate-800 dark:text-white">
+              {question.question_text}
             </h2>
 
-            {/* MCQ Input Mode */}
-            {currentQuestion.type === 'mcq' && (
+            {question.type === 'mcq' && (
               <div className="space-y-3">
-                {examOptions(currentQuestion.options).map((opt) => {
-                  const isChecked = answers[currentQuestion.id] === opt
+                {examOptions(question.options).map((option) => {
+                  const isChecked = answers[question.id] === option
                   return (
                     <button
-                      key={opt}
-                      onClick={() =>
-                        void saveAnswerToDB(currentQuestion.id, opt)
-                      }
+                      key={option}
+                      type="button"
+                      aria-pressed={isChecked}
+                      onClick={() => answerChosen(question.id, option)}
                       className={`block w-full rounded-2xl border-2 p-4 text-left text-sm font-medium transition-all active:scale-[0.99] ${
                         isChecked
                           ? 'border-indigo-600 bg-indigo-50/50 font-bold text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-300'
                           : 'border-slate-100 text-slate-600 hover:bg-slate-50/80 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5'
                       }`}
                     >
-                      {opt}
+                      {option}
                     </button>
                   )
                 })}
               </div>
             )}
 
-            {/* Open Form Inputs */}
-            {(currentQuestion.type === 'short' ||
-              currentQuestion.type === 'debug') && (
-              <textarea
-                className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-5 text-sm font-medium text-slate-700 shadow-inner outline-hidden transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-indigo-500 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-white/10"
-                rows={6}
-                value={answers[currentQuestion.id] || ''}
-                placeholder="Type your formal code snippet or textual response evaluation here..."
-                onChange={(e) =>
-                  void saveAnswerToDB(currentQuestion.id, e.target.value)
-                }
-              />
+            {(question.type === 'short' || question.type === 'debug') && (
+              <>
+                <label htmlFor={`answer-${question.id}`} className="sr-only">
+                  Your answer
+                </label>
+                <textarea
+                  id={`answer-${question.id}`}
+                  className={`w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-5 text-sm text-slate-700 shadow-inner outline-hidden transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:bg-white/10 ${
+                    question.type === 'debug' ? 'font-mono' : 'font-medium'
+                  }`}
+                  rows={question.type === 'debug' ? 12 : 6}
+                  spellCheck={question.type !== 'debug'}
+                  value={answers[question.id] ?? ''}
+                  placeholder={
+                    question.type === 'debug'
+                      ? 'Write or fix the code here…'
+                      : 'Type your answer here…'
+                  }
+                  onChange={(event) =>
+                    answerTyped(question.id, event.target.value)
+                  }
+                />
+              </>
+            )}
+
+            {question.type === 'file' && (
+              <div className="space-y-3">
+                <label
+                  htmlFor={`answer-file-${question.id}`}
+                  className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600 transition focus-within:border-indigo-500 hover:border-indigo-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                >
+                  {upload.isPending ? (
+                    <Loader2
+                      className="animate-spin text-indigo-600"
+                      size={24}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Paperclip
+                      className="text-indigo-600"
+                      size={24}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="font-bold">
+                    {upload.isPending
+                      ? 'Uploading…'
+                      : answers[question.id]
+                        ? `Uploaded: ${answers[question.id]} (choose another to replace it)`
+                        : 'Choose a file to upload'}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    PDF, image, Word, text or ZIP, up to 20 MB
+                  </span>
+                  <input
+                    id={`answer-file-${question.id}`}
+                    type="file"
+                    accept={EXAM_FILE_TYPES.join(',')}
+                    disabled={upload.isPending}
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      event.target.value = ''
+                      if (file) upload.mutate({ questionId: question.id, file })
+                    }}
+                  />
+                </label>
+              </div>
             )}
           </div>
+
+          {confirming && (
+            <div
+              role="alertdialog"
+              aria-labelledby="hand-in-title"
+              className="mt-6 rounded-3xl border border-indigo-200 bg-indigo-50 p-6 dark:border-indigo-500/30 dark:bg-indigo-500/10"
+            >
+              <p
+                id="hand-in-title"
+                className="font-black text-slate-900 dark:text-white"
+              >
+                Hand in your exam?
+              </p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                You’ve answered {answeredCount} of {questions.length} questions.
+                You can’t change your answers after handing in.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={handIn.isPending}
+                  onClick={() => handIn.mutate()}
+                  className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-black tracking-wider text-white uppercase hover:bg-indigo-700 disabled:opacity-60"
+                >
+                  {handIn.isPending ? (
+                    <Loader2
+                      size={14}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <CheckCircle size={14} aria-hidden="true" />
+                  )}
+                  Hand in now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirming(false)}
+                  className="rounded-xl px-5 py-2.5 text-xs font-black tracking-wider text-slate-600 uppercase hover:bg-white dark:text-slate-300 dark:hover:bg-white/10"
+                >
+                  Keep working
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
-        {/* Action Bottom Control Navigation Bar */}
-        <footer className="flex items-center justify-between border-t border-slate-100 bg-white px-8 py-5 shadow-lg dark:border-white/10 dark:bg-white/5">
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white px-6 py-5 shadow-lg md:px-8 dark:border-white/10 dark:bg-white/5">
           <button
-            onClick={() => toggleFlag(currentQuestion.id)}
+            type="button"
+            aria-pressed={Boolean(flags[question.id])}
+            onClick={() =>
+              setFlags((current) => ({
+                ...current,
+                [question.id]: !current[question.id],
+              }))
+            }
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black tracking-wider uppercase transition ${
-              flags[currentQuestion.id]
+              flags[question.id]
                 ? 'bg-amber-400 text-white'
-                : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-white/5'
+                : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-white/5'
             }`}
           >
             <Flag
               size={16}
-              className={flags[currentQuestion.id] ? 'fill-white' : ''}
-            />{' '}
-            Flag for Review
+              className={flags[question.id] ? 'fill-white' : ''}
+              aria-hidden="true"
+            />
+            Flag to check
           </button>
 
           <div className="flex gap-3">
             <button
+              type="button"
               disabled={currentIdx === 0}
-              onClick={() => setCurrentIdx((p) => p - 1)}
+              onClick={() => setCurrentIdx((index) => index - 1)}
               className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-black tracking-wider text-slate-600 uppercase hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
             >
               Previous
             </button>
-
             {currentIdx < questions.length - 1 ? (
               <button
-                onClick={() => setCurrentIdx((p) => p + 1)}
+                type="button"
+                onClick={() => setCurrentIdx((index) => index + 1)}
                 className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-black tracking-wider text-white uppercase hover:bg-slate-800 dark:bg-white/10 dark:hover:bg-white/20"
               >
                 Next
               </button>
             ) : (
               <button
-                disabled={isSubmitting}
-                onClick={() => {
-                  if (confirm('Are you sure you want to finish and submit?'))
-                    void submitExam()
-                }}
+                type="button"
+                disabled={handIn.isPending}
+                onClick={() => setConfirming(true)}
                 className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-black tracking-wider text-white uppercase shadow-md hover:bg-indigo-700"
               >
-                {isSubmitting ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <CheckCircle size={14} />
-                )}{' '}
-                Submit Exam
+                <CheckCircle size={14} aria-hidden="true" /> Hand in
               </button>
             )}
           </div>

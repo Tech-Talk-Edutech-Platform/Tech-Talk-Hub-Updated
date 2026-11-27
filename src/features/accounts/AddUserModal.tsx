@@ -32,7 +32,10 @@ type EditingUser = Pick<
   | 'subscription_tier'
   | 'total_classes'
   | 'classes_remaining'
->
+> & { username?: string | null }
+
+/** How the database says a username is already used. */
+const USERNAME_TAKEN = /users_username_key|username is taken/i
 
 interface UserManagementModalProps {
   isOpen: boolean
@@ -45,6 +48,8 @@ interface UserManagementModalProps {
 interface UserFormData {
   email: string
   fullName: string
+  /** Optional sign-in name; empty means none. */
+  username: string
   role: UserRole
   meetLink: string
   subscriptionTier: string
@@ -62,6 +67,7 @@ interface AttendanceHistoryRow {
 const NEW_USER_FORM: UserFormData = {
   email: '',
   fullName: '',
+  username: '',
   role: 'student',
   meetLink: '',
   subscriptionTier: 'Starter',
@@ -85,6 +91,7 @@ function formFromUser(user: EditingUser | null): UserFormData {
   return {
     email: user.email || '',
     fullName: user.full_name || '',
+    username: user.username ?? '',
     role: user.role || 'student',
     meetLink: user.personal_meet_link || '',
     subscriptionTier: user.subscription_tier || 'Starter',
@@ -193,6 +200,7 @@ export default function UserManagementModal({
 
     try {
       const isStudent = formData.role === 'student'
+      const username = formData.username.trim().toLowerCase()
 
       if (editingUser) {
         // Only students have a package; the database keeps it empty for
@@ -208,6 +216,11 @@ export default function UserManagementModal({
             ? toClassCount(formData.classesRemaining)
             : null,
           ...(isStudent ? {} : { classes_per_week: null }),
+          // Only sent when changed, so editing works before the username
+          // migration has run.
+          ...(username !== (editingUser.username ?? '')
+            ? { username: username || null }
+            : {}),
         }
         const { error } = await supabase
           .from('users')
@@ -227,6 +240,7 @@ export default function UserManagementModal({
       const account = await createUserAccount({
         email: formData.email.trim(),
         fullName: formData.fullName.trim(),
+        username: username || undefined,
         role: formData.role,
         meetLink: formData.role === 'tutor' ? formData.meetLink : undefined,
         subscriptionTier: isStudent ? formData.subscriptionTier : undefined,
@@ -238,7 +252,12 @@ export default function UserManagementModal({
       setCreated(account)
       onRefresh()
     } catch (err) {
-      toast.error(`Error: ${getErrorMessage(err, 'Unable to save user')}`)
+      const message = getErrorMessage(err, 'Unable to save user')
+      toast.error(
+        USERNAME_TAKEN.test(message)
+          ? 'That username is taken. Try another.'
+          : `Error: ${message}`,
+      )
     } finally {
       setLoading(false)
     }
@@ -390,6 +409,36 @@ export default function UserManagementModal({
                   setFormData({ ...formData, email: e.target.value })
                 }
               />
+            </div>
+
+            <div className="space-y-1">
+              <label
+                htmlFor="user-modal-username"
+                className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase"
+              >
+                Username (optional)
+              </label>
+              <input
+                id="user-modal-username"
+                autoCapitalize="none"
+                autoComplete="off"
+                spellCheck={false}
+                pattern="[A-Za-z0-9][A-Za-z0-9._]{2,23}"
+                title="3 to 24 letters, numbers, dots or underscores, starting with a letter or number"
+                placeholder="alex.rivera"
+                aria-describedby="user-modal-username-hint"
+                className="w-full rounded-2xl border-none bg-slate-50 p-4 text-sm font-bold outline-hidden focus:ring-2 focus:ring-blue-500"
+                value={formData.username}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
+                }
+              />
+              <p
+                id="user-modal-username-hint"
+                className="ml-1 text-[11px] text-slate-400"
+              >
+                They can sign in with this instead of their email.
+              </p>
             </div>
 
             <div className="space-y-1">

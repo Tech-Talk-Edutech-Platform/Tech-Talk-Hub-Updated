@@ -82,7 +82,6 @@ const ClassroomRoutes = lazy(() =>
 const SalesPreviewPage = lazy(() => import('./features/sales/SalesPreviewPage'))
 const FullCalendarView = lazy(() => import('./features/schedule/Calendar'))
 const UnifiedDashboard = lazy(() => import('./dashboards/UnifiedDashboard'))
-const STUDENT_ROLES = ['student'] as const
 const RecordingSharePage = lazy(() => import('./pages/RecordingSharePage'))
 
 /** Scrolls to `/#section` targets on the landing page; must render inside the router. */
@@ -221,10 +220,6 @@ function BookClassRedirect() {
   return <Navigate to={`/book${search}`} replace />
 }
 
-// Newly Mounted Admin Views
-import MyHomework from './features/assessments/assignment/MyHomework'
-import StudentAssignments from './features/assessments/assignment/StudentAssignments'
-
 function DashboardApp({ dashboardRole }: { dashboardRole?: AppRole }) {
   // Public pages render immediately; only routes that need the user wait for
   // the saved session, and only when there is one.
@@ -332,13 +327,11 @@ function DashboardApp({ dashboardRole }: { dashboardRole?: AppRole }) {
           }
         />
         <Route path="/landing" element={<LandingOrDashboard />} />
+        {/* Old standalone homework pages: homework lives in the dashboard
+            now (tutors: Course Assignment; students: My Courses). */}
         <Route
           path="/assign-homework"
-          element={
-            <RoleGate allowedRoles={TUTOR_ADMIN_ROLES}>
-              <StudentAssignments user={user} />
-            </RoleGate>
-          }
+          element={<Navigate to="/tutor?view=course-assignment" replace />}
         />
         {/* Public Routes */}
         <Route path="/results/:slug" element={<StudentDashboard />} />
@@ -354,11 +347,7 @@ function DashboardApp({ dashboardRole }: { dashboardRole?: AppRole }) {
         />
         <Route
           path="/receive-homework"
-          element={
-            <RoleGate allowedRoles={STUDENT_ROLES}>
-              <MyHomework studentId={user?.id} />
-            </RoleGate>
-          }
+          element={<Navigate to="/student?view=courses" replace />}
         />
         <Route
           path="/users"

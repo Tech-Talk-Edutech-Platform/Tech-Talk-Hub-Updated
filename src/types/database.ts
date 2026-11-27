@@ -14,6 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      answers: {
+        Row: {
+          answer: string
+          attempt_id: string
+          file_path: string | null
+          id: string
+          marks_awarded: number | null
+          question_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer?: string
+          attempt_id: string
+          file_path?: string | null
+          id?: string
+          marks_awarded?: number | null
+          question_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          attempt_id?: string
+          file_path?: string | null
+          id?: string
+          marks_awarded?: number | null
+          question_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'answers_attempt_id_fkey'
+            columns: ['attempt_id']
+            isOneToOne: false
+            referencedRelation: 'attempts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'answers_question_id_fkey'
+            columns: ['question_id']
+            isOneToOne: false
+            referencedRelation: 'questions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      attempts: {
+        Row: {
+          auto_score: number | null
+          end_time: string | null
+          exam_id: string
+          feedback: string | null
+          id: string
+          marked_at: string | null
+          marked_by: string | null
+          score: number | null
+          start_time: string
+          student_id: string
+        }
+        Insert: {
+          auto_score?: number | null
+          end_time?: string | null
+          exam_id: string
+          feedback?: string | null
+          id?: string
+          marked_at?: string | null
+          marked_by?: string | null
+          score?: number | null
+          start_time?: string
+          student_id: string
+        }
+        Update: {
+          auto_score?: number | null
+          end_time?: string | null
+          exam_id?: string
+          feedback?: string | null
+          id?: string
+          marked_at?: string | null
+          marked_by?: string | null
+          score?: number | null
+          start_time?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'attempts_exam_id_fkey'
+            columns: ['exam_id']
+            isOneToOne: false
+            referencedRelation: 'exams'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'attempts_marked_by_fkey'
+            columns: ['marked_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'attempts_student_id_fkey'
+            columns: ['student_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       blog_posts: {
         Row: {
           author_id: string | null
@@ -197,6 +303,7 @@ export type Database = {
       }
       class_recordings: {
         Row: {
+          class_kind: string | null
           classroom_session_id: string | null
           created_at: string | null
           id: string
@@ -207,6 +314,7 @@ export type Database = {
           tutor_id: string | null
         }
         Insert: {
+          class_kind?: string | null
           classroom_session_id?: string | null
           created_at?: string | null
           id?: string
@@ -217,6 +325,7 @@ export type Database = {
           tutor_id?: string | null
         }
         Update: {
+          class_kind?: string | null
           classroom_session_id?: string | null
           created_at?: string | null
           id?: string
@@ -1090,6 +1199,99 @@ export type Database = {
           },
         ]
       }
+      exam_students: {
+        Row: {
+          assigned_at: string
+          exam_id: string
+          student_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          exam_id: string
+          student_id: string
+        }
+        Update: {
+          assigned_at?: string
+          exam_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'exam_students_exam_id_fkey'
+            columns: ['exam_id']
+            isOneToOne: false
+            referencedRelation: 'exams'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'exam_students_student_id_fkey'
+            columns: ['student_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          closes_at: string | null
+          course_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          duration_minutes: number
+          id: string
+          opens_at: string | null
+          results_published: boolean
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          closes_at?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          duration_minutes: number
+          id?: string
+          opens_at?: string | null
+          results_published?: boolean
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          closes_at?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          opens_at?: string | null
+          results_published?: boolean
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'exams_course_id_fkey'
+            columns: ['course_id']
+            isOneToOne: false
+            referencedRelation: 'courses'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'exams_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       grade_categories: {
         Row: {
           grades: string[]
@@ -1476,6 +1678,50 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      questions: {
+        Row: {
+          correct_answer: string | null
+          created_at: string | null
+          exam_id: string
+          id: string
+          marks: number | null
+          options: Json | null
+          position: number
+          question_text: string
+          type: string | null
+        }
+        Insert: {
+          correct_answer?: string | null
+          created_at?: string | null
+          exam_id: string
+          id?: string
+          marks?: number | null
+          options?: Json | null
+          position?: number
+          question_text: string
+          type?: string | null
+        }
+        Update: {
+          correct_answer?: string | null
+          created_at?: string | null
+          exam_id?: string
+          id?: string
+          marks?: number | null
+          options?: Json | null
+          position?: number
+          question_text?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'questions_exam_id_fkey'
+            columns: ['exam_id']
+            isOneToOne: false
+            referencedRelation: 'exams'
+            referencedColumns: ['id']
+          },
+        ]
       }
       quiz_questions: {
         Row: {
@@ -2460,8 +2706,10 @@ export type Database = {
           role: Database['public']['Enums']['user_role'] | null
           skills: string[] | null
           subscription_tier: string | null
+          theme: string | null
           time_zone: string | null
           total_classes: number | null
+          username: string | null
         }
         Insert: {
           assigned_course_id?: string | null
@@ -2482,8 +2730,10 @@ export type Database = {
           role?: Database['public']['Enums']['user_role'] | null
           skills?: string[] | null
           subscription_tier?: string | null
+          theme?: string | null
           time_zone?: string | null
           total_classes?: number | null
+          username?: string | null
         }
         Update: {
           assigned_course_id?: string | null
@@ -2504,8 +2754,10 @@ export type Database = {
           role?: Database['public']['Enums']['user_role'] | null
           skills?: string[] | null
           subscription_tier?: string | null
+          theme?: string | null
           time_zone?: string | null
           total_classes?: number | null
+          username?: string | null
         }
         Relationships: [
           {
@@ -2842,6 +3094,19 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: undefined
       }
+      exam_attempt_deadline: {
+        Args: { p_closes: string; p_duration: number; p_start: string }
+        Returns: string
+      }
+      exam_attempt_open_for_me: {
+        Args: { p_attempt_id: string }
+        Returns: boolean
+      }
+      exam_finish_attempt: {
+        Args: { p_attempt_id: string }
+        Returns: undefined
+      }
+      exam_is_for_me: { Args: { p_exam_id: string }; Returns: boolean }
       get_available_tutors: {
         Args: { desired_time: string }
         Returns: {
@@ -2856,6 +3121,10 @@ export type Database = {
       }
       is_student: { Args: never; Returns: boolean }
       known_time_zone: { Args: { p_zone: string }; Returns: string }
+      mark_exam_attempt: {
+        Args: { p_attempt_id: string; p_feedback?: string; p_marks: Json }
+        Returns: number
+      }
       mark_whatsapp_sent: {
         Args: { p_message_id: string }
         Returns: {
@@ -2879,6 +3148,29 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      my_exams: {
+        Args: never
+        Returns: {
+          attempt_id: string
+          closes_at: string
+          course_title: string
+          deadline: string
+          description: string
+          duration_minutes: number
+          exam_id: string
+          exam_status: string
+          feedback: string
+          marked: boolean
+          opens_at: string
+          question_count: number
+          results_published: boolean
+          score: number
+          started_at: string
+          submitted_at: string
+          title: string
+          total_marks: number
+        }[]
       }
       notify_admins_booking_rejected: {
         Args: {
@@ -3121,7 +3413,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_exam_answer: {
+        Args: {
+          p_answer: string
+          p_attempt_id: string
+          p_file_path?: string
+          p_question_id: string
+        }
+        Returns: undefined
+      }
       set_my_time_zone: { Args: { p_zone: string }; Returns: undefined }
+      set_my_username: { Args: { p_username: string }; Returns: string }
       set_trial_status: {
         Args: { p_booking_id: string; p_status: string }
         Returns: {
@@ -3162,10 +3464,20 @@ export type Database = {
         }
       }
       share_dashboard_report: { Args: { p_report: string }; Returns: string }
+      start_exam: { Args: { p_exam_id: string }; Returns: Json }
+      student_can_see_recording: {
+        Args: {
+          p_classroom_session_id: string
+          p_student_id: string
+          p_tutor_id: string
+        }
+        Returns: boolean
+      }
       submit_dashboard_quiz: {
         Args: { p_answers: Json; p_quiz: string }
         Returns: Json
       }
+      submit_exam: { Args: { p_attempt_id: string }; Returns: undefined }
       trial_booking_sync_classroom: {
         Args: { p_booking_id: string }
         Returns: undefined
@@ -3195,6 +3507,10 @@ export type Database = {
           slot_id: string
           time_zone: string
         }[]
+      }
+      update_my_profile: {
+        Args: { p_avatar_url?: string; p_full_name?: string; p_theme?: string }
+        Returns: Json
       }
     }
     Enums: {

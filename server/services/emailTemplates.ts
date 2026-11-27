@@ -513,3 +513,119 @@ export function trialCalendarFile(input: {
     '',
   ].join('\r\n')
 }
+
+/**
+ * Password reset, sent by our own mailer (server/routes/passwordReset.ts)
+ * instead of Supabase's default email, in the same look as the trial emails.
+ */
+export function passwordResetEmail(data: {
+  name: string | null
+  resetUrl: string
+}): RenderedEmail {
+  const firstName = data.name?.trim().split(/\s+/)[0] || 'there'
+  const heading = 'Reset your password'
+  const intro = [
+    `Hi ${firstName},`,
+    'Someone asked to reset the password for your Tech Talk Hub account. If it was you, choose a new password with the button below.',
+    'The link works once and expires after an hour.',
+  ]
+  const footnote =
+    'Didn’t ask for this? You can ignore this email: your password stays the same.'
+  const paragraphs = intro
+    .map(
+      (line) =>
+        `<p style="margin:0 0 14px;font-family:${FONT};font-size:16px;line-height:26px;color:${INK};">${esc(line)}</p>`,
+    )
+    .join('')
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${esc(heading)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; padding: 0; }
+  @media (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 24px !important; padding-right: 24px !important; }
+    .button { width: 100% !important; }
+    .button a { display: block !important; text-align: center !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:${CANVAS};-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">Choose a new password for your Tech Talk Hub account.&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="${CANVAS}" style="background:${CANVAS};">
+    <tr>
+      <td align="center" style="padding:28px 12px 36px;">
+        <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px;max-width:600px;">
+          <tr>
+            <td class="px" style="padding:0 40px 18px;font-family:${FONT};font-size:20px;line-height:26px;font-weight:800;color:${BRAND};letter-spacing:-0.3px;">
+              Tech Talk Hub
+            </td>
+          </tr>
+          <tr>
+            <td bgcolor="#ffffff" style="background:#ffffff;border-radius:22px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td class="px" style="padding:40px 40px 6px;">
+                    <h1 style="margin:0 0 18px;font-family:${FONT};font-size:30px;line-height:36px;font-weight:800;letter-spacing:-0.6px;color:${INK};">${esc(heading)}</h1>
+                    ${paragraphs}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px" style="padding:6px 40px 0;">
+                    <table role="presentation" class="button" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td bgcolor="${BRAND}" style="background:${BRAND};border-radius:999px;">
+                          <a href="${esc(data.resetUrl)}" style="display:inline-block;padding:16px 30px;font-family:${FONT};font-size:17px;line-height:22px;font-weight:800;color:#ffffff;text-decoration:none;border-radius:999px;">Choose a new password&nbsp;&rarr;</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px" style="padding:18px 40px 0;">
+                    <p style="margin:0;font-family:${FONT};font-size:13px;line-height:20px;color:${MUTED};">Button not working? Copy this link into your browser:<br><a href="${esc(data.resetUrl)}" style="color:${BRAND};word-break:break-all;">${esc(data.resetUrl)}</a></p>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px" style="padding:26px 40px 40px;">
+                    <p style="margin:0;font-family:${FONT};font-size:16px;line-height:25px;color:${INK};">Need help signing in? Message us on WhatsApp at <a href="${SUPPORT.whatsappUrl}" style="color:${BRAND_STRONG};font-weight:800;text-decoration:none;white-space:nowrap;">${SUPPORT.whatsappDisplay}</a>, or just reply to this email.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="px" style="padding:22px 40px 0;font-family:${FONT};font-size:12px;line-height:18px;color:${MUTED};">
+              ${esc(footnote)}<br>
+              &copy; ${new Date().getFullYear()} Tech Talk Hub &middot; Coding and AI classes for children
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+  const text = [
+    heading,
+    '',
+    ...intro,
+    '',
+    `Choose a new password: ${data.resetUrl}`,
+    '',
+    `Need help signing in? WhatsApp ${SUPPORT.whatsappDisplay} (${SUPPORT.whatsappUrl}), or reply to this email.`,
+    '',
+    footnote,
+  ].join('\n')
+
+  return { subject: 'Reset your Tech Talk Hub password', html, text }
+}

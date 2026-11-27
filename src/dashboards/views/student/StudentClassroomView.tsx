@@ -1,5 +1,5 @@
 import { useStudentInvites } from '../../insights/useStudentInvites'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Award,
@@ -22,6 +22,8 @@ import {
 } from '../../../lib/classroom/schedule'
 import { useNow } from '../../../hooks/useNow'
 import type { ClassInvite } from '../../../types/classroom'
+import { Tabs } from '../../../components/ui/Tabs'
+import { groupByMonth, inPastWindow } from '../../../lib/classroom/pastClasses'
 import { STATUS_LABEL } from '../admin/classroom/format'
 
 /** What the student can do with an invite right now. */
@@ -158,17 +160,8 @@ function InviteRow({
   )
 }
 
-/**
- * The classes the student was invited to and can join now. On the home
- * dashboard (`compact`) it only appears while there's something to join.
- */
-export function ClassInvitesCard({
-  userId,
-  compact = false,
-}: {
-  userId: string
-  compact?: boolean
-}) {
+/** The classes the student was invited to and can join now. */
+function ClassInvitesCard({ userId }: { userId: string }) {
   const invites = useStudentInvites(userId)
   // Ticks so "Opens at 3:45 PM" turns into Join on time.
   const now = useNow(15_000)
@@ -178,8 +171,6 @@ export function ClassInvitesCard({
       return state ? [{ invite, state }] : []
     })
     .toSorted((a, b) => byUrgency(a.invite, b.invite))
-
-  if (compact && !open.length) return null
 
   return (
     <section className={cardClass} aria-labelledby="class-invites-heading">
@@ -225,38 +216,75 @@ function pastLabel(invite: ClassInvite, now: number) {
   return STATUS_LABEL[invite.status]
 }
 
-function PastClassesCard({ userId }: { userId: string }) {
+const classDate = (invite: ClassInvite) =>
+  invite.schedule.scheduledAt ?? invite.invitedAt
+
+/** This month's and the two previous months' classes, newest first. */
+function usePastInvites(userId: string) {
   const invites = useStudentInvites(userId)
   const now = useNow(60_000)
-  const past = (invites.data ?? []).filter((invite) => !isUpcoming(invite, now))
-  if (!past.length) return null
+  const past = (invites.data ?? [])
+    .filter(
+      (invite) =>
+        !isUpcoming(invite, now) && inPastWindow(classDate(invite), now),
+    )
+    .toSorted((a, b) => Date.parse(classDate(b)) - Date.parse(classDate(a)))
+  return { invites, now, past }
+}
+
+function PastClassesCard({ userId }: { userId: string }) {
+  const { invites, now, past } = usePastInvites(userId)
+  const months = groupByMonth(past, classDate)
+
+  if (invites.isPending) {
+    return (
+      <section className={cardClass}>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Loading your classes…
+        </p>
+      </section>
+    )
+  }
+  if (!months.length) {
+    return (
+      <section className={cardClass}>
+        <p className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 py-8 text-center text-xs font-medium text-gray-500 dark:border-purple-500/20 dark:bg-purple-950/20 dark:text-gray-400">
+          No classes in the last three months yet.
+        </p>
+      </section>
+    )
+  }
 
   return (
-    <section className={cardClass}>
-      <CardHeading
-        icon={<CalendarClock size={20} aria-hidden="true" />}
-        title="Past classes"
-      />
-      <ul className="divide-y divide-purple-100 dark:divide-purple-500/15">
-        {past.map((invite) => (
-          <li
-            key={invite.sessionId}
-            className="flex flex-wrap items-center justify-between gap-2 py-3"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold">{invite.title}</p>
-              <p className="text-xs text-gray-500 tabular-nums dark:text-gray-400">
-                {formatClassTime(invite.schedule)} ·{' '}
-                {invite.tutorName ?? 'Your tutor'}
-              </p>
-            </div>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
-              {pastLabel(invite, now)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div className="space-y-6">
+      {months.map((month) => (
+        <section key={month.key} className={cardClass}>
+          <CardHeading
+            icon={<CalendarClock size={20} aria-hidden="true" />}
+            title={month.label}
+          />
+          <ul className="divide-y divide-purple-100 dark:divide-purple-500/15">
+            {month.items.map((invite) => (
+              <li
+                key={invite.sessionId}
+                className="flex flex-wrap items-center justify-between gap-2 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{invite.title}</p>
+                  <p className="text-xs text-gray-500 tabular-nums dark:text-gray-400">
+                    {formatClassTime(invite.schedule)} ·{' '}
+                    {invite.tutorName ?? 'Your tutor'}
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                  {pastLabel(invite, now)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
   )
 }
 
@@ -332,8 +360,13 @@ export function StudentBadgesCard({ userId }: { userId: string }) {
   )
 }
 
-/** Dashboard › My Classroom (students): invites to join, past classes, badges. */
+/**
+ * Dashboard › My Classroom (students): Upcoming (classes to join) and Past
+ * (the last three months, by month) tabs, then badges.
+ */
 export default function StudentClassroomView({ userId }: { userId: string }) {
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
+  const { past } = usePastInvites(userId)
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
       <header>
@@ -345,9 +378,23 @@ export default function StudentClassroomView({ userId }: { userId: string }) {
           Classes your tutor invited you to. Press Join class when it’s time.
         </p>
       </header>
-      <ClassInvitesCard userId={userId} />
+      <Tabs
+        id="student-classes"
+        label="Your classes"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { value: 'upcoming', label: 'Upcoming' },
+          { value: 'past', label: 'Past classes', count: past.length },
+        ]}
+      >
+        {tab === 'upcoming' ? (
+          <ClassInvitesCard userId={userId} />
+        ) : (
+          <PastClassesCard userId={userId} />
+        )}
+      </Tabs>
       <StudentBadgesCard userId={userId} />
-      <PastClassesCard userId={userId} />
     </div>
   )
 }

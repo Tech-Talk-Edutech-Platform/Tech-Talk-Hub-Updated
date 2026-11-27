@@ -791,15 +791,26 @@ export default function StudentCoursesView({
         <div className="rounded-[30px] border border-gray-200 bg-white/10 p-8 text-center shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-white/4">
           <div className="mx-auto mb-5 h-16 w-16 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Loading Learning Workspace...
+            Loading your courses…
           </h2>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Fetching your interactive curriculum 🚀
+            Getting your lessons, quizzes and homework ready.
           </p>
         </div>
       </div>
     )
   }
+
+  const courseLessons = phases.flatMap((phase) => phase.course_lessons)
+  const lessonsDone = courseLessons.filter((lesson) =>
+    completedLessonIds.has(lesson.id),
+  ).length
+  const coursePercent =
+    courseLessons.length > 0
+      ? Math.round((lessonsDone / courseLessons.length) * 100)
+      : 0
+  const nextLesson =
+    courseLessons.find((lesson) => !completedLessonIds.has(lesson.id)) ?? null
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 text-gray-900 md:p-8 dark:text-white">
@@ -811,6 +822,8 @@ export default function StudentCoursesView({
               return (
                 <button
                   key={course.id}
+                  type="button"
+                  aria-pressed={isSelected}
                   onClick={() => handleSelectCourse(course)}
                   className={`flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left transition-all ${
                     isSelected
@@ -822,7 +835,7 @@ export default function StudentCoursesView({
                     {course.thumbnail_url ? (
                       <img
                         src={course.thumbnail_url}
-                        alt={course.title}
+                        alt=""
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -844,31 +857,38 @@ export default function StudentCoursesView({
 
           <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-2 shadow-lg backdrop-blur-2xl dark:border-white/10 dark:bg-white/4">
             <span className="flex items-center gap-1.5 text-xs font-black tracking-wider text-gray-500 uppercase dark:text-gray-400">
-              <FileText size={14} className="text-blue-500" /> Homework:
+              <FileText
+                size={14}
+                className="text-blue-500"
+                aria-hidden="true"
+              />{' '}
+              All homework
             </span>
             <div className="flex items-center gap-3 text-center">
               <div>
-                <p className="text-[9px] font-medium text-gray-400">Pending</p>
+                <p className="text-[10px] font-medium text-gray-400">To do</p>
                 <p className="text-xs font-black text-orange-500">
                   {homeworkStats.pending}
                 </p>
               </div>
               <div>
-                <p className="text-[9px] font-medium text-gray-400">
-                  Submitted
+                <p className="text-[10px] font-medium text-gray-400">
+                  Handed in
                 </p>
                 <p className="text-xs font-black text-blue-500">
                   {homeworkStats.submitted}
                 </p>
               </div>
               <div>
-                <p className="text-[9px] font-medium text-gray-400">Revision</p>
+                <p className="text-[10px] font-medium text-gray-400">To redo</p>
                 <p className="text-xs font-black text-amber-500">
                   {homeworkStats.needs_revision}
                 </p>
               </div>
               <div>
-                <p className="text-[9px] font-medium text-gray-400">Done</p>
+                <p className="text-[10px] font-medium text-gray-400">
+                  Reviewed
+                </p>
                 <p className="text-xs font-black text-emerald-500">
                   {homeworkStats.completed}
                 </p>
@@ -883,10 +903,10 @@ export default function StudentCoursesView({
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 text-2xl font-bold text-purple-500">
             🎓
           </div>
-          <h3 className="text-xl font-bold">No Registered Courses Found</h3>
+          <h3 className="text-xl font-bold">No courses yet</h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-gray-500 dark:text-gray-400">
-            You are not currently enrolled in any active courses. Please contact
-            your administrator or instructor.
+            Your courses appear here once you’re enrolled. If one is missing,
+            ask your tutor or the Tech Talk Hub team.
           </p>
         </div>
       ) : (
@@ -918,15 +938,53 @@ export default function StudentCoursesView({
                   </h2>
                 </div>
 
-                <div className="flex items-center justify-between px-1 text-xs font-bold text-gray-500 dark:text-gray-400">
-                  <span className="flex items-center gap-1.5">
-                    <Layers size={14} className="text-purple-500" />
-                    {phases.length} Phases
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="text-emerald-500" />
-                    {completedLessonIds.size} Lessons Done
-                  </span>
+                <div className="space-y-3 px-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1.5">
+                      <Layers
+                        size={14}
+                        className="text-purple-500"
+                        aria-hidden="true"
+                      />
+                      {phases.length} {phases.length === 1 ? 'phase' : 'phases'}
+                    </span>
+                    <span className="flex items-center gap-1.5 tabular-nums">
+                      <CheckCircle2
+                        size={14}
+                        className="text-emerald-500"
+                        aria-hidden="true"
+                      />
+                      {lessonsDone} of {courseLessons.length} lessons done
+                    </span>
+                  </div>
+                  <progress
+                    aria-label={`${activeCourse.title} progress`}
+                    max={100}
+                    value={coursePercent}
+                    className="block h-2 w-full appearance-none overflow-hidden rounded-full bg-gray-100 dark:bg-white/10 [&::-moz-progress-bar]:bg-emerald-500 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-emerald-500"
+                  />
+                  {nextLesson
+                    ? nextLesson.id !== selectedLesson?.id && (
+                        <button
+                          type="button"
+                          onClick={() => selectLesson(nextLesson)}
+                          className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl bg-purple-600 px-3 py-2 text-left text-xs font-bold text-white transition hover:bg-purple-700"
+                        >
+                          <span className="truncate">
+                            Next up: {nextLesson.title}
+                          </span>
+                          <ChevronRight
+                            size={14}
+                            className="shrink-0"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      )
+                    : courseLessons.length > 0 && (
+                        <p className="rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          Course complete. Well done!
+                        </p>
+                      )}
                 </div>
               </div>
 
@@ -946,6 +1004,8 @@ export default function StudentCoursesView({
                         className="overflow-hidden rounded-2xl border border-gray-200/80 bg-gray-50/50 transition-all dark:border-white/10 dark:bg-white/2"
                       >
                         <button
+                          type="button"
+                          aria-expanded={isOpen}
                           onClick={() => togglePhaseAccordion(phase.id)}
                           className="flex w-full items-center justify-between p-3.5 text-left transition-colors hover:bg-purple-500/5"
                         >
@@ -960,11 +1020,24 @@ export default function StudentCoursesView({
                             )}
                             <div>
                               <span className="text-[10px] font-black tracking-wider text-purple-600 uppercase dark:text-purple-400">
-                                Phase {phase.phase_number}
+                                Phase {phase.phase_number} ·{' '}
+                                <span className="tabular-nums">
+                                  {
+                                    phase.course_lessons.filter((lesson) =>
+                                      completedLessonIds.has(lesson.id),
+                                    ).length
+                                  }
+                                  /{phase.course_lessons.length}
+                                </span>
                               </span>
                               <h4 className="line-clamp-1 text-xs font-bold text-gray-900 md:text-sm dark:text-white">
                                 {phase.title}
                               </h4>
+                              {phase.focus && (
+                                <p className="line-clamp-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                  {phase.focus}
+                                </p>
+                              )}
                             </div>
                           </div>
 
@@ -991,6 +1064,8 @@ export default function StudentCoursesView({
                               return (
                                 <button
                                   key={lesson.id}
+                                  type="button"
+                                  aria-current={isSelected ? 'true' : undefined}
                                   onClick={() => selectLesson(lesson)}
                                   className={`flex w-full items-center justify-between rounded-xl border p-2.5 text-left transition-all ${
                                     isSelected
@@ -1055,7 +1130,7 @@ export default function StudentCoursesView({
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                       <div>
                         <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-black tracking-wider text-purple-600 uppercase dark:text-purple-400">
-                          Active Lesson
+                          Current lesson
                         </span>
                         <h2 className="mt-2 text-2xl font-black text-gray-900 md:text-3xl dark:text-white">
                           {selectedLesson.title}

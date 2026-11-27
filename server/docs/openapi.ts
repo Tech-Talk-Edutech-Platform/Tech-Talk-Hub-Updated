@@ -73,6 +73,7 @@ export const openApiDocument: OpenApiDocument = {
   tags: [
     { name: 'Classroom', description: 'Live classes on LiveKit.' },
     { name: 'Admin', description: 'Account management for admins.' },
+    { name: 'Accounts', description: 'Signing in and password resets.' },
     { name: 'Payments', description: 'Receipts and receipt verification.' },
     { name: 'Leads', description: 'Website lead capture.' },
     { name: 'Notifications', description: 'Web push to tutors.' },
@@ -183,6 +184,96 @@ export const openApiDocument: OpenApiDocument = {
           ),
           '404': error('The ID is invalid or the recording was removed.'),
           '429': response('TooManyRequests'),
+        },
+      },
+    },
+    '/api/auth/password-reset': {
+      post: {
+        operationId: 'sendPasswordReset',
+        tags: ['Accounts'],
+        summary: 'Email a password-reset link',
+        description: [
+          'Sends Tech Talk Hub’s branded reset email with a one-time link to /reset-password on the calling site.',
+          '',
+          'Answers the same whether or not the email has an account. 503 means email isn’t set up on the server; the app then asks Supabase to send its default email.',
+          '',
+          'Rate limit: 5 requests per 15 minutes per IP.',
+        ].join('\n'),
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: {
+                  email: {
+                    type: 'string',
+                    format: 'email',
+                    example: 'parent@example.com',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': json(
+            {
+              type: 'object',
+              properties: { ok: { type: 'boolean', example: true } },
+            },
+            'Handled. A link was sent if the email has an account.',
+          ),
+          '400': error('The email address is missing or invalid.'),
+          '429': response('TooManyRequests'),
+          '502': error('Supabase or the mail server failed.'),
+          '503': error('Email isn’t set up on the server.'),
+        },
+      },
+    },
+    '/api/auth/username-login': {
+      post: {
+        operationId: 'usernameLogin',
+        tags: ['Accounts'],
+        summary: 'Sign in with a username',
+        description: [
+          'Signs in with a username instead of an email. Returns only the session tokens, for supabase.auth.setSession(); the account\u2019s email is never sent back.',
+          '',
+          'A wrong username and a wrong password get the same 401.',
+          '',
+          'Rate limit: 10 requests per 15 minutes per IP.',
+        ].join('\n'),
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['username', 'password'],
+                properties: {
+                  username: { type: 'string', example: 'alex.rivera' },
+                  password: { type: 'string', format: 'password' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': json(
+            {
+              type: 'object',
+              properties: {
+                access_token: { type: 'string' },
+                refresh_token: { type: 'string' },
+              },
+            },
+            'Signed in.',
+          ),
+          '400': error('Username or password is missing.'),
+          '401': error('Wrong username or password.'),
+          '429': response('TooManyRequests'),
+          '500': error('The account lookup failed.'),
         },
       },
     },
@@ -311,6 +402,43 @@ export const openApiDocument: OpenApiDocument = {
           '200': json(ref('Success'), 'Notification sent.'),
           '404': error('The tutor has no push subscription.'),
           '500': error('The push service rejected the notification.'),
+        },
+      },
+    },
+    '/api/cron/recordings': {
+      get: {
+        operationId: 'cleanUpRecordings',
+        tags: ['Scheduler'],
+        summary: 'Delete recordings older than three months',
+        description:
+          'Deletes class recordings made more than three months ago, with their video files. Run once a day. Add ?dryRun=1 to count what would go without deleting. POST works the same way.',
+        security: [{ cronSecret: [] }],
+        parameters: [
+          {
+            name: 'dryRun',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', enum: ['1', 'true'] },
+            description: 'Report what would be deleted, and delete nothing.',
+          },
+        ],
+        responses: {
+          '200': json(
+            {
+              type: 'object',
+              properties: {
+                ok: { type: 'boolean', example: true },
+                dryRun: { type: 'boolean', example: false },
+                cutoff: { type: 'string', format: 'date-time' },
+                recordings: { type: 'integer', example: 12 },
+                files: { type: 'integer', example: 9 },
+              },
+            },
+            'Old recordings deleted (or counted, on a dry run).',
+          ),
+          '401': error('Missing or wrong cron secret.'),
+          '500': error('Listing or deleting recordings failed.'),
+          '503': error('No cron secret is configured on the server.'),
         },
       },
     },

@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { createQueryClient } from '../lib/queryClient'
 import { browserTimeZone } from '../lib/timeZones'
+import { applyTheme, clearPaintedTheme, resolveTheme } from '../lib/theme'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import { isAppRole } from '../types/roles'
 import { Button } from '../components/ui/Button'
@@ -22,7 +29,9 @@ async function loadDashboardIdentity(
 
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('role, assigned_course_id, assigned_tutor_id, full_name, email')
+    .select(
+      'role, assigned_course_id, assigned_tutor_id, full_name, email, theme',
+    )
     .eq('id', user.id)
     .abortSignal(signal)
     .maybeSingle()
@@ -31,7 +40,13 @@ async function loadDashboardIdentity(
   return { ...user, ...profile, role: profile.role }
 }
 
-function DashboardWorkspace({ user }: { user: DashboardIdentity }) {
+function DashboardWorkspace({
+  user,
+  onProfileSaved,
+}: {
+  user: DashboardIdentity
+  onProfileSaved: () => void
+}) {
   const [client] = useState(createQueryClient)
   const active = useRef(false)
 
@@ -60,9 +75,20 @@ function DashboardWorkspace({ user }: { user: DashboardIdentity }) {
       })
   }, [])
 
+  // Dark mode comes with the profile (users.theme), so each account opens in
+  // its own theme whoever used this browser before. Applied before the first
+  // paint; the workspace is keyed by user, so this runs once per person and a
+  // background refetch never flips a theme the person just changed.
+  // Leaving the dashboard returns to the light public site.
+  const [openingTheme] = useState(() => resolveTheme(user.id, user.theme))
+  useLayoutEffect(() => {
+    applyTheme(openingTheme, user.id)
+    return clearPaintedTheme
+  }, [openingTheme, user.id])
+
   return (
     <QueryClientProvider client={client}>
-      <DashboardLayout user={user} />
+      <DashboardLayout user={user} onProfileSaved={onProfileSaved} />
     </QueryClientProvider>
   )
 }
@@ -122,5 +148,11 @@ export default function UnifiedDashboard({
       />
     )
   }
-  return <DashboardWorkspace key={`${user.id}:${user.role}`} user={user} />
+  return (
+    <DashboardWorkspace
+      key={`${user.id}:${user.role}`}
+      user={user}
+      onProfileSaved={() => void identity.refetch()}
+    />
+  )
 }

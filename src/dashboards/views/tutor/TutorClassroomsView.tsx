@@ -32,6 +32,8 @@ import {
   Loading,
 } from '../admin/classroom/ui'
 import { SessionInvites, StudentPicker } from './SessionInvites'
+import { Tabs } from '../../../components/ui/Tabs'
+import { groupByMonth, inPastWindow } from '../../../lib/classroom/pastClasses'
 
 const NOBODY: ReadonlySet<string> = new Set()
 
@@ -233,6 +235,10 @@ function StartCallCard({
 }
 
 /** The tutor's own live classes, with their room links and invites. */
+/** When a class happened, for the past-classes months. */
+const classDate = (session: SessionSummary) =>
+  session.scheduled_at ?? session.started_at ?? session.created_at
+
 export default function TutorClassroomsView({ userId }: { userId: string }) {
   const queryClient = useQueryClient()
   const sessions = useQuery({
@@ -275,13 +281,26 @@ export default function TutorClassroomsView({ userId }: { userId: string }) {
 
   // Classes whose link expired can't be opened, so they're past. One that
   // ran over stays upcoming for a while, as the call may still be going.
+  // Tutors only see classes that happened: missed, never-held, expired and
+  // cancelled ones stay with admins (Dashboard › Classroom).
   const now = useNow(60_000)
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
   const isUpcoming = (session: SessionSummary) =>
     (session.status === 'scheduled' || session.status === 'live') &&
     isStillJoinable(sessionSchedule(session), now)
   const mine = (sessions.data ?? []).filter((session) => !isDeleted(session.id))
   const upcoming = mine.filter(isUpcoming)
-  const past = mine.filter((session) => !isUpcoming(session))
+  const past = groupByMonth(
+    mine
+      .filter(
+        (session) =>
+          session.status === 'completed' &&
+          inPastWindow(classDate(session), now),
+      )
+      .toSorted((a, b) => Date.parse(classDate(b)) - Date.parse(classDate(a))),
+    classDate,
+  )
+  const pastCount = past.reduce((sum, month) => sum + month.items.length, 0)
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
@@ -319,47 +338,65 @@ export default function TutorClassroomsView({ userId }: { userId: string }) {
               Couldn’t delete the class: {remove.error.message}
             </ErrorNote>
           )}
-          <Card>
-            <h3 className="mb-4 text-lg font-black text-slate-900 dark:text-white">
-              Upcoming
-            </h3>
-            {upcoming.length ? (
-              <ul className="space-y-3">
-                {upcoming.map((session) => (
-                  <SessionListItem
-                    key={session.id}
-                    session={session}
-                    tutorName="You"
-                    {...deleteProps(session)}
-                  >
-                    <SessionInvites session={session} tutorId={userId} />
-                  </SessionListItem>
+          <Tabs
+            id="tutor-classes"
+            label="Your classes"
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { value: 'upcoming', label: 'Upcoming', count: upcoming.length },
+              { value: 'past', label: 'Past classes', count: pastCount },
+            ]}
+          >
+            {tab === 'upcoming' ? (
+              <Card>
+                {upcoming.length ? (
+                  <ul className="space-y-3">
+                    {upcoming.map((session) => (
+                      <SessionListItem
+                        key={session.id}
+                        session={session}
+                        tutorName="You"
+                        {...deleteProps(session)}
+                      >
+                        <SessionInvites session={session} tutorId={userId} />
+                      </SessionListItem>
+                    ))}
+                  </ul>
+                ) : (
+                  <EmptyState>
+                    Nothing scheduled. Start a call above, or an admin can
+                    assign you a class in Dashboard › Classroom.
+                  </EmptyState>
+                )}
+              </Card>
+            ) : past.length ? (
+              <div className="space-y-6">
+                {past.map((month) => (
+                  <Card key={month.key}>
+                    <h3 className="mb-4 text-lg font-black text-slate-900 dark:text-white">
+                      {month.label}
+                    </h3>
+                    <ul className="space-y-3">
+                      {month.items.map((session) => (
+                        <SessionListItem
+                          key={session.id}
+                          session={session}
+                          tutorName="You"
+                        />
+                      ))}
+                    </ul>
+                  </Card>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <EmptyState>
-                Nothing scheduled. Start a call above, or an admin can assign
-                you a class in Dashboard › Classroom.
-              </EmptyState>
+              <Card>
+                <EmptyState>
+                  No completed classes in the last three months.
+                </EmptyState>
+              </Card>
             )}
-          </Card>
-          {past.length > 0 && (
-            <Card>
-              <h3 className="mb-4 text-lg font-black text-slate-900 dark:text-white">
-                Past classes
-              </h3>
-              <ul className="space-y-3">
-                {past.map((session) => (
-                  <SessionListItem
-                    key={session.id}
-                    session={session}
-                    tutorName="You"
-                    {...deleteProps(session)}
-                  />
-                ))}
-              </ul>
-            </Card>
-          )}
+          </Tabs>
         </>
       )}
     </div>

@@ -157,7 +157,10 @@ export function TutorInsights({
       />
 
       {query.isError && !data ? (
-        <InsightsError onRetry={() => void query.refetch()} />
+        <InsightsError
+          error={query.error}
+          onRetry={() => void query.refetch()}
+        />
       ) : (
         <>
           {query.isError && (

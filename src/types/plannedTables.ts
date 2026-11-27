@@ -4,10 +4,10 @@ import type {
   ClassroomTables,
   UsersBadgeColumns,
 } from './classroomTables'
-import type { Database, Json } from './database'
+import type { Database } from './database'
 
 /*
- * The schema that parked features (exams, support issues, notes topics,
+ * The schema that parked features (support issues, notes topics,
  * tutors' lesson notes, invoices, call costs, sales reporting, marketers and
  * referrals) were written against.
  *
@@ -62,65 +62,6 @@ type ForeignKey<
 }
 
 type PlannedTables = {
-  /** Timed exams students sit from their dashboard. */
-  exams: PlannedTable<
-    {
-      id: string
-      title: string
-      duration_minutes: number
-      created_at: string | null
-    },
-    'title' | 'duration_minutes'
-  >
-
-  /**
-   * An exam's questions. `type` is 'mcq', 'short' or 'debug'; `options` holds
-   * the choices as lettered options ({ A, B, C, D }) or a list.
-   */
-  questions: PlannedTable<
-    {
-      id: string
-      exam_id: string
-      question_text: string
-      type: string | null
-      options: Json | null
-      correct_answer: string | null
-      marks: number | null
-      created_at: string | null
-    },
-    'exam_id' | 'question_text',
-    [ForeignKey<'questions_exam_id_fkey', 'exam_id', 'exams'>]
-  >
-
-  /** A student's sitting of an exam; `end_time` is null while it is open. */
-  attempts: PlannedTable<
-    {
-      id: string
-      exam_id: string
-      student_id: string
-      start_time: string
-      end_time: string | null
-      score: number | null
-    },
-    'exam_id' | 'student_id',
-    [ForeignKey<'attempts_exam_id_fkey', 'exam_id', 'exams'>]
-  >
-
-  /** One answer per question per attempt (unique on attempt_id, question_id). */
-  answers: PlannedTable<
-    {
-      id: string
-      attempt_id: string
-      question_id: string
-      answer: string
-    },
-    'attempt_id' | 'question_id' | 'answer',
-    [
-      ForeignKey<'answers_attempt_id_fkey', 'attempt_id', 'attempts'>,
-      ForeignKey<'answers_question_id_fkey', 'question_id', 'questions'>,
-    ]
-  >
-
   /**
    * Support tickets. `status` is 'open' or 'pending' when raised, then
    * 'in_progress' and 'resolved'; `target_role` says who should pick it up.

@@ -1,8 +1,10 @@
 import {
   Activity,
+  Award,
+  ClipboardCheck,
+  FileCheck2,
   BookOpen,
   Calendar,
-  CalendarHeart,
   CreditCard,
   GraduationCap,
   Layers,
@@ -44,6 +46,8 @@ const studentGroups: NavigationGroup[] = [
       { id: 'courses', label: 'My Courses', icon: BookOpen },
       { id: 'schedule', label: 'Schedule', icon: Calendar },
       { id: 'recordings', label: 'My Recordings', icon: Video },
+      { id: 'exams', label: 'Exams', icon: FileCheck2 },
+      { id: 'grades', label: 'Grades', icon: Award },
     ],
   },
 ]
@@ -54,7 +58,6 @@ const tutorGroups: NavigationGroup[] = [
       { id: 'classrooms', label: 'My Classrooms', icon: Presentation },
       { id: 'students', label: 'My Students', icon: Users },
       { id: 'schedule', label: 'My Schedule', icon: Calendar },
-      { id: 'trials', label: 'Trial Bookings', icon: CalendarHeart },
       { id: 'course-assignment', label: 'Course Assignment', icon: Layers },
       { id: 'recordings', label: 'Class Recordings', icon: Video },
     ],
@@ -90,6 +93,7 @@ const adminGroups: NavigationGroup[] = [
       { id: 'classroom', label: 'Classroom', icon: Presentation },
       { id: 'Live Class Monitor', label: 'Live Class Monitor', icon: Activity },
       { id: 'training', label: 'Tutor Training', icon: GraduationCap },
+      { id: 'exams', label: 'Exams', icon: ClipboardCheck },
       { id: 'global-schedule', label: 'Global Schedule', icon: Calendar },
       { id: 'recordings', label: 'Recordings Manager', icon: Video },
     ],
@@ -110,6 +114,22 @@ export function dashboardNavigation(role: AppRole) {
         ? tutorGroups
         : [{ label: 'Sales', items: SALES_NAV }]
   return [overview, ...groups, settings]
+}
+
+/**
+ * Old view ids that moved, with where they live now. Links in emails and
+ * notifications keep working.
+ */
+const MOVED_VIEWS: Record<
+  string,
+  { view: string; options: Record<string, string> }
+> = {
+  trials: { view: 'training', options: { section: 'trials' } },
+}
+
+/** Where an old `?view=` now lives, or null when it hasn't moved. */
+export function movedDashboardView(value: string | null) {
+  return value ? (MOVED_VIEWS[value] ?? null) : null
 }
 
 export function dashboardView(role: AppRole, value: string | null) {

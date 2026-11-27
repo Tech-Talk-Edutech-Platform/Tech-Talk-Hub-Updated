@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
+import type { User } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
@@ -11,10 +12,24 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { hasStoredSession } from '../hooks/useAuthUser'
 import { sendPasswordResetEmail } from '../lib/passwordRecovery'
 import { getErrorMessage } from '../lib/getErrorMessage'
+import { PasswordInput } from '../components/ui/PasswordInput'
+import { USERNAME_PATTERN } from '../lib/profile'
+import { looksLikeEmail, signInWithUsername } from '../lib/usernameLogin'
 import { AuthShell, authButtonClass, authInputClass } from './AuthShell'
 
 const loginSchema = z.object({
-  email: z.string().email('Enter a valid email address.'),
+  /** An email address or a username. */
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Enter your email or username.')
+    .refine(
+      (value) =>
+        looksLikeEmail(value)
+          ? z.string().email().safeParse(value).success
+          : USERNAME_PATTERN.test(value.toLowerCase()),
+      'Enter a valid email address or username.',
+    ),
   password: z.string().min(1, 'Enter your password.'),
 })
 type LoginValues = z.infer<typeof loginSchema>
@@ -127,19 +142,29 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
     setRedirectError(null)
     setLoading(true)
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (authError) {
-      toast.error(
-        /invalid login credentials/i.test(authError.message)
-          ? 'Wrong email or password. Use “Forgot password?” if you can’t remember it.'
-          : authError.message,
+    let user: User | null = null
+    if (looksLikeEmail(email)) {
+      const { data, error: authError } = await supabase.auth.signInWithPassword(
+        { email, password },
       )
-      setLoading(false)
-      return
+      if (authError) {
+        toast.error(
+          /invalid login credentials/i.test(authError.message)
+            ? 'Wrong email or password. Use “Forgot password?” if you can’t remember it.'
+            : authError.message,
+        )
+        setLoading(false)
+        return
+      }
+      user = data.user
+    } else {
+      try {
+        user = await signInWithUsername(email, password)
+      } catch (error) {
+        toast.error(getErrorMessage(error, 'Couldn’t sign you in.'))
+        setLoading(false)
+        return
+      }
     }
 
     if (!user) {
@@ -218,10 +243,13 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
         className="flex flex-col gap-5"
       >
         <input
-          type="email"
-          autoComplete="email"
-          placeholder="Email Address"
-          aria-label="Email address"
+          type="text"
+          inputMode="email"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="Email or username"
+          aria-label="Email or username"
           className={authInputClass}
           {...register('email')}
           aria-invalid={Boolean(errors.email)}
@@ -238,8 +266,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
           </p>
         )}
         <div>
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="current-password"
             placeholder="Password"
             aria-label="Password"

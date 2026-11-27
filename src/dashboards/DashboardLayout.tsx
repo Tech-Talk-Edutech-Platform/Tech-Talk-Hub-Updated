@@ -1,10 +1,11 @@
 import { lazy, Suspense } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { DashboardFrame } from './DashboardFrame'
 import { DashboardViewBoundary } from './DashboardViewBoundary'
 import {
   dashboardView,
   dashboardViewUrl,
+  movedDashboardView,
   type DashboardNavigation,
 } from './navigation'
 import { Toaster } from 'react-hot-toast'
@@ -28,6 +29,12 @@ const StudentHomeView = lazy(() => import('./views/student/StudentHomeView'))
 const StudentClassroomView = lazy(
   () => import('./views/student/StudentClassroomView'),
 )
+const StudentExamsView = lazy(() => import('./views/student/StudentExamsView'))
+const StudentExam = lazy(() => import('./views/student/StudentExam'))
+const StudentGradesView = lazy(
+  () => import('./views/student/StudentGradesView'),
+)
+const AdminExamsView = lazy(() => import('./views/admin/exams/AdminExamsView'))
 const TutorHomeView = lazy(() => import('./views/tutor/TutorHomeView'))
 const TutorStudentsView = lazy(() => import('./views/tutor/TutorStudentsView'))
 const TutorCourseAssignmentView = lazy(
@@ -36,10 +43,7 @@ const TutorCourseAssignmentView = lazy(
 const TutorClassroomsView = lazy(
   () => import('./views/tutor/TutorClassroomsView'),
 )
-const TutorTrialBookingsView = lazy(
-  () => import('./views/tutor/TutorTrialBookingsView'),
-)
-const TutorTrainingView = lazy(() => import('./views/tutor/TutorTrainingView'))
+const TutorTrainingHub = lazy(() => import('./views/tutor/TutorTrainingHub'))
 const AdminHomeView = lazy(() => import('./views/admin/AdminHomeView'))
 const AdminUsersView = lazy(() => import('./views/admin/AdminUsersView'))
 const AdminCoursesView = lazy(() => import('./views/admin/AdminCoursesView'))
@@ -67,7 +71,13 @@ const SalesPortalView = lazy(() =>
   })),
 )
 
-export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
+export default function DashboardLayout({
+  user,
+  onProfileSaved,
+}: {
+  user: DashboardIdentity
+  onProfileSaved?: () => void
+}) {
   const { role } = user
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -77,15 +87,24 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
   }
   const isAdmin = isAdminRole(role)
   const openRecordings = () => setActiveView('recordings')
+  const moved = movedDashboardView(params.get('view'))
+  if (moved) {
+    return (
+      <Navigate
+        to={dashboardViewUrl(role, moved.view, moved.options)}
+        replace
+      />
+    )
+  }
 
   function renderMainContent() {
     // Role-specific settings
     if (activeView === 'settings') {
       if (isAdmin) {
-        return <AdminSettingsView user={user} />
+        return <AdminSettingsView user={user} onProfileSaved={onProfileSaved} />
       }
 
-      return <StudentSettingsView user={user} />
+      return <StudentSettingsView user={user} onProfileSaved={onProfileSaved} />
     }
 
     // Shared recordings manager
@@ -118,6 +137,27 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
         case 'classroom':
           return <StudentClassroomView userId={user.id} />
 
+        case 'exams': {
+          const examId = params.get('exam')
+          return examId ? (
+            <StudentExam
+              key={examId}
+              userId={user.id}
+              examId={examId}
+              onExit={() => setActiveView('exams')}
+            />
+          ) : (
+            <StudentExamsView
+              userId={user.id}
+              onOpenExam={(id) => setActiveView('exams', { exam: id })}
+              onOpenGrades={() => setActiveView('grades')}
+            />
+          )
+        }
+
+        case 'grades':
+          return <StudentGradesView userId={user.id} />
+
         case 'dashboard':
         default:
           return (
@@ -134,7 +174,12 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
     if (role === 'tutor') {
       switch (activeView) {
         case 'students':
-          return <TutorStudentsView userId={user.id} />
+          return (
+            <TutorStudentsView
+              userId={user.id}
+              onOpenHomework={() => setActiveView('course-assignment')}
+            />
+          )
 
         case 'schedule':
           return (
@@ -151,11 +196,19 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
         case 'classrooms':
           return <TutorClassroomsView userId={user.id} />
 
-        case 'trials':
-          return <TutorTrialBookingsView userId={user.id} />
-
         case 'training':
-          return <TutorTrainingView userId={user.id} />
+          return (
+            <TutorTrainingHub
+              userId={user.id}
+              section={params.get('section') === 'trials' ? 'trials' : 'course'}
+              onSectionChange={(section) =>
+                setActiveView(
+                  'training',
+                  section === 'trials' ? { section } : undefined,
+                )
+              }
+            />
+          )
 
         case 'dashboard':
         default:
@@ -231,6 +284,17 @@ export default function DashboardLayout({ user }: { user: DashboardIdentity }) {
           return <AdminTestimonialsPage />
         case 'training':
           return <AdminTrainingView />
+        case 'exams':
+          return (
+            <AdminExamsView
+              key={params.get('exam') ?? 'list'}
+              userId={user.id}
+              examId={params.get('exam')}
+              onOpenExam={(id) =>
+                setActiveView('exams', id ? { exam: id } : undefined)
+              }
+            />
+          )
         case 'pricing':
           return <AdminPricingPage />
         case 'dashboard':

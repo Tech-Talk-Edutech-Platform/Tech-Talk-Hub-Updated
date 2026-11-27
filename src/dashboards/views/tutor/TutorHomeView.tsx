@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { InsightsError, InsightsStale } from '../../insights/InsightsError'
 import { DashboardViewBoundary } from '../../DashboardViewBoundary'
-import { Users, User as UserIcon } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { supabase } from '../../../supabase'
 import UpcomingClasses from '../../../components/UpcomingClasses'
 import { TutorInsights } from '../../insights/TutorInsights'
 import type { DashboardIdentity } from '../../../types/dashboardIdentity'
 import { RecentRecordingsCard } from '../../../components/recordings/RecentRecordingsCard'
+import { Avatar } from '../../../components/ui/Avatar'
+import { useMyProfile } from '../../../hooks/useMyProfile'
 
 interface TutorHomeViewProps {
   userId: string
@@ -91,14 +93,14 @@ export default function TutorHomeView({
     queryFn: ({ signal }) => loadUpcomingClasses(userId, signal),
   })
 
+  // Name and picture as saved in Settings; a Google photo until one is.
+  const { profile } = useMyProfile(userId)
   const metadata = user.user_metadata
-  const tutorAvatar =
-    typeof metadata.avatar_url === 'string'
-      ? metadata.avatar_url
-      : typeof metadata.picture === 'string'
-        ? metadata.picture
-        : null
+  const googlePicture =
+    typeof metadata.picture === 'string' ? metadata.picture : null
+  const tutorAvatar = profile.data?.avatar_url || googlePicture
   const tutorName =
+    profile.data?.full_name ||
     user.full_name ||
     (typeof metadata.full_name === 'string' ? metadata.full_name : '') ||
     'Instructor'
@@ -123,17 +125,13 @@ export default function TutorHomeView({
           </div>
 
           <div className="flex shrink-0 items-center gap-4 rounded-full border border-gray-100 bg-gray-50/80 p-3.5 shadow-xs dark:border-white/10 dark:bg-white/5">
-            {tutorAvatar ? (
-              <img
-                src={tutorAvatar}
-                alt={tutorName}
-                className="h-12 w-12 rounded-full border-2 border-purple-500/30 object-cover shadow-inner"
-              />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-purple-500/20 bg-purple-600/10 text-purple-600 shadow-inner dark:bg-purple-500/20 dark:text-purple-300">
-                <UserIcon size={22} />
-              </div>
-            )}
+            <Avatar
+              name={tutorName}
+              src={tutorAvatar}
+              userRole="tutor"
+              size={48}
+              className="ring-2 ring-purple-500/30"
+            />
             <div className="pr-3">
               <span className="inline-block rounded-full bg-purple-50 px-2.5 py-0.5 text-[10px] font-black tracking-wider text-purple-600 uppercase dark:bg-purple-500/10 dark:text-purple-300">
                 Active Tutor
@@ -157,6 +155,7 @@ export default function TutorHomeView({
         {classes.isError && !classes.data ? (
           <InsightsError
             title="Upcoming classes could not load"
+            error={classes.error}
             onRetry={() => void classes.refetch()}
           />
         ) : (
