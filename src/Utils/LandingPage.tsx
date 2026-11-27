@@ -4,6 +4,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { staticPageMeta } from '../data/seo'
 import { sendWaitingInvites } from '../lib/sendWaitingInvites'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { CountryFlag } from '../components/CountryFlag'
 import { BOOKABLE_TIMES } from '../features/sales/shifts'
 import {
   addDaysToKey,
@@ -72,42 +73,36 @@ const COUNTRIES = [
     name: 'Kenya',
     region: 'KE',
     code: '+254',
-    flag: '🇰🇪',
     zone: 'Africa/Nairobi',
   },
   {
     name: 'Uganda',
     region: 'UG',
     code: '+256',
-    flag: '🇺🇬',
     zone: 'Africa/Kampala',
   },
   {
     name: 'Tanzania',
     region: 'TZ',
     code: '+255',
-    flag: '🇹🇿',
     zone: 'Africa/Dar_es_Salaam',
   },
   {
     name: 'Ghana',
     region: 'GH',
     code: '+233',
-    flag: '🇬🇭',
     zone: 'Africa/Accra',
   },
   {
     name: 'Nigeria',
     region: 'NG',
     code: '+234',
-    flag: '🇳🇬',
     zone: 'Africa/Lagos',
   },
   {
     name: 'South Africa',
     region: 'ZA',
     code: '+27',
-    flag: '🇿🇦',
     zone: 'Africa/Johannesburg',
   },
 ] as const
@@ -322,42 +317,46 @@ export default function LandingPage() {
       ? dateTimeIn(picked, DEFAULT_TIME_ZONE)
       : null
 
-  const fieldClass =
-    'w-full min-w-0 rounded-xl border bg-white px-4 py-3 outline-hidden transition-all duration-300 focus:ring-2 focus:ring-purple-400 focus:shadow-lg focus:shadow-purple-300/30'
+  const selected = COUNTRIES.find((c) => c.name === country)
+  const ring =
+    'transition-all duration-300 focus:ring-2 focus:ring-purple-400 focus:shadow-lg focus:shadow-purple-300/30'
+  const fieldClass = `w-full min-w-0 rounded-xl border bg-white px-4 py-2.5 outline-hidden ${ring}`
   const border = (name: LeadField) =>
     errors[name] ? 'border-red-500' : 'border-purple-400'
   const inputClass = (name: LeadField) => `${fieldClass} ${border(name)}`
+  const contactBorder =
+    errors.phone || errors.country ? 'border-red-500' : 'border-purple-400'
 
   return (
-    <section className="relative min-h-dvh overflow-hidden bg-gray-50 px-4 py-6 sm:px-6 md:px-12 md:py-8 lg:px-20">
+    <section className="relative min-h-dvh overflow-hidden bg-gray-50 px-4 py-5 sm:px-6 lg:flex lg:items-center lg:px-12 lg:py-12">
       <img
         src="/TechTalkBrand.png"
         alt="Tech Talk Hub"
-        className="h-10 md:h-14"
+        className="h-10 lg:absolute lg:top-4 lg:left-8 lg:z-20 lg:h-12"
       />
 
-      <div className="relative z-10 mx-auto mt-6 mb-6 max-w-2xl text-center md:mb-10">
-        <h1 className="text-2xl leading-tight font-extrabold text-balance text-gray-900 sm:text-3xl md:text-4xl">
-          Give Your Child a Confident Start in Coding 🚀
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Book a free 1-on-1 coding trial with a certified tutor.
-        </p>
-      </div>
-
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-12">
-        {/* Picture: desktop only, so the form leads on phones. */}
-        <div className="relative hidden w-1/2 justify-center md:flex">
-          <div className="animate-rotate-slow absolute -top-24 -left-24 h-96 w-96 rounded-full bg-linear-to-tr from-blue-400 via-purple-400 to-pink-400 opacity-60" />
-          <div className="animate-rotate-slow reverse absolute -right-16 -bottom-16 h-72 w-72 rounded-full bg-linear-to-br from-purple-300 via-pink-300 to-yellow-200 opacity-50" />
+      <div className="mx-auto mt-5 flex w-full max-w-6xl items-center gap-12 lg:mt-0 xl:gap-16">
+        {/* Picture: large screens only, so the form leads everywhere else. */}
+        <div className="relative hidden w-1/2 justify-center lg:flex">
+          <div className="animate-rotate-slow absolute -top-20 -left-20 h-80 w-80 rounded-full bg-linear-to-tr from-blue-400 via-purple-400 to-pink-400 opacity-60" />
+          <div className="animate-rotate-slow reverse absolute -right-12 -bottom-12 h-64 w-64 rounded-full bg-linear-to-br from-purple-300 via-pink-300 to-yellow-200 opacity-50" />
           <img
             src="/girl-code.png"
             alt="Child coding"
-            className="relative z-10 w-md rounded-3xl object-cover shadow-2xl lg:w-lg"
+            className="relative z-10 max-h-[calc(100dvh-7rem)] w-full max-w-lg rounded-3xl object-cover shadow-2xl"
           />
         </div>
 
-        <div className="relative mx-auto w-full max-w-xl md:w-1/2">
+        <div className="relative mx-auto w-full max-w-xl lg:w-1/2">
+          <div className="mb-5 text-center lg:mb-4 lg:text-left">
+            <h1 className="text-2xl leading-tight font-extrabold text-balance text-gray-900 sm:text-3xl">
+              Give Your Child a Confident Start in Coding 🚀
+            </h1>
+            <p className="mt-1.5 text-gray-600">
+              Book a free 1-on-1 coding trial with a certified tutor.
+            </p>
+          </div>
+
           {booked ? (
             <div className="rounded-3xl border border-green-200 bg-green-50 p-6 text-center sm:p-8">
               <h2 className="text-2xl font-bold text-green-800">
@@ -376,30 +375,33 @@ export default function LandingPage() {
             <form
               noValidate
               onSubmit={(event) => void submitForm(event)}
-              className="space-y-4 rounded-3xl border border-gray-100 bg-white p-5 shadow-lg sm:p-8 md:bg-transparent md:p-10 md:backdrop-blur-xs"
+              className="space-y-3 rounded-3xl border border-gray-100 bg-white p-5 shadow-lg sm:p-6"
             >
-              <input
-                name="parent_name"
-                placeholder="Parent name"
-                aria-label="Parent name"
-                autoComplete="name"
-                value={form.parent_name}
-                onChange={handleChange}
-                className={inputClass('parent_name')}
-              />
-              <input
-                name="parent_email"
-                type="email"
-                placeholder="Parent email"
-                aria-label="Parent email"
-                autoComplete="email"
-                value={form.parent_email}
-                onChange={handleChange}
-                className={inputClass('parent_email')}
-              />
+              {/* Parent */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <input
+                  name="parent_name"
+                  placeholder="Parent name"
+                  aria-label="Parent name"
+                  autoComplete="name"
+                  value={form.parent_name}
+                  onChange={handleChange}
+                  className={inputClass('parent_name')}
+                />
+                <input
+                  name="parent_email"
+                  type="email"
+                  placeholder="Parent email"
+                  aria-label="Parent email"
+                  autoComplete="email"
+                  value={form.parent_email}
+                  onChange={handleChange}
+                  className={inputClass('parent_email')}
+                />
+              </div>
 
               {/* Student */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                 <input
                   name="student_name"
                   placeholder="Student name"
@@ -427,72 +429,92 @@ export default function LandingPage() {
                 </select>
               </div>
 
-              {/* Contact: country sets the dialling code. */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[11rem_minmax(0,1fr)]">
-                <select
-                  name="country"
-                  aria-label="Country"
-                  value={country}
-                  onChange={handleChange}
-                  className={`${inputClass('country')} ${country ? '' : 'text-gray-500'}`}
-                >
-                  <option value="" disabled>
-                    Country
-                  </option>
-                  {COUNTRIES.map((c) => (
-                    <option
-                      key={c.name}
-                      value={c.name}
-                      className="text-gray-900"
-                    >
-                      {c.flag} {c.name}
-                    </option>
-                  ))}
-                </select>
+              {/* Phone: the flag opens the country list, which sets the code. */}
+              <div>
                 <div
-                  className={`flex min-w-0 items-center rounded-xl border bg-white transition-all duration-300 focus-within:shadow-lg focus-within:ring-2 focus-within:shadow-purple-300/30 focus-within:ring-purple-400 ${border('phone')}`}
+                  className={`flex min-w-0 items-stretch rounded-xl border bg-white transition-all duration-300 focus-within:shadow-lg focus-within:ring-2 focus-within:shadow-purple-300/30 focus-within:ring-purple-400 ${contactBorder}`}
                 >
-                  <span
-                    className="pl-4 text-gray-500 tabular-nums"
-                    aria-hidden="true"
-                  >
-                    {dialCode || '+'}
-                  </span>
-                  <input
-                    name="phone"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel-national"
-                    placeholder="Phone number"
-                    aria-label={`Phone number${dialCode ? ` after ${dialCode}` : ''}`}
-                    aria-describedby={
-                      errors.phone ? 'book-phone-note' : undefined
-                    }
-                    value={form.phone}
-                    onChange={handleChange}
-                    className="w-full min-w-0 rounded-xl bg-transparent py-3 pr-4 pl-2 outline-hidden"
-                  />
+                  <div className="relative flex shrink-0 items-center gap-1.5 rounded-l-xl pr-1 pl-4 hover:bg-gray-50">
+                    {selected ? (
+                      <CountryFlag region={selected.region} />
+                    ) : (
+                      <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        className="h-5 w-6 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                      >
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M3 12h18M12 3c2.5 2.6 3.7 5.6 3.7 9s-1.2 6.4-3.7 9c-2.5-2.6-3.7-5.6-3.7-9S9.5 5.6 12 3z" />
+                      </svg>
+                    )}
+                    <svg
+                      viewBox="0 0 10 6"
+                      aria-hidden="true"
+                      className="h-1.5 w-2.5 text-gray-600"
+                    >
+                      <path d="M0 0h10L5 6z" fill="currentColor" />
+                    </svg>
+                    <select
+                      name="country"
+                      aria-label="Country"
+                      value={country}
+                      onChange={handleChange}
+                      className="absolute inset-0 w-full cursor-pointer opacity-0"
+                    >
+                      <option value="" disabled>
+                        Choose your country
+                      </option>
+                      {COUNTRIES.map((c) => (
+                        <option key={c.name} value={c.name}>
+                          {c.name} ({c.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <label className="flex min-w-0 flex-1 items-center">
+                    <span className="pl-2.5 text-gray-900 tabular-nums">
+                      {dialCode}
+                    </span>
+                    <input
+                      name="phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel-national"
+                      placeholder="Phone number"
+                      aria-label={`Phone number${dialCode ? ` after ${dialCode}` : ''}`}
+                      aria-describedby={
+                        errors.phone || errors.country
+                          ? 'book-phone-note'
+                          : undefined
+                      }
+                      value={form.phone}
+                      onChange={handleChange}
+                      className="w-full min-w-0 rounded-r-xl bg-transparent py-2.5 pr-4 pl-2 outline-hidden"
+                    />
+                  </label>
                 </div>
+                {(errors.phone || errors.country) && (
+                  <p
+                    id="book-phone-note"
+                    className="mt-1 text-xs font-semibold text-red-600"
+                  >
+                    {dialCode
+                      ? `Enter your full ${country} phone number.`
+                      : 'Tap the globe to choose your country, then enter your number.'}
+                  </p>
+                )}
               </div>
-              {errors.phone && (
-                <p
-                  id="book-phone-note"
-                  className="-mt-2 text-xs font-semibold text-red-600"
-                >
-                  {dialCode
-                    ? `Enter your full ${country} phone number.`
-                    : 'Choose your country, then enter your phone number.'}
-                </p>
-              )}
 
-              <fieldset className="space-y-2">
-                <legend className="mb-2 text-sm font-semibold text-gray-700">
-                  When suits you?
-                </legend>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* When */}
+              <fieldset>
+                <legend className="sr-only">When suits you?</legend>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-gray-500">
-                      Day
+                    <span className="mb-1 block text-xs font-semibold text-gray-600">
+                      Trial day
                     </span>
                     <input
                       type="date"
@@ -501,19 +523,19 @@ export default function LandingPage() {
                       value={form.preferred_date}
                       onChange={handleDateChange}
                       aria-describedby="book-time-note"
-                      className={`${inputClass('preferred_date')} min-h-12 [&::-webkit-date-and-time-value]:text-left`}
+                      className={`${inputClass('preferred_date')} min-h-11 [&::-webkit-date-and-time-value]:text-left`}
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-gray-500">
-                      Time
+                    <span className="mb-1 block text-xs font-semibold text-gray-600">
+                      Trial time
                     </span>
                     <select
                       name="preferred_time"
                       value={time}
                       onChange={handleTimeChange}
                       aria-describedby="book-time-note"
-                      className={`${inputClass('preferred_time')} min-h-12 ${time ? '' : 'text-gray-500'}`}
+                      className={`${inputClass('preferred_time')} min-h-11 ${time ? '' : 'text-gray-500'}`}
                     >
                       <option value="" disabled>
                         Pick a time
@@ -530,16 +552,16 @@ export default function LandingPage() {
                     </select>
                   </label>
                 </div>
-                <p
+                {/* <p
                   id="book-time-note"
-                  className={`text-xs ${tooSoon ? 'font-semibold text-red-600' : 'text-gray-500'}`}
+                  className={`mt-1.5 text-xs ${tooSoon ? 'font-semibold text-red-600' : 'text-gray-500'}`}
                 >
                   {tooSoon
                     ? `Pick a time at least ${NOTICE_HOURS} hours from now, so we can match a tutor.`
                     : tutorTime
                       ? `Times are in your time zone (${zonePlace(zone)}). That’s ${tutorTime} in Nairobi, where our tutors are.`
                       : `Times are in your time zone (${zonePlace(zone)}), from ${NOTICE_HOURS} hours ahead.`}
-                </p>
+                </p> */}
               </fieldset>
 
               <button
