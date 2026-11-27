@@ -7,6 +7,20 @@
     <link rel="icon" type="image/png" href="/icon.png" />
     <link rel="shortcut icon" href="/icon.png" />
     <link rel="apple-touch-icon" href="/icon.png" />
+    <script>
+      // Dashboards remember dark mode (src/lib/theme.ts). Paint it before the
+      // app loads so a refresh doesn't flash light first.
+      try {
+        if (
+          /^\/(student|tutor|owner|operations_admin|tech_admin|marketer)\/?$/.test(
+            location.pathname,
+          ) &&
+          localStorage.getItem('tth-theme') === 'dark'
+        ) {
+          document.documentElement.classList.add('dark')
+        }
+      } catch (e) {}
+    </script>
 
     <!-- seo:start -->
     <!-- Filled from src/data/seo.ts by scripts/seoPrerender.ts -->

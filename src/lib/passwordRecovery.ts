@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { apiUrl } from './apiUrl'
 
 /** Where password-reset emails send people to choose a new password. */
 export const RESET_PASSWORD_PATH = '/reset-password'
@@ -15,14 +16,51 @@ export const openedFromRecoveryLink =
   )
 
 /**
- * Emails a password-reset link. The link opens {@link RESET_PASSWORD_PATH},
- * which must be listed under Supabase Auth → URL Configuration → Redirect URLs.
+ * Emails a password-reset link in Tech Talk Hub's own branded email, sent by
+ * our server (POST /api/auth/password-reset). If the server can't send it
+ * (not deployed yet, email not set up, unreachable), Supabase sends its plain
+ * default email instead, so the reset always goes out.
+ *
+ * The link opens {@link RESET_PASSWORD_PATH}, which must be listed under
+ * Supabase Auth → URL Configuration → Redirect URLs.
  */
 export async function sendPasswordResetEmail(email: string) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+  const address = email.trim()
+  try {
+    const response = await fetch(apiUrl('/api/auth/password-reset'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: address }),
+    })
+    if (response.ok) return
+    if (response.status === 400 || response.status === 429) {
+      const body: unknown = await response.json().catch(() => null)
+      throw new PasswordResetRequestError(
+        response.status === 429
+          ? 'Too many reset requests. Wait a few minutes and try again.'
+          : (errorText(body) ?? 'Enter a valid email address.'),
+      )
+    }
+  } catch (error) {
+    if (error instanceof PasswordResetRequestError) throw error
+    // Network trouble: fall through to Supabase's own email.
+  }
+  const { error } = await supabase.auth.resetPasswordForEmail(address, {
     redirectTo: `${window.location.origin}${RESET_PASSWORD_PATH}`,
   })
   if (error) throw error
+}
+
+/** A reset request the server turned down; shown as is, no fallback. */
+class PasswordResetRequestError extends Error {}
+
+function errorText(body: unknown) {
+  return typeof body === 'object' &&
+    body !== null &&
+    'error' in body &&
+    typeof body.error === 'string'
+    ? body.error
+    : null
 }
 
 /** Minimum length enforced on every new password in the app. */

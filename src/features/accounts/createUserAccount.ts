@@ -5,6 +5,8 @@ import type { AppRole } from '../../types/roles'
 export type NewUserAccount = {
   email: string
   fullName: string
+  /** Optional sign-in name (lowercase letters, numbers, dots, underscores). */
+  username?: string
   role: AppRole
   /** Tutors only. */
   meetLink?: string

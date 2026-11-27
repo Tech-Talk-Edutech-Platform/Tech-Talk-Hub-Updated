@@ -4,6 +4,12 @@ import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { createQueryClient } from '../lib/queryClient'
 import { browserTimeZone } from '../lib/timeZones'
+import {
+  applyTheme,
+  clearPaintedTheme,
+  loadAccountTheme,
+  readStoredTheme,
+} from '../lib/theme'
 import type { DashboardIdentity } from '../types/dashboardIdentity'
 import { isAppRole } from '../types/roles'
 import { Button } from '../components/ui/Button'
@@ -31,7 +37,13 @@ async function loadDashboardIdentity(
   return { ...user, ...profile, role: profile.role }
 }
 
-function DashboardWorkspace({ user }: { user: DashboardIdentity }) {
+function DashboardWorkspace({
+  user,
+  onProfileSaved,
+}: {
+  user: DashboardIdentity
+  onProfileSaved: () => void
+}) {
   const [client] = useState(createQueryClient)
   const active = useRef(false)
 
@@ -60,9 +72,25 @@ function DashboardWorkspace({ user }: { user: DashboardIdentity }) {
       })
   }, [])
 
+  // Dark mode: this browser's copy paints at once (index.html already did on
+  // a full load), then the account's choice wins so it follows the person
+  // between devices. Leaving the dashboard returns to the light public site.
+  useEffect(() => {
+    const stored = readStoredTheme()
+    if (stored) applyTheme(stored)
+    let current = true
+    void loadAccountTheme(user.id).then((saved) => {
+      if (current && saved) applyTheme(saved)
+    })
+    return () => {
+      current = false
+      clearPaintedTheme()
+    }
+  }, [user.id])
+
   return (
     <QueryClientProvider client={client}>
-      <DashboardLayout user={user} />
+      <DashboardLayout user={user} onProfileSaved={onProfileSaved} />
     </QueryClientProvider>
   )
 }
@@ -122,5 +150,11 @@ export default function UnifiedDashboard({
       />
     )
   }
-  return <DashboardWorkspace key={`${user.id}:${user.role}`} user={user} />
+  return (
+    <DashboardWorkspace
+      key={`${user.id}:${user.role}`}
+      user={user}
+      onProfileSaved={() => void identity.refetch()}
+    />
+  )
 }

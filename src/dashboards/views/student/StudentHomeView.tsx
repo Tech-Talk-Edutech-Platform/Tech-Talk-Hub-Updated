@@ -5,7 +5,6 @@ import { supabase } from '../../../supabase'
 import {
   Sparkles,
   Calendar,
-  User as UserIcon,
   Video,
   PlayCircle,
   GraduationCap,
@@ -16,7 +15,9 @@ import { EmptyState } from '../../../components/ui/EmptyState'
 import { StudentInsights } from '../../insights/StudentInsights'
 import { CopyRecordingLinkButton } from '../../../components/recordings/CopyRecordingLinkButton'
 import type { Tables } from '../../../types/database'
-import { ClassInvitesCard, StudentBadgesCard } from './StudentClassroomView'
+import { StudentBadgesCard } from './StudentClassroomView'
+import { Avatar } from '../../../components/ui/Avatar'
+import { useMyProfile } from '../../../hooks/useMyProfile'
 
 type RecordingWithTutor = Tables<'class_recordings'> & {
   tutor: Pick<Tables<'users'>, 'full_name'> | null
@@ -31,19 +32,7 @@ export default function StudentHomeView({
   onNavigate?: DashboardNavigation
   onOpenRecordings: () => void
 }) {
-  const profile = useQuery({
-    queryKey: ['dashboard', 'student-home-profile', userId],
-    queryFn: async ({ signal }) => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('full_name, avatar_url')
-        .eq('id', userId)
-        .abortSignal(signal)
-        .maybeSingle()
-      if (error) throw error
-      return data
-    },
-  })
+  const { profile } = useMyProfile(userId)
   const assessment = useQuery({
     queryKey: ['dashboard', 'latest-student-assessment', userId],
     queryFn: async ({ signal }) => {
@@ -65,7 +54,7 @@ export default function StudentHomeView({
       const { data, error } = await supabase
         .from('class_recordings')
         .select('*, tutor:users!class_recordings_tutor_id_fkey (full_name)')
-        .or(`student_id.eq.${userId},student_id.is.null`)
+        // Row-level security returns only this student's recordings.
         .order('created_at', { ascending: false })
         .limit(3)
         .abortSignal(signal)
@@ -97,17 +86,13 @@ export default function StudentHomeView({
             </div>
 
             <div className="flex items-center gap-4">
-              {studentAvatar ? (
-                <img
-                  src={studentAvatar}
-                  alt={studentName}
-                  className="h-12 w-12 shrink-0 rounded-full border-2 border-pink-400/60 object-cover shadow-md"
-                />
-              ) : (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white/30 bg-white/20 text-white shadow-md">
-                  <UserIcon size={20} />
-                </div>
-              )}
+              <Avatar
+                name={studentName}
+                src={studentAvatar}
+                userRole="student"
+                size={48}
+                className="ring-2 ring-pink-400/60"
+              />
               <h1 className="text-2xl font-black tracking-tight md:text-4xl">
                 Welcome back, <span className="text-pink-300">{firstName}</span>{' '}
                 💜
@@ -128,8 +113,8 @@ export default function StudentHomeView({
 
         <StudentInsights studentId={userId} onNavigate={onNavigate} />
 
-        {/* Classes the student was invited to; only shown while one is open */}
-        <ClassInvitesCard userId={userId} compact />
+        {/* The next class (with Join) is in the insights above; the full
+            upcoming list lives in My Classroom › Upcoming. */}
 
         {/* Badges given in class (users.badges) */}
         <StudentBadgesCard userId={userId} />

@@ -11,6 +11,7 @@ import {
   MIN_PASSWORD_LENGTH,
   newPasswordProblem,
 } from '../lib/passwordRecovery'
+import { PasswordInput } from '../components/ui/PasswordInput'
 import { AuthShell, authButtonClass, authInputClass } from './AuthShell'
 
 type Stage = 'checking' | 'ready' | 'invalid' | 'done'
@@ -146,8 +147,7 @@ export default function ResetPasswordPage() {
         onSubmit={(event) => void save(event)}
         className="flex flex-col gap-5"
       >
-        <input
-          type="password"
+        <PasswordInput
           autoComplete="new-password"
           placeholder="New password"
           aria-label="New password"
@@ -158,8 +158,7 @@ export default function ResetPasswordPage() {
           // oxlint-disable-next-line jsx-a11y/no-autofocus -- the person opened this page only to type a new password
           autoFocus
         />
-        <input
-          type="password"
+        <PasswordInput
           autoComplete="new-password"
           placeholder="Confirm new password"
           aria-label="Confirm new password"

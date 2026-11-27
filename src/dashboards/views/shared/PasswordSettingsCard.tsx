@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Loader2, Lock, Mail, Shield } from 'lucide-react'
+import { Check, Loader2, Lock, Mail, Shield } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 import { supabase } from '../../../supabase'
@@ -11,6 +11,7 @@ import {
   newPasswordProblem,
   sendPasswordResetEmail,
 } from '../../../lib/passwordRecovery'
+import { PasswordInput } from '../../../components/ui/PasswordInput'
 
 const inputClass =
   'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition focus:ring-2 focus:ring-purple-500 dark:border-white/10 dark:bg-white/5 dark:text-white'
@@ -24,9 +25,25 @@ function hasPasswordLogin(user: DashboardIdentity) {
   return user.app_metadata?.provider === 'email'
 }
 
+/** The rules a new password must meet, ticked off live as the person types. */
+function passwordChecks(next: string, confirmation: string) {
+  return [
+    {
+      label: `${MIN_PASSWORD_LENGTH}+ characters`,
+      met: next.length >= MIN_PASSWORD_LENGTH,
+    },
+    {
+      label: 'Letters and numbers',
+      met: /[A-Za-z]/.test(next) && /\d/.test(next),
+    },
+    { label: 'Both match', met: next !== '' && next === confirmation },
+  ]
+}
+
 /**
  * Change password from inside the dashboard. People who sign in with a
  * password confirm the current one first; Google-only accounts can add one.
+ * The button only wakes up once the boxes hold a usable new password.
  */
 export function PasswordSettingsCard({ user }: { user: DashboardIdentity }) {
   const needsCurrent = hasPasswordLogin(user)
@@ -36,6 +53,11 @@ export function PasswordSettingsCard({ user }: { user: DashboardIdentity }) {
   const [problem, setProblem] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [sendingReset, setSendingReset] = useState(false)
+
+  const checks = passwordChecks(next, confirmation)
+  const typing = next !== '' || confirmation !== ''
+  const ready =
+    (!needsCurrent || current !== '') && checks.every((check) => check.met)
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -113,14 +135,24 @@ export function PasswordSettingsCard({ user }: { user: DashboardIdentity }) {
       </div>
 
       <form onSubmit={(event) => void save(event)} className="space-y-4">
+        {/* Tells password managers which account the new password is for. */}
+        <input
+          type="email"
+          name="username"
+          autoComplete="username"
+          value={user.email ?? ''}
+          readOnly
+          hidden
+          aria-hidden="true"
+          tabIndex={-1}
+        />
         {needsCurrent && (
           <div className="md:w-1/2 md:pr-2">
             <label htmlFor="password-current" className={labelClass}>
               Current password
             </label>
-            <input
+            <PasswordInput
               id="password-current"
-              type="password"
               autoComplete="current-password"
               value={current}
               onChange={(event) => setCurrent(event.target.value)}
@@ -134,13 +166,16 @@ export function PasswordSettingsCard({ user }: { user: DashboardIdentity }) {
             <label htmlFor="password-new" className={labelClass}>
               New password
             </label>
-            <input
+            <PasswordInput
               id="password-new"
-              type="password"
               autoComplete="new-password"
               value={next}
-              onChange={(event) => setNext(event.target.value)}
+              onChange={(event) => {
+                setNext(event.target.value)
+                setProblem(null)
+              }}
               className={inputClass}
+              aria-describedby="password-rules"
               required
             />
           </div>
@@ -148,17 +183,48 @@ export function PasswordSettingsCard({ user }: { user: DashboardIdentity }) {
             <label htmlFor="password-confirm" className={labelClass}>
               Confirm new password
             </label>
-            <input
+            <PasswordInput
               id="password-confirm"
-              type="password"
               autoComplete="new-password"
               value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
+              onChange={(event) => {
+                setConfirmation(event.target.value)
+                setProblem(null)
+              }}
               className={inputClass}
               required
             />
           </div>
         </div>
+
+        {typing && (
+          <ul
+            id="password-rules"
+            className="flex flex-wrap gap-2"
+            aria-label="New password rules"
+          >
+            {checks.map((check) => (
+              <li
+                key={check.label}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                  check.met
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                    : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400'
+                }`}
+              >
+                <Check
+                  size={12}
+                  aria-hidden="true"
+                  className={check.met ? '' : 'opacity-30'}
+                />
+                {check.label}
+                <span className="sr-only">
+                  {check.met ? ' (done)' : ' (not yet)'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {problem && (
           <p role="alert" className="text-sm font-semibold text-red-600">
@@ -184,15 +250,19 @@ export function PasswordSettingsCard({ user }: { user: DashboardIdentity }) {
           )}
           <button
             type="submit"
-            disabled={saving}
-            className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+            disabled={saving || !ready}
+            className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
             ) : (
               <Shield size={14} />
             )}
-            {needsCurrent ? 'Update password' : 'Set password'}
+            {saving
+              ? 'Updating…'
+              : needsCurrent
+                ? 'Update password'
+                : 'Set password'}
           </button>
         </div>
       </form>

@@ -27,10 +27,12 @@ const ASSIGNABLE_ROLES = [
 type AssignableRole = (typeof ASSIGNABLE_ROLES)[number]
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._]{2,23}$/
 
 type CreateUserBody = {
   email?: unknown
   fullName?: unknown
+  username?: unknown
   role?: unknown
   meetLink?: unknown
   subscriptionTier?: unknown
@@ -114,6 +116,28 @@ async function createUser(req: CreateUserRequest, res: Response) {
     res.status(400).json({ error: 'Choose a role.' })
     return
   }
+  const username =
+    typeof body.username === 'string' && body.username.trim()
+      ? body.username.trim().toLowerCase()
+      : null
+  if (username && !USERNAME_PATTERN.test(username)) {
+    res.status(400).json({
+      error:
+        'Usernames are 3 to 24 lowercase letters, numbers, dots or underscores.',
+    })
+    return
+  }
+  if (username) {
+    const { data: holder } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', username)
+      .maybeSingle()
+    if (holder) {
+      res.status(409).json({ error: 'That username is taken. Try another.' })
+      return
+    }
+  }
   if (role === 'owner' && admin.role !== 'owner') {
     res.status(403).json({ error: 'Only an owner can add another owner.' })
     return
@@ -159,6 +183,7 @@ async function createUser(req: CreateUserRequest, res: Response) {
     .update({
       full_name: fullName,
       email,
+      ...(username ? { username } : {}),
       role,
       personal_meet_link: meetLink,
       subscription_tier: isStudent

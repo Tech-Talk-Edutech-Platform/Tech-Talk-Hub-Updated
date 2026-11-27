@@ -3,7 +3,6 @@ import {
   BookOpen,
   Search,
   FileText,
-  User,
   CheckCircle2,
   AlertCircle,
   Unlock,
@@ -19,6 +18,8 @@ import { supabase } from '../../../supabase'
 import { toast } from 'react-hot-toast'
 import type { Tables } from '../../../types/database'
 import { quizOptions } from '../../../lib/quiz'
+import { Avatar } from '../../../components/ui/Avatar'
+import { StudentProfileCard } from './StudentProfileCard'
 
 interface Student {
   id: string
@@ -29,6 +30,19 @@ interface Student {
   name?: string | null
   picture?: string | null
   user_metadata?: Record<string, unknown>
+  time_zone?: string | null
+  parent_id?: string | null
+  created_at?: string | null
+  subscription_tier?: string | null
+  classes_per_week?: number | null
+  classes_remaining?: number | null
+  is_active?: boolean | null
+}
+
+type TutorStudentsViewProps = {
+  userId: string
+  /** Opens Course Assignment, where homework is set and reviewed. */
+  onOpenHomework: () => void
 }
 
 interface Course {
@@ -68,7 +82,10 @@ interface LessonDetails {
   questions: Tables<'quiz_questions'>[]
 }
 
-export default function TutorStudentsView({ userId }: { userId: string }) {
+export default function TutorStudentsView({
+  userId,
+  onOpenHomework,
+}: TutorStudentsViewProps) {
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
@@ -393,15 +410,43 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
       student.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  const selectedCourse =
+    studentCourses.find((course) => course.id === selectedCourseId) ?? null
+  const courseLessons = studentPhases.flatMap((phase) => phase.course_lessons)
+  const courseQuizIds = new Set(
+    courseLessons.flatMap((lesson) => (lesson.quiz ? [lesson.quiz.id] : [])),
+  )
+  const progress =
+    selectedCourse && !loadingData
+      ? {
+          title: selectedCourse.title,
+          lessonsDone: courseLessons.filter((lesson) =>
+            completedLessonIds.has(lesson.id),
+          ).length,
+          lessonsTotal: courseLessons.length,
+          quizzesPassed: new Set(
+            studentAttempts
+              .filter(
+                (attempt) =>
+                  attempt.passed &&
+                  attempt.quiz_id !== null &&
+                  courseQuizIds.has(attempt.quiz_id),
+              )
+              .map((attempt) => attempt.quiz_id),
+          ).size,
+          quizzesTotal: courseQuizIds.size,
+        }
+      : null
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-6">
       <div>
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">
-          My Students & Curriculum Breakdown
+          My Students
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Review student progress, inspect notes and quizzes on unlocked
-          lessons, and manage access locks.
+          Each student’s details, family contact, progress and homework, plus
+          their course lessons, notes and quizzes.
         </p>
       </div>
 
@@ -412,6 +457,11 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
         >
           {/* Collapse/Expand Toggle Button */}
           <button
+            type="button"
+            aria-label={
+              isSidebarCollapsed ? 'Show student list' : 'Hide student list'
+            }
+            aria-expanded={!isSidebarCollapsed}
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="absolute top-6 -right-3 z-10 flex hidden h-7 w-7 items-center justify-center rounded-full bg-purple-600 text-white shadow-md transition-colors hover:bg-purple-700 lg:flex"
             title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
@@ -430,7 +480,8 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                 className="absolute top-3.5 left-4 text-gray-400"
               />
               <input
-                type="text"
+                type="search"
+                aria-label="Search students"
                 placeholder="Search students..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -473,23 +524,17 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
                         : 'text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-white/5'
                     }`}
                   >
-                    {avatarImg ? (
-                      <img
-                        src={avatarImg}
-                        alt={studentName}
-                        className={`h-9 w-9 shrink-0 rounded-xl border object-cover ${isSelected ? 'border-white/40' : 'border-purple-500/20'}`}
-                      />
-                    ) : (
-                      <div
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
-                          isSelected
-                            ? 'bg-white/20 text-white'
-                            : 'bg-purple-50 text-purple-600'
-                        }`}
-                      >
-                        {studentName[0] || <User size={16} />}
-                      </div>
-                    )}
+                    <Avatar
+                      name={studentName}
+                      src={avatarImg}
+                      userRole="student"
+                      size={36}
+                      className={
+                        isSelected
+                          ? 'ring-2 ring-white/40'
+                          : 'ring-1 ring-purple-500/20'
+                      }
+                    />
 
                     {!isSidebarCollapsed && (
                       <div className="overflow-hidden">
@@ -516,6 +561,27 @@ export default function TutorStudentsView({ userId }: { userId: string }) {
         >
           {selectedStudent ? (
             <div className="space-y-6">
+              <StudentProfileCard
+                tutorId={userId}
+                student={{
+                  id: selectedStudent.id,
+                  name:
+                    selectedStudent.full_name ||
+                    selectedStudent.name ||
+                    'Student',
+                  email: selectedStudent.email ?? null,
+                  avatarUrl: selectedStudent.avatar_url ?? null,
+                  timeZone: selectedStudent.time_zone ?? null,
+                  parentId: selectedStudent.parent_id ?? null,
+                  joinedAt: selectedStudent.created_at ?? null,
+                  plan: selectedStudent.subscription_tier ?? null,
+                  classesPerWeek: selectedStudent.classes_per_week ?? null,
+                  classesRemaining: selectedStudent.classes_remaining ?? null,
+                  isActive: selectedStudent.is_active ?? null,
+                }}
+                progress={progress}
+                onOpenHomework={onOpenHomework}
+              />
               {/* Course Selection Tabs for Student */}
               {studentCourses.length > 0 && (
                 <div className="flex scrollbar-none items-center gap-3 overflow-x-auto pb-2">

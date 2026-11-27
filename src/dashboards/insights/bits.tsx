@@ -1,4 +1,4 @@
-import { Initials } from '../../components/ui/Initials'
+import { Avatar as PersonAvatar } from '../../components/ui/Avatar'
 import { DEFAULT_PASS_MARK } from './constants'
 
 /** Score badge coloured against the pass mark. */
@@ -46,16 +46,7 @@ export function ProgressBar({
   )
 }
 
-/** Profile photo, or initials when there is none. */
+/** A student's photo, or their initials when there is none. */
 export function Avatar({ name, url }: { name: string; url: string | null }) {
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt=""
-        className="size-9 shrink-0 rounded-full object-cover"
-      />
-    )
-  }
-  return <Initials name={name} size={36} />
+  return <PersonAvatar name={name} src={url} userRole="student" size={36} />
 }

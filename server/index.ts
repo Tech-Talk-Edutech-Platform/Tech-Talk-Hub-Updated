@@ -8,7 +8,10 @@ import sendCurriculumRoute from './routes/sendCurriculum'
 import classroomTokenRoute from './routes/classroomToken'
 import classroomEndRoute from './routes/classroomEnd'
 import cronRemindersRoute from './routes/cronReminders'
+import cronRecordingsRoute from './routes/cronRecordings'
 import adminUsersRoute from './routes/adminUsers'
+import passwordResetRoute from './routes/passwordReset'
+import usernameLoginRoute from './routes/usernameLogin'
 import trialInvitesRoute from './routes/trialInvites'
 import recordingsRoute from './routes/recordings'
 import homeRoute from './routes/home'
@@ -53,7 +56,10 @@ app.use('/api/send-curriculum', sendCurriculumRoute)
 app.use('/api/classroom/token', classroomTokenRoute)
 app.use('/api/classroom/end', classroomEndRoute)
 app.use('/api/cron/reminders', cronRemindersRoute)
+app.use('/api/cron/recordings', cronRecordingsRoute)
 app.use('/api/admin/users', adminUsersRoute)
+app.use('/api/auth/password-reset', passwordResetRoute)
+app.use('/api/auth/username-login', usernameLoginRoute)
 app.use('/api/trials', trialInvitesRoute)
 app.use('/api/recordings', recordingsRoute)
 

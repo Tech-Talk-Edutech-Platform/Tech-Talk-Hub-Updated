@@ -32,6 +32,8 @@ export const queryKeys = {
       ['dashboard', 'tutor', tutorId, period] as const,
     student: (studentId: string) =>
       ['dashboard', 'student', studentId] as const,
+    /** The signed-in person's own name and avatar (Settings, home banners). */
+    myProfile: (userId: string) => ['dashboard', 'my-profile', userId] as const,
   },
   courses: {
     all: ['courses'] as const,

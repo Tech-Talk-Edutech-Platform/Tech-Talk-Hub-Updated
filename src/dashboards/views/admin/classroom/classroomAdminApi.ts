@@ -1,6 +1,7 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { isMissingSchema } from '../../../../lib/classroom/repository'
 import type { ClassSchedule } from '../../../../lib/classroom/schedule'
+import { pastWindowStart } from '../../../../lib/classroom/pastClasses'
 import { plannedDb } from '../../../../lib/plannedDb'
 import { supabase } from '../../../../supabase'
 import type {
@@ -119,14 +120,22 @@ export async function listSessions() {
   return withRosterNames(data)
 }
 
-/** A tutor's own classes, soonest first. */
+/**
+ * A tutor's own classes from the past-classes window on (upcoming ones and
+ * the last three months), soonest first. Without the window, a tutor's oldest
+ * 200 classes would fill the list and push new ones out.
+ */
 export async function listTutorSessions(tutorId: string) {
+  const since = pastWindowStart(Date.now()).toISOString()
   const { data, error } = await plannedDb
     .from('classroom_sessions')
     .select('*')
     .eq('tutor_id', tutorId)
+    .or(
+      `scheduled_at.gte.${since},and(scheduled_at.is.null,created_at.gte.${since})`,
+    )
     .order('scheduled_at', { ascending: true, nullsFirst: false })
-    .limit(200)
+    .limit(300)
   if (error) raise(error, 'Couldn’t load your classes.')
   return withRosterNames(data)
 }
